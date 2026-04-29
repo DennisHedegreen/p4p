@@ -1,0 +1,16 @@
+client.pizza4people.com {
+	root * /opt/p4p/client
+	file_server
+}
+
+registry-a.pizza4people.com {
+	reverse_proxy 127.0.0.1:8000
+}
+
+registry-b.pizza4people.com {
+	reverse_proxy 127.0.0.1:8002
+}
+
+node.example-restaurant.dk {
+	reverse_proxy 127.0.0.1:8201
+}

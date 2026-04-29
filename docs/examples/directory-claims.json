@@ -1,0 +1,37 @@
+{
+  "registry_version": "0.1",
+  "query_time": "2026-04-30T18:10:00Z",
+  "registry_metadata": {
+    "registry_type": "country",
+    "capabilities": {
+      "can_onboard_nodes": true,
+      "can_relay_sources": true,
+      "can_curate_active_index": true,
+      "can_moderate_directory": true,
+      "can_issue_trust_claims": false,
+      "can_reexport_sources": false
+    },
+    "scope": {
+      "vertical_id": "pizza4people",
+      "country_code": "DK"
+    },
+    "delegated_by_registry_url": "https://umbrella.protocols4people.com"
+  },
+  "records": [
+    {
+      "node_id": "dk-brondby-test-001",
+      "claims": ["reviewed", "verified"],
+      "reason": "Checked by local trust group",
+      "set_by": "trust-group",
+      "set_at": "2026-04-30T18:08:00Z"
+    },
+    {
+      "node_id": "dk-ringsted-test-002",
+      "claims": ["hidden"],
+      "reason": "Removed from public directory pending review",
+      "set_by": "country-curator",
+      "expires_at": "2026-05-07T18:08:00Z",
+      "set_at": "2026-04-30T18:08:00Z"
+    }
+  ]
+}

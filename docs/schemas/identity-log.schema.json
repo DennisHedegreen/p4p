@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/identity-log.schema.json",
+  "title": "P4P Registry Identity Log",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry_version", "query_time", "records", "events"],
+  "properties": {
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "query_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "node_public_key",
+          "first_seen",
+          "last_seen",
+          "status",
+          "scope",
+          "event_count"
+        ],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+          },
+          "node_public_key": {
+            "type": "string",
+            "pattern": "^ed25519:"
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "revoked", "rotated"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["loopback", "public"]
+          },
+          "event_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "event_type",
+          "node_id",
+          "node_public_key",
+          "signed_at",
+          "announcement_signature",
+          "announcement_hash",
+          "status",
+          "scope",
+          "recorded_at"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "event_type": {
+            "type": "string",
+            "const": "signed_announcement"
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+          },
+          "node_public_key": {
+            "type": "string",
+            "pattern": "^ed25519:"
+          },
+          "signed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "announcement_signature": {
+            "type": "string",
+            "pattern": "^ed25519:"
+          },
+          "announcement_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "revoked", "rotated"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["loopback", "public"]
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/order-response.schema.json",
+  "title": "P4P Order Response",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted", "order_id", "estimated_ready", "message"],
+      "properties": {
+        "accepted": {
+          "type": "boolean",
+          "const": true
+        },
+        "order_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "estimated_ready": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted", "reason", "message"],
+      "properties": {
+        "accepted": {
+          "type": "boolean",
+          "const": false
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  ]
+}

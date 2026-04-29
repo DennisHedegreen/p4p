@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/node-manifest.schema.json",
+  "title": "P4P Node Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "node_id",
+    "root_public_key",
+    "manifest_version",
+    "issued_at",
+    "keys",
+    "signature"
+  ],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+    },
+    "root_public_key": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    },
+    "manifest_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_public_key",
+          "role",
+          "capabilities",
+          "status"
+        ],
+        "properties": {
+          "node_public_key": {
+            "type": "string",
+            "pattern": "^ed25519:"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["primary", "backup"]
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": ["announce", "heartbeat"]
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "revoked"]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    }
+  }
+}

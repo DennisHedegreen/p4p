@@ -1,0 +1,30 @@
+{
+  "registry_version": "0.1",
+  "query_time": "2026-04-30T18:10:00Z",
+  "registry_metadata": {
+    "registry_type": "umbrella",
+    "capabilities": {
+      "can_onboard_nodes": false,
+      "can_relay_sources": true,
+      "can_curate_active_index": false,
+      "can_moderate_directory": false,
+      "can_issue_trust_claims": true,
+      "can_reexport_sources": false
+    },
+    "scope": {
+      "vertical_id": "pizza4people"
+    }
+  },
+  "records": [
+    {
+      "issuer_registry_url": "https://trust.protocols4people.com",
+      "issuer_registry_public_key": "ed25519:example-registry-public-key",
+      "node_id": "dk-brondby-test-001",
+      "claims": ["reviewed"],
+      "reason": "Checked by umbrella trust group",
+      "issued_at": "2026-04-30T18:09:00Z",
+      "expires_at": "2026-05-30T18:09:00Z",
+      "signature": "ed25519:example-trust-claim-signature"
+    }
+  ]
+}

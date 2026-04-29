@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P4P Client</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f1e8;
+        --card: #fffaf3;
+        --ink: #1e1a17;
+        --muted: #6c6258;
+        --accent: #b4432c;
+        --line: #dccdb9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background: radial-gradient(circle at top, #fff7eb 0%, var(--bg) 60%);
+        color: var(--ink);
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin-top: 0;
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 12px 32px rgba(63, 41, 22, 0.08);
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      @media (min-width: 800px) {
+        .grid.two {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      label {
+        display: block;
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 80px;
+        resize: vertical;
+      }
+
+      button {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      button.secondary {
+        background: #efe4d4;
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+
+      .row {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      @media (min-width: 640px) {
+        .row.two {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .node,
+      .menu-item {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin-bottom: 10px;
+      }
+
+      .node button,
+      .menu-item button {
+        margin-top: 10px;
+      }
+
+      .pill {
+        display: inline-block;
+        margin-right: 6px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #efe4d4;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      pre {
+        overflow: auto;
+        white-space: pre-wrap;
+        background: #f3eadf;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="panel">
+        <h1>P4P Client</h1>
+        <p>Reference web client for `v0.1`: discover nodes, fetch menu directly, place order directly, fail over between registries.</p>
+        <p class="status" id="registry-status">Registry status: idle</p>
+      </div>
+
+      <div class="grid two">
+        <section class="panel">
+          <h2>Discovery</h2>
+          <div class="row two">
+            <div>
+              <label for="lat">Latitude</label>
+              <input id="lat" value="55.6517">
+            </div>
+            <div>
+              <label for="lng">Longitude</label>
+              <input id="lng" value="12.4126">
+            </div>
+          </div>
+          <div class="row two">
+            <div>
+              <label for="radius">Radius (km)</label>
+              <input id="radius" value="5">
+            </div>
+            <div>
+              <label for="category">Category</label>
+              <input id="category" value="pizza">
+            </div>
+          </div>
+          <div class="row two">
+            <button id="use-location" class="secondary">Use Browser Location</button>
+            <button id="discover">Discover Nodes</button>
+          </div>
+          <div id="nodes"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Selected Node</h2>
+          <div id="selected-node" class="status">No node selected yet.</div>
+          <h3 style="margin-top:16px;">Menu</h3>
+          <div id="menu"></div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <h2>Order</h2>
+        <p class="status" id="order-status">Select a node before placing an order.</p>
+        <div class="row two">
+          <div>
+            <label for="customer-name">Customer Name</label>
+            <input id="customer-name" value="Anna Hansen">
+          </div>
+          <div>
+            <label for="customer-contact">Customer Contact</label>
+            <input id="customer-contact" value="+4512345678">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="item-id">Menu Item ID</label>
+            <input id="item-id" value="margherita">
+          </div>
+          <div>
+            <label for="quantity">Quantity</label>
+            <input id="quantity" value="2">
+          </div>
+        </div>
+        <div class="row">
+          <label for="note">Note</label>
+          <textarea id="note">No onions</textarea>
+        </div>
+        <button id="place-order">Place Order</button>
+      </section>
+
+      <section class="panel">
+        <h2>Response Log</h2>
+        <pre id="log">Ready.</pre>
+      </section>
+    </main>
+
+    <script src="./config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

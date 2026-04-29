@@ -1,0 +1,25 @@
+{
+  "manifest": {
+    "node_id": "dk-brondby-test-001",
+    "root_public_key": "ed25519:example-root-public-key",
+    "manifest_version": 2,
+    "issued_at": "2026-04-30T18:05:00Z",
+    "keys": [
+      {
+        "node_public_key": "ed25519:example-public-key",
+        "role": "primary",
+        "capabilities": ["announce", "heartbeat"],
+        "status": "active",
+        "expires_at": "2026-05-30T18:05:00Z"
+      }
+    ],
+    "signature": "ed25519:example-manifest-signature"
+  },
+  "root_rotation": {
+    "node_id": "dk-brondby-test-001",
+    "previous_root_public_key": "ed25519:example-old-root-public-key",
+    "next_root_public_key": "ed25519:example-root-public-key",
+    "rotated_at": "2026-04-30T18:04:00Z",
+    "signature": "ed25519:example-rotation-signature"
+  }
+}

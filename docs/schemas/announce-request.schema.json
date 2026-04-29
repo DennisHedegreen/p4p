@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/announce-request.schema.json",
+  "title": "P4P Announce Request",
+  "$ref": "node.schema.json"
+}

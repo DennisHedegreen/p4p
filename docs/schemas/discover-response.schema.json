@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/discover-response.schema.json",
+  "title": "P4P Discover Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nodes", "registry_version", "query_time"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "node-view.schema.json"
+      }
+    },
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "query_time": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

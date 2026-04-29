@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/curated-overrides.schema.json",
+  "title": "P4P Curated Override Status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "registry_version",
+    "query_time",
+    "registry_metadata",
+    "records"
+  ],
+  "properties": {
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "query_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registry_metadata": {
+      "$ref": "registry-source.schema.json#/$defs/registryMetadata"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_registry_url",
+          "decision",
+          "reason",
+          "set_at"
+        ],
+        "properties": {
+          "source_registry_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_relay_registry_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["allow", "deny"]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "set_by": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "set_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

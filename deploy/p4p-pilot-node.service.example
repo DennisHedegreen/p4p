@@ -1,0 +1,20 @@
+[Unit]
+Description=P4P Pilot Restaurant Node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=p4p
+Group=p4p
+WorkingDirectory=/opt/p4p/pilot-node
+EnvironmentFile=/etc/p4p/pilot-node.env
+ExecStart=/opt/p4p/pilot-node/.venv/bin/uvicorn pilot_node:app --host 127.0.0.1 --port 8201
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/p4p
+
+[Install]
+WantedBy=multi-user.target

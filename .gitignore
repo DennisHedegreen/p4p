@@ -1,0 +1,28 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.DS_Store
+
+# Runtime config, secrets, and live data must never be published.
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Keep contributor-facing repo free of private strategy and field material.
+*.docx
+/MARKET-RESEARCH.md
+/PRACTICAL-PLAN.md
+/private/
+
+registry/.venv/
+demo-node/.venv/
+pilot-node/.venv/
+lab/.venv/

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/heartbeat-request.schema.json",
+  "title": "P4P Heartbeat Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["node_id", "open"],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+    },
+    "open": {
+      "type": "boolean"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    }
+  }
+}

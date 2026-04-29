@@ -1,0 +1,12 @@
+{
+  "module_id": "p4p.payment.cash",
+  "type": "payment",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "reference-example",
+  "description": "Restaurant accepts cash or direct in-person payment outside the P4P protocol.",
+  "requires": [],
+  "data_access": [],
+  "entrypoint": null,
+  "signature": null
+}

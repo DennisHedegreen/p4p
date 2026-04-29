@@ -1,0 +1,106 @@
+{
+  "registry_version": "0.1",
+  "registry_url": "https://registry-a.pizza4people.com",
+  "registry_metadata": {
+    "registry_type": "local",
+    "capabilities": {
+      "can_onboard_nodes": true,
+      "can_relay_sources": true,
+      "can_curate_active_index": false,
+      "can_moderate_directory": false,
+      "can_issue_trust_claims": false,
+      "can_reexport_sources": false
+    },
+    "scope": {
+      "vertical_id": "pizza4people",
+      "country_code": "DK",
+      "locality_id": "brondby"
+    },
+    "delegated_by_registry_url": "https://pizza4people.com"
+  },
+  "export_scope": "local_only",
+  "exported_at": "2026-04-30T18:00:02Z",
+  "storage_backend": "sqlite",
+  "latest_identity_event_id": 1,
+  "nodes": [
+    {
+      "node": {
+        "node_id": "dk-brondby-test-001",
+        "name": "P4P Test Pizzeria",
+        "location": {
+          "lat": 55.6517,
+          "lng": 12.4126
+        },
+        "country": "DK",
+        "city": "Brondby",
+        "categories": ["pizza", "kebab"],
+        "endpoint": "https://test-pizzeria.example.com/p4p",
+        "open": true,
+        "order_mode": "test",
+        "modules": ["p4p.payment.cash"],
+        "node_public_key": "ed25519:example-node-public-key",
+        "delegation": {
+          "root_public_key": "ed25519:example-root-public-key",
+          "issued_at": "2026-04-30T17:00:00Z",
+          "expires_at": "2026-05-30T17:00:00Z",
+          "role": "primary",
+          "capabilities": ["announce", "heartbeat"],
+          "signature": "ed25519:example-root-signature"
+        },
+        "signed_at": "2026-04-30T18:00:00Z",
+        "signature": "ed25519:example-node-signature",
+        "protocol_version": "0.1"
+      },
+      "last_seen": "2026-04-30T18:00:01Z",
+      "last_signed_event_at": "2026-04-30T18:00:00Z"
+    }
+  ],
+  "manifests": [
+    {
+      "manifest": {
+        "node_id": "dk-brondby-test-001",
+        "root_public_key": "ed25519:example-root-public-key",
+        "manifest_version": 1,
+        "issued_at": "2026-04-30T17:00:00Z",
+        "keys": [
+          {
+            "node_public_key": "ed25519:example-node-public-key",
+            "role": "primary",
+            "capabilities": ["announce", "heartbeat"],
+            "status": "active",
+            "expires_at": "2026-05-30T17:00:00Z"
+          }
+        ],
+        "signature": "ed25519:example-manifest-signature"
+      },
+      "stored_at": "2026-04-30T17:00:01Z"
+    }
+  ],
+  "identity_records": [
+    {
+      "node_id": "dk-brondby-test-001",
+      "node_public_key": "ed25519:example-node-public-key",
+      "first_seen": "2026-04-30T18:00:00Z",
+      "last_seen": "2026-04-30T18:00:00Z",
+      "status": "active",
+      "scope": "public",
+      "event_count": 1
+    }
+  ],
+  "identity_events": [
+    {
+      "event_id": 1,
+      "event_type": "signed_announcement",
+      "node_id": "dk-brondby-test-001",
+      "node_public_key": "ed25519:example-node-public-key",
+      "signed_at": "2026-04-30T18:00:00Z",
+      "announcement_signature": "ed25519:example-node-signature",
+      "announcement_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "status": "active",
+      "scope": "public",
+      "recorded_at": "2026-04-30T18:00:00Z"
+    }
+  ],
+  "registry_public_key": "ed25519:example-registry-public-key",
+  "signature": "ed25519:example-registry-signature"
+}

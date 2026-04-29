@@ -1,0 +1,9 @@
+{
+  "provider_id": "p4p.reference",
+  "name": "P4P Reference Modules",
+  "website": "https://github.com/DennisHedegreen/p4p",
+  "public_key": null,
+  "contact": null,
+  "modules": ["p4p.payment.cash"],
+  "status": "unsigned-reference"
+}

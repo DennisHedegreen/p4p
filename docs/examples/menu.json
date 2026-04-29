@@ -1,0 +1,20 @@
+{
+  "currency": "DKK",
+  "updated_at": "2026-04-30T15:00:00Z",
+  "items": [
+    {
+      "id": "margherita",
+      "name": "Margherita",
+      "description": "Tomat, mozzarella, oregano",
+      "price": 75,
+      "category": "pizza"
+    },
+    {
+      "id": "vesuvio",
+      "name": "Vesuvio",
+      "description": "Tomat, ost, skinke",
+      "price": 85,
+      "category": "pizza"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/directory-claims.schema.json",
+  "title": "P4P Moderated Directory Claim Status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry_version", "query_time", "registry_metadata", "records"],
+  "properties": {
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "query_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registry_metadata": {
+      "$ref": "registry-source.schema.json#/$defs/registryMetadata"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_id", "claims", "set_at"],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+          },
+          "claims": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": ["reviewed", "verified", "hidden", "spam", "local_only"]
+            }
+          },
+          "reason": {
+            "type": "string"
+          },
+          "set_by": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "set_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

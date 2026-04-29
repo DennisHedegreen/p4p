@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/directory-node-view.schema.json",
+  "title": "P4P Moderated Directory Node View",
+  "allOf": [
+    {
+      "$ref": "node-view.schema.json"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "directory_claims": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["reviewed", "verified", "hidden", "spam", "local_only"]
+          }
+        },
+        "directory_reason": {
+          "type": "string"
+        },
+        "directory_set_by": {
+          "type": "string"
+        },
+        "directory_expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "directory_set_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "trust_claims": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["reviewed", "verified"]
+          }
+        },
+        "trust_claim_issuers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    }
+  ]
+}

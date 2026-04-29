@@ -1,0 +1,27 @@
+{
+  "node_id": "dk-brondby-test-001",
+  "name": "P4P Test Pizzeria",
+  "location": {
+    "lat": 55.6517,
+    "lng": 12.4126
+  },
+  "country": "DK",
+  "city": "Brondby",
+  "categories": ["pizza", "kebab"],
+  "endpoint": "https://test-pizzeria.example.com/p4p",
+  "open": true,
+  "order_mode": "test",
+  "modules": [],
+  "node_public_key": "ed25519:example-public-key",
+  "delegation": {
+    "root_public_key": "ed25519:example-root-public-key",
+    "issued_at": "2026-04-30T17:00:00Z",
+    "expires_at": "2026-05-30T17:00:00Z",
+    "role": "primary",
+    "capabilities": ["announce", "heartbeat"],
+    "signature": "ed25519:example-root-signature"
+  },
+  "signed_at": "2026-04-30T18:00:00Z",
+  "signature": "ed25519:example-signature",
+  "protocol_version": "0.1"
+}

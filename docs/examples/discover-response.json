@@ -1,0 +1,68 @@
+{
+  "nodes": [
+    {
+      "node_id": "dk-brondby-test-001",
+      "name": "P4P Test Pizzeria",
+      "location": {
+        "lat": 55.6517,
+        "lng": 12.4126
+      },
+      "country": "DK",
+      "city": "Brondby",
+      "categories": ["pizza", "kebab"],
+      "endpoint": "https://test-pizzeria.example.com/p4p",
+      "open": true,
+      "order_mode": "test",
+      "modules": [],
+      "node_public_key": "ed25519:example-public-key",
+      "delegation": {
+        "root_public_key": "ed25519:example-root-public-key",
+        "issued_at": "2026-04-30T17:00:00Z",
+        "expires_at": "2026-05-30T17:00:00Z",
+        "role": "primary",
+        "capabilities": ["announce", "heartbeat"],
+        "signature": "ed25519:example-root-signature"
+      },
+      "signed_at": "2026-04-30T18:00:00Z",
+      "signature": "ed25519:example-signature",
+      "protocol_version": "0.1",
+      "last_seen": "2026-04-30T18:00:00Z",
+      "distance_km": 1.4,
+      "source_kind": "local",
+      "source_discovery_basis": "local_registry"
+    },
+    {
+      "node_id": "dk-ringsted-test-002",
+      "name": "P4P Mirrored Pizza Node",
+      "location": {
+        "lat": 55.4427,
+        "lng": 11.7901
+      },
+      "country": "DK",
+      "city": "Ringsted",
+      "categories": ["pizza"],
+      "endpoint": "https://mirror-pizza.example.com/p4p",
+      "open": true,
+      "order_mode": "test",
+      "modules": ["p4p.payment.cash"],
+      "node_public_key": "ed25519:example-mirror-public-key",
+      "signed_at": "2026-04-30T17:59:00Z",
+      "signature": "ed25519:example-mirror-signature",
+      "protocol_version": "0.1",
+      "last_seen": "2026-04-30T18:00:30Z",
+      "distance_km": 8.6,
+      "source_kind": "mirrored",
+      "source_registry_url": "https://registry-a.pizza4people.com",
+      "source_relay_registry_url": "https://umbrella.protocols4people.com",
+      "source_signature_verified": true,
+      "source_discovery_basis": "trusted_relayed_upstream",
+      "source_snapshot_hash": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      "source_exported_at": "2026-04-30T18:00:02Z",
+      "source_imported_at": "2026-04-30T18:04:30Z",
+      "source_last_synced_at": "2026-04-30T18:05:00Z",
+      "source_freshness_state": "fresh"
+    }
+  ],
+  "registry_version": "0.1",
+  "query_time": "2026-04-30T18:00:02Z"
+}

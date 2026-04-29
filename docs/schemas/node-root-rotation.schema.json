@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/node-root-rotation.schema.json",
+  "title": "P4P Node Root Rotation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "node_id",
+    "previous_root_public_key",
+    "next_root_public_key",
+    "rotated_at",
+    "signature"
+  ],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+    },
+    "previous_root_public_key": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    },
+    "next_root_public_key": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    },
+    "rotated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    }
+  }
+}

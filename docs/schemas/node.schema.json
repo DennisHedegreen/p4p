@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/node.schema.json",
+  "title": "P4P Node",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "node_id",
+    "name",
+    "location",
+    "country",
+    "city",
+    "categories",
+    "endpoint",
+    "open",
+    "modules",
+    "protocol_version"
+  ],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lat", "lng"],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "country": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$"
+    },
+    "city": {
+      "type": "string",
+      "minLength": 1
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      }
+    },
+    "endpoint": {
+      "type": "string",
+      "format": "uri",
+      "anyOf": [
+        {
+          "pattern": "^https://"
+        },
+        {
+          "pattern": "^http://(127\\.0\\.0\\.1|localhost)(:\\d+)?(/.*)?$"
+        }
+      ]
+    },
+    "open": {
+      "type": "boolean"
+    },
+    "order_mode": {
+      "type": "string",
+      "enum": ["disabled", "menu_only", "test", "live"],
+      "default": "disabled"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "node_public_key": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    },
+    "delegation": {
+      "$ref": "node-delegation.schema.json"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    },
+    "protocol_version": {
+      "type": "string",
+      "const": "0.1"
+    }
+  }
+}

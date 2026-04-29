@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/node-manifest-request.schema.json",
+  "title": "P4P Node Manifest Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest"],
+  "properties": {
+    "manifest": {
+      "$ref": "node-manifest.schema.json"
+    },
+    "root_rotation": {
+      "$ref": "node-root-rotation.schema.json"
+    }
+  }
+}

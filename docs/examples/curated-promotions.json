@@ -1,0 +1,50 @@
+{
+  "registry_version": "0.1",
+  "query_time": "2026-04-30T18:05:00Z",
+  "registry_metadata": {
+    "registry_type": "country",
+    "capabilities": {
+      "can_onboard_nodes": true,
+      "can_relay_sources": true,
+      "can_curate_active_index": true,
+      "can_moderate_directory": false,
+      "can_issue_trust_claims": false,
+      "can_reexport_sources": false
+    },
+    "scope": {
+      "vertical_id": "pizza4people",
+      "country_code": "DK"
+    },
+    "delegated_by_registry_url": "https://umbrella.protocols4people.com"
+  },
+  "curated_index_promotion_policy": "trusted_mirrors",
+  "records": [
+    {
+      "source_registry_url": "https://registry-a.pizza4people.com",
+      "source_relay_registry_url": "https://umbrella.protocols4people.com",
+      "source_signature_verified": true,
+      "source_snapshot_hash": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      "source_exported_at": "2026-04-30T18:00:02Z",
+      "source_imported_at": "2026-04-30T18:04:30Z",
+      "source_last_synced_at": "2026-04-30T18:04:30Z",
+      "source_freshness_state": "fresh",
+      "automatic_decision": "promote",
+      "automatic_decision_basis": "trusted_relayed_upstream",
+      "automatic_decision_reason": "Verified relayed upstream is allowed by current curated promotion policy",
+      "override_decision": "deny",
+      "override_reason": "Temporarily hidden in this country scope",
+      "override_set_by": "country-curator",
+      "override_expires_at": "2026-05-07T18:07:00Z",
+      "override_set_at": "2026-04-30T18:06:00Z",
+      "decision": "deny",
+      "decision_origin": "manual",
+      "decision_basis": "manual_override_deny",
+      "decision_reason": "Temporarily hidden in this country scope",
+      "active": true,
+      "promotion_eligible": false,
+      "promoted_node_ids": [],
+      "decided_at": "2026-04-30T18:05:00Z",
+      "last_evaluated_at": "2026-04-30T18:05:00Z"
+    }
+  ]
+}

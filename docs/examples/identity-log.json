@@ -1,0 +1,29 @@
+{
+  "registry_version": "0.1",
+  "query_time": "2026-04-30T18:01:00Z",
+  "records": [
+    {
+      "node_id": "dk-brondby-test-001",
+      "node_public_key": "ed25519:example-public-key",
+      "first_seen": "2026-04-30T18:00:00Z",
+      "last_seen": "2026-04-30T18:00:00Z",
+      "status": "active",
+      "scope": "public",
+      "event_count": 1
+    }
+  ],
+  "events": [
+    {
+      "event_id": 1,
+      "event_type": "signed_announcement",
+      "node_id": "dk-brondby-test-001",
+      "node_public_key": "ed25519:example-public-key",
+      "signed_at": "2026-04-30T18:00:00Z",
+      "announcement_signature": "ed25519:example-signature",
+      "announcement_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "status": "active",
+      "scope": "public",
+      "recorded_at": "2026-04-30T18:00:01Z"
+    }
+  ]
+}

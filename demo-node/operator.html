@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P4P Node Operator</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f2ec;
+        --surface: #fffdf8;
+        --line: #d9cdbc;
+        --ink: #1f1c18;
+        --muted: #665e55;
+        --accent: #245b4b;
+        --accent-2: #b4432c;
+        --soft: #ece2d4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px 56px;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 1.65rem;
+      }
+
+      h2 {
+        font-size: 1rem;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      @media (min-width: 860px) {
+        .grid.two {
+          grid-template-columns: minmax(0, 1fr) minmax(320px, 0.75fr);
+        }
+      }
+
+      section {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+      }
+
+      select,
+      textarea,
+      button {
+        width: 100%;
+        font: inherit;
+        border-radius: 8px;
+      }
+
+      select,
+      textarea {
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        padding: 10px;
+      }
+
+      textarea {
+        min-height: 88px;
+        resize: vertical;
+      }
+
+      button {
+        border: 0;
+        background: var(--accent);
+        color: #fff;
+        padding: 10px 12px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: var(--soft);
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+
+      button.danger {
+        background: var(--accent-2);
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .row {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      @media (min-width: 640px) {
+        .row.two {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      .switch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+      }
+
+      .switch input {
+        width: 22px;
+        height: 22px;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        background: var(--soft);
+        color: var(--muted);
+        padding: 5px 9px;
+        font-size: 0.85rem;
+      }
+
+      .module-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .module-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .module-option input {
+        width: 18px;
+        height: 18px;
+      }
+
+      dl {
+        display: grid;
+        grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr);
+        gap: 8px 12px;
+        margin: 14px 0 0;
+      }
+
+      dt {
+        color: var(--muted);
+      }
+
+      dd {
+        margin: 0;
+        word-break: break-word;
+      }
+
+      pre {
+        margin: 14px 0 0;
+        overflow: auto;
+        white-space: pre-wrap;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f1e8dc;
+        padding: 10px;
+        max-height: 280px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1 id="node-name">P4P Node Operator</h1>
+          <div id="node-endpoint" class="muted"></div>
+        </div>
+        <div class="chips" id="status-chips"></div>
+      </header>
+
+      <div class="grid two">
+        <section>
+          <h2>Control</h2>
+          <div class="row two">
+            <div>
+              <label>Node state</label>
+              <div class="switch">
+                <input id="open" type="checkbox">
+                <span id="open-label">Closed</span>
+              </div>
+            </div>
+            <div>
+              <label for="order-mode">Order mode</label>
+              <select id="order-mode"></select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Active modules</label>
+              <div id="modules" class="module-list"></div>
+            </div>
+            <div>
+              <label for="custom-modules">Add module ids</label>
+              <textarea id="custom-modules" placeholder="p4p.example.module"></textarea>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="save">Save And Announce</button>
+            <button id="reannounce" class="secondary">Reannounce</button>
+            <button id="refresh" class="secondary">Refresh</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Registry Health</h2>
+          <dl id="registry"></dl>
+        </section>
+      </div>
+
+      <section style="margin-top:14px;">
+        <h2>Node Metadata</h2>
+        <dl id="node-metadata"></dl>
+        <pre id="log">Loading.</pre>
+      </section>
+    </main>
+
+    <script>
+      const state = {
+        payload: null
+      };
+
+      const nodeName = document.getElementById("node-name");
+      const nodeEndpoint = document.getElementById("node-endpoint");
+      const statusChips = document.getElementById("status-chips");
+      const openInput = document.getElementById("open");
+      const openLabel = document.getElementById("open-label");
+      const orderMode = document.getElementById("order-mode");
+      const modulesEl = document.getElementById("modules");
+      const customModules = document.getElementById("custom-modules");
+      const registryEl = document.getElementById("registry");
+      const metadataEl = document.getElementById("node-metadata");
+      const logEl = document.getElementById("log");
+
+      function setLog(value) {
+        logEl.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      }
+
+      function chip(text) {
+        const el = document.createElement("span");
+        el.className = "chip";
+        el.textContent = text;
+        return el;
+      }
+
+      function renderPairs(target, pairs) {
+        target.innerHTML = "";
+        for (const [key, value] of pairs) {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = Array.isArray(value) ? value.join(", ") : String(value ?? "");
+          target.appendChild(dt);
+          target.appendChild(dd);
+        }
+      }
+
+      function parseCustomModules() {
+        return customModules.value
+          .split(/[\n,]/)
+          .map((value) => value.trim())
+          .filter(Boolean);
+      }
+
+      function selectedModules() {
+        const checked = Array.from(modulesEl.querySelectorAll("input[type='checkbox']:checked"))
+          .map((input) => input.value);
+        return Array.from(new Set([...checked, ...parseCustomModules()]));
+      }
+
+      function renderModules(payload) {
+        modulesEl.innerHTML = "";
+        const active = new Set(payload.node.modules || []);
+        for (const moduleId of payload.available_modules || []) {
+          const label = document.createElement("label");
+          label.className = "module-option";
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.value = moduleId;
+          input.checked = active.has(moduleId);
+          const text = document.createElement("span");
+          text.textContent = moduleId;
+          label.appendChild(input);
+          label.appendChild(text);
+          modulesEl.appendChild(label);
+        }
+        customModules.value = "";
+      }
+
+      function render(payload) {
+        state.payload = payload;
+        const node = payload.node;
+        nodeName.textContent = node.name;
+        nodeEndpoint.textContent = node.endpoint;
+        openInput.checked = Boolean(node.open);
+        openLabel.textContent = node.open ? "Open" : "Closed";
+
+        orderMode.innerHTML = "";
+        for (const mode of payload.available_order_modes || []) {
+          const option = document.createElement("option");
+          option.value = mode;
+          option.textContent = mode;
+          option.selected = mode === node.order_mode;
+          orderMode.appendChild(option);
+        }
+
+        statusChips.innerHTML = "";
+        statusChips.appendChild(chip(node.open ? "open" : "closed"));
+        statusChips.appendChild(chip(`order: ${node.order_mode}`));
+        statusChips.appendChild(chip(payload.registry.ready ? "registry ready" : "registry not ready"));
+
+        renderModules(payload);
+        renderPairs(registryEl, [
+          ["Ready", payload.registry.ready],
+          ["Configured", payload.registry.configured_registries],
+          ["Registered", payload.registry.registered_registries],
+          ["Failed", Object.entries(payload.registry.failed_registries || {}).map(([url, error]) => `${url}: ${error}`)],
+          ["Last cycle", payload.registry.last_cycle_finished_at]
+        ]);
+        renderPairs(metadataEl, [
+          ["Node ID", node.node_id],
+          ["City", node.city],
+          ["Country", node.country],
+          ["Categories", node.categories],
+          ["Modules", node.modules],
+          ["Accepts orders", payload.accepts_orders],
+          ["Signing key", payload.identity?.node_public_key],
+          ["Signed at", node.signed_at],
+          ["Protocol", node.protocol_version]
+        ]);
+        setLog(payload);
+      }
+
+      async function request(path, options = {}) {
+        const response = await fetch(path, {
+          headers: { "Content-Type": "application/json" },
+          ...options
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      async function refresh() {
+        render(await request("/operator/state"));
+      }
+
+      async function save() {
+        const payload = {
+          open: openInput.checked,
+          order_mode: orderMode.value,
+          modules: selectedModules()
+        };
+        render(await request("/operator/state", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        }));
+      }
+
+      async function reannounce() {
+        render(await request("/operator/reannounce", { method: "POST" }));
+      }
+
+      openInput.addEventListener("change", () => {
+        openLabel.textContent = openInput.checked ? "Open" : "Closed";
+      });
+      document.getElementById("save").addEventListener("click", () => {
+        save().catch((error) => setLog(`Save failed: ${error.message}`));
+      });
+      document.getElementById("reannounce").addEventListener("click", () => {
+        reannounce().catch((error) => setLog(`Reannounce failed: ${error.message}`));
+      });
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setLog(`Refresh failed: ${error.message}`));
+      });
+
+      refresh().catch((error) => setLog(`Load failed: ${error.message}`));
+    </script>
+  </body>
+</html>

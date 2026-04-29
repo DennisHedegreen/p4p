@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/registry-info.schema.json",
+  "title": "P4P Registry Info",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry_version", "registry_url", "backups"],
+  "properties": {
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "registry_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "backups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tier", "url"],
+        "properties": {
+          "tier": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    }
+  }
+}

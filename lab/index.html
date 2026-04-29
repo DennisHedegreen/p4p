@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P4P Lab</title>
+    <style>
+      :root {
+        --bg: #f4efe6;
+        --panel: #fffaf2;
+        --ink: #1f1a16;
+        --muted: #6a6158;
+        --line: #decdb7;
+        --accent: #a63d28;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, #fff5e3 0, transparent 28%),
+          radial-gradient(circle at bottom right, #f1debf 0, transparent 22%),
+          var(--bg);
+      }
+      main { max-width: 1280px; margin: 0 auto; padding: 24px; }
+      .hero, .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 14px 34px rgba(50, 29, 10, 0.08);
+        margin-bottom: 18px;
+      }
+      .grid { display: grid; gap: 18px; }
+      @media (min-width: 980px) {
+        .grid.two { grid-template-columns: 360px 1fr; }
+      }
+      button, input {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        padding: 11px 12px;
+        font: inherit;
+      }
+      button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #efe4d1;
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+      .stack { display: grid; gap: 10px; }
+      .row { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+      .service {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .muted { color: var(--muted); }
+      .pill {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #efe4d1;
+        color: var(--muted);
+        margin-right: 6px;
+        font-size: 0.84rem;
+      }
+      pre {
+        background: #f1e7d8;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        overflow: auto;
+        white-space: pre-wrap;
+        font-size: 0.84rem;
+      }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>P4P Lab</h1>
+        <p class="muted">Separate local bench for process control, multi-node spawning, and protocol flow debugging.</p>
+      </section>
+
+      <div class="grid two">
+        <section class="panel">
+          <h2>Controls</h2>
+          <div class="stack">
+            <button data-action="start-primary">Start Primary Registry</button>
+            <button data-action="start-backup">Start Backup Registry</button>
+            <button data-action="start-client">Start Client Server</button>
+            <div class="row">
+              <button class="secondary" data-action="stop-primary">Stop Primary</button>
+              <button class="secondary" data-action="stop-backup">Stop Backup</button>
+            </div>
+            <label for="batch-count">Spawn nodes</label>
+            <input id="batch-count" type="number" min="1" max="25" value="10">
+            <button data-action="spawn-batch">Spawn Batch</button>
+            <div class="row">
+              <button class="secondary" data-action="spawn-one">Spawn Node 1</button>
+              <button class="secondary" data-action="stop-nodes">Stop All Nodes</button>
+            </div>
+            <button class="secondary" data-action="refresh">Refresh Status</button>
+          </div>
+
+          <h3 style="margin-top:20px;">Links</h3>
+          <div class="stack">
+            <a href="http://127.0.0.1:8765/" target="_blank" rel="noreferrer">Open P4P Client</a>
+            <a href="http://127.0.0.1:8000/discover?lat=55.6517&lng=12.4126&radius=50" target="_blank" rel="noreferrer">Primary Discover</a>
+            <a href="http://127.0.0.1:8002/discover?lat=55.6517&lng=12.4126&radius=50" target="_blank" rel="noreferrer">Backup Discover</a>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Services</h2>
+          <p class="muted">For nodes, <strong>running</strong> means process alive. <strong>ready</strong> means `/health` returned `200` with current registry registration.</p>
+          <div id="services"></div>
+        </section>
+      </div>
+    </main>
+    <script>
+      async function call(url, options = {}) {
+        const response = await fetch(url, {
+          method: options.method || "GET",
+          headers: { "Content-Type": "application/json" },
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function serviceCard(service) {
+        const logs = (service.logs || []).slice(-20).join("\n") || "No logs yet.";
+        const health = service.health ? JSON.stringify(service.health, null, 2) : "No health data.";
+        const availabilityLabel = service.kind === "node"
+          ? (service.usable ? "ready" : "not ready")
+          : (service.usable ? "usable" : "not usable");
+        return `
+          <div class="service">
+            <strong>${service.name}</strong>
+            <div style="margin:8px 0;">
+              <span class="pill">${service.kind}</span>
+              <span class="pill">port ${service.port}</span>
+              <span class="pill">${service.running ? "running" : "stopped"}</span>
+              <span class="pill">${availabilityLabel}</span>
+              <span class="pill">pid ${service.pid ?? "none"}</span>
+              ${service.health_status_code ? `<span class="pill">health ${service.health_status_code}</span>` : ""}
+            </div>
+            ${service.operator_url ? `<p><a href="${service.operator_url}" target="_blank" rel="noreferrer">Open Node Operator</a></p>` : ""}
+            <button class="secondary" onclick="handleStop('${service.name}')">Stop ${service.name}</button>
+            ${service.kind === "node" ? `<pre>${health}</pre>` : ""}
+            <pre>${logs}</pre>
+          </div>
+        `;
+      }
+
+      async function refresh() {
+        const data = await call("/api/status");
+        const services = data.services || [];
+        document.getElementById("services").innerHTML = services.length
+          ? services.map(serviceCard).join("")
+          : "<p class='muted'>No services started from the lab yet.</p>";
+      }
+
+      async function handleStop(name) {
+        await call(`/api/stop/${name}`, { method: "POST" });
+        await refresh();
+      }
+
+      async function handleAction(action) {
+        if (action === "start-primary") await call("/api/start/primary", { method: "POST" });
+        if (action === "start-backup") await call("/api/start/backup", { method: "POST" });
+        if (action === "start-client") await call("/api/start/client", { method: "POST" });
+        if (action === "stop-primary") await call("/api/stop/primary-registry", { method: "POST" });
+        if (action === "stop-backup") await call("/api/stop/backup-registry", { method: "POST" });
+        if (action === "spawn-one") await call("/api/start/node/1", { method: "POST" });
+        if (action === "spawn-batch") {
+          const count = Number(document.getElementById("batch-count").value);
+          await call("/api/start/nodes", { method: "POST", body: { count } });
+        }
+        if (action === "stop-nodes") await call("/api/stop-kind/node", { method: "POST" });
+        await refresh();
+      }
+
+      document.querySelectorAll("[data-action]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          try {
+            await handleAction(button.dataset.action);
+          } catch (error) {
+            alert(error.message);
+          }
+        });
+      });
+
+      refresh();
+      setInterval(refresh, 2500);
+    </script>
+  </body>
+</html>

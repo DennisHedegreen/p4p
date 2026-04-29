@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/directory-response.schema.json",
+  "title": "P4P Moderated Directory Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nodes", "registry_version", "query_time", "registry_metadata"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "directory-node-view.schema.json"
+      }
+    },
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "query_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registry_metadata": {
+      "$ref": "registry-source.schema.json#/$defs/registryMetadata"
+    }
+  }
+}

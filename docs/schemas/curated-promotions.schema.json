@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/curated-promotions.schema.json",
+  "title": "P4P Curated Promotion Status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "registry_version",
+    "query_time",
+    "registry_metadata",
+    "curated_index_promotion_policy",
+    "records"
+  ],
+  "properties": {
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "query_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registry_metadata": {
+      "$ref": "registry-source.schema.json#/$defs/registryMetadata"
+    },
+    "curated_index_promotion_policy": {
+      "type": "string",
+      "enum": ["manual_only", "trusted_mirrors"]
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_registry_url",
+          "source_signature_verified",
+          "source_snapshot_hash",
+          "source_exported_at",
+          "source_imported_at",
+          "source_last_synced_at",
+          "source_freshness_state",
+          "automatic_decision",
+          "automatic_decision_basis",
+          "automatic_decision_reason",
+          "decision",
+          "decision_origin",
+          "decision_basis",
+          "decision_reason",
+          "active",
+          "promotion_eligible",
+          "promoted_node_ids",
+          "decided_at",
+          "last_evaluated_at"
+        ],
+        "properties": {
+          "source_registry_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_relay_registry_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_signature_verified": {
+            "type": "boolean"
+          },
+          "source_snapshot_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "source_exported_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_imported_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_last_synced_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_freshness_state": {
+            "type": "string",
+            "enum": ["fresh", "stale"]
+          },
+          "automatic_decision": {
+            "type": "string",
+            "enum": ["promote", "deny"]
+          },
+          "automatic_decision_basis": {
+            "type": "string"
+          },
+          "automatic_decision_reason": {
+            "type": "string"
+          },
+          "override_decision": {
+            "type": "string",
+            "enum": ["allow", "deny"]
+          },
+          "override_reason": {
+            "type": "string"
+          },
+          "override_set_by": {
+            "type": "string"
+          },
+          "override_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "override_set_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["promote", "deny"]
+          },
+          "decision_origin": {
+            "type": "string",
+            "enum": ["automatic", "manual"]
+          },
+          "decision_basis": {
+            "type": "string"
+          },
+          "decision_reason": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "promotion_eligible": {
+            "type": "boolean"
+          },
+          "promoted_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+            }
+          },
+          "decided_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_evaluated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

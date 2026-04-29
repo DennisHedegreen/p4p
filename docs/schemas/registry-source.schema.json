@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/registry-source.schema.json",
+  "title": "P4P Registry Source Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "registry_version",
+    "registry_url",
+    "registry_metadata",
+    "export_scope",
+    "exported_at",
+    "storage_backend",
+    "nodes",
+    "manifests",
+    "identity_records",
+    "identity_events"
+  ],
+  "properties": {
+    "registry_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "registry_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "registry_metadata": {
+      "$ref": "#/$defs/registryMetadata"
+    },
+    "export_scope": {
+      "type": "string",
+      "enum": ["local_only", "local_plus_trusted_mirrors"]
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "storage_backend": {
+      "type": "string",
+      "enum": ["memory", "sqlite"]
+    },
+    "latest_identity_event_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node", "last_seen"],
+        "properties": {
+          "node": {
+            "$ref": "node.schema.json"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_signed_event_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "manifests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["manifest", "stored_at"],
+        "properties": {
+          "manifest": {
+            "$ref": "node-manifest.schema.json"
+          },
+          "stored_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "identity_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_id",
+          "node_public_key",
+          "first_seen",
+          "last_seen",
+          "status",
+          "scope",
+          "event_count"
+        ],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+          },
+          "node_public_key": {
+            "type": "string",
+            "pattern": "^ed25519:"
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "revoked", "rotated"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["loopback", "public"]
+          },
+          "event_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "identity_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "event_type",
+          "node_id",
+          "node_public_key",
+          "signed_at",
+          "announcement_signature",
+          "announcement_hash",
+          "status",
+          "scope",
+          "recorded_at"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "event_type": {
+            "type": "string",
+            "const": "signed_announcement"
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+          },
+          "node_public_key": {
+            "type": "string",
+            "pattern": "^ed25519:"
+          },
+          "signed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "announcement_signature": {
+            "type": "string",
+            "pattern": "^ed25519:"
+          },
+          "announcement_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "revoked", "rotated"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["loopback", "public"]
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "mirrored_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "snapshot",
+          "imported_at",
+          "verified_signature",
+          "discovery_eligible",
+          "discovery_basis",
+          "relayed_by_registry_url"
+        ],
+        "properties": {
+          "snapshot": {
+            "$ref": "#"
+          },
+          "imported_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verified_signature": {
+            "type": "boolean"
+          },
+          "discovery_eligible": {
+            "type": "boolean",
+            "const": true
+          },
+          "discovery_basis": {
+            "type": "string",
+            "const": "trusted_upstream"
+          },
+          "relayed_by_registry_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    },
+    "registry_public_key": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^ed25519:"
+    }
+  },
+  "$defs": {
+    "registryCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "can_onboard_nodes",
+        "can_relay_sources",
+        "can_curate_active_index",
+        "can_moderate_directory",
+        "can_issue_trust_claims",
+        "can_reexport_sources"
+      ],
+      "properties": {
+        "can_onboard_nodes": {
+          "type": "boolean"
+        },
+        "can_relay_sources": {
+          "type": "boolean"
+        },
+        "can_curate_active_index": {
+          "type": "boolean"
+        },
+        "can_moderate_directory": {
+          "type": "boolean"
+        },
+        "can_issue_trust_claims": {
+          "type": "boolean"
+        },
+        "can_reexport_sources": {
+          "type": "boolean"
+        }
+      }
+    },
+    "registryScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vertical_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "country_code": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "locality_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "registryMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_type", "capabilities", "scope"],
+      "properties": {
+        "registry_type": {
+          "type": "string",
+          "enum": ["umbrella", "vertical", "country", "local"]
+        },
+        "capabilities": {
+          "$ref": "#/$defs/registryCapabilities"
+        },
+        "scope": {
+          "$ref": "#/$defs/registryScope"
+        },
+        "delegated_by_registry_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

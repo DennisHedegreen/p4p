@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/node-manifest-response.schema.json",
+  "title": "P4P Node Manifest Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "node_id", "manifest_version"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "const": "ok"
+    },
+    "node_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+    },
+    "manifest_version": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

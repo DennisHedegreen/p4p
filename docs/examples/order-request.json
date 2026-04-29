@@ -1,0 +1,13 @@
+{
+  "customer_name": "Anna Hansen",
+  "customer_contact": "+4512345678",
+  "fulfillment": "pickup",
+  "items": [
+    {
+      "id": "margherita",
+      "quantity": 2
+    }
+  ],
+  "note": "No onions",
+  "client_version": "p4p-web-0.1"
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/node-view.schema.json",
+  "title": "P4P Discoverable Node View",
+  "allOf": [
+    {
+      "$ref": "node.schema.json"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["last_seen", "source_kind"],
+      "properties": {
+        "last_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "distance_km": {
+          "type": "number",
+          "minimum": 0
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": ["local", "mirrored"]
+        },
+        "source_registry_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "source_relay_registry_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "source_signature_verified": {
+          "type": "boolean"
+        },
+        "source_discovery_basis": {
+          "type": "string",
+          "enum": [
+            "local_registry",
+            "manual_override_allow",
+            "trusted_upstream",
+            "trusted_relayed_upstream",
+            "all_active_policy"
+          ]
+        },
+        "source_snapshot_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_exported_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_imported_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_last_synced_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_freshness_state": {
+          "type": "string",
+          "enum": ["fresh", "stale"]
+        }
+      }
+    }
+  ]
+}
