@@ -2599,6 +2599,105 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertNotIn("insertAdjacentHTML", client_app)
         self.assertNotIn("outerHTML", client_app)
 
+    def test_node_checker_validates_interop_shapes(self) -> None:
+        checker = load_module("scripts/check-node.py")
+
+        info_results = checker.validate_info(
+            {
+                "node_id": "dk-test-node-001",
+                "name": "Independent Test Node",
+                "endpoint": "http://127.0.0.1:9001/p4p",
+                "order_mode": "test",
+                "protocol_version": "0.1",
+            }
+        )
+        self.assertFalse([result for result in info_results if result.level == "FAIL"])
+
+        invalid_info = checker.validate_info({"order_mode": "maybe"})
+        self.assertTrue(any(result.level == "FAIL" and result.name == "info.order_mode" for result in invalid_info))
+
+        menu_results = checker.validate_menu(
+            {
+                "currency": "DKK",
+                "updated_at": "2026-04-29T12:00:00Z",
+                "items": [
+                    {
+                        "id": "kebab-box",
+                        "name": "Kebab Box",
+                        "description": "Test item",
+                        "price": 6500,
+                        "category": "kebab",
+                    }
+                ],
+            }
+        )
+        self.assertFalse([result for result in menu_results if result.level == "FAIL"])
+
+        bad_menu = checker.validate_menu({"currency": "EUR", "updated_at": "", "items": []})
+        self.assertGreaterEqual(len([result for result in bad_menu if result.level == "FAIL"]), 3)
+
+        accepted = checker.validate_order_response(
+            {
+                "accepted": True,
+                "order_id": "test-001",
+                "estimated_ready": "2026-04-29T12:20:00Z",
+                "message": "Test order received.",
+            },
+            True,
+        )
+        self.assertFalse([result for result in accepted if result.level == "FAIL"])
+
+        rejected = checker.validate_order_response(
+            {
+                "accepted": False,
+                "reason": "orders_disabled",
+                "message": "Orders are not enabled.",
+            },
+            False,
+        )
+        self.assertFalse([result for result in rejected if result.level == "FAIL"])
+
+    def test_node_checker_refuses_live_order_without_explicit_flag(self) -> None:
+        checker = load_module("scripts/check-node.py")
+        calls: list[tuple[str, str]] = []
+
+        def fake_fetch(url: str, *, method: str = "GET", payload=None, timeout: float = 5.0):
+            calls.append((method, url))
+            if url.endswith("/info"):
+                return 200, {
+                    "node_id": "dk-test-node-001",
+                    "name": "Independent Test Node",
+                    "endpoint": "http://127.0.0.1:9001/p4p",
+                    "order_mode": "live",
+                    "protocol_version": "0.1",
+                }
+            if url.endswith("/menu"):
+                return 200, {
+                    "currency": "DKK",
+                    "updated_at": "2026-04-29T12:00:00Z",
+                    "items": [
+                        {
+                            "id": "kebab-box",
+                            "name": "Kebab Box",
+                            "description": "Test item",
+                            "price": 6500,
+                            "category": "kebab",
+                        }
+                    ],
+                }
+            raise AssertionError(f"unexpected fetch {method} {url}")
+
+        with patch.object(checker, "fetch_json", side_effect=fake_fetch):
+            results = checker.run_checks(
+                "http://127.0.0.1:9001/p4p",
+                timeout=5.0,
+                test_order=True,
+                allow_live_order=False,
+            )
+
+        self.assertFalse(any(url.endswith("/order") for _, url in calls))
+        self.assertTrue(any(result.level == "WARN" and result.name == "POST /order" for result in results))
+
 
 if __name__ == "__main__":
     unittest.main()

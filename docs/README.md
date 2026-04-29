@@ -16,6 +16,8 @@ Use it when building code, validating payloads, or comparing independent impleme
   Practical boundary rules for deciding what is core, what is a module, and what registries must not control.
 - `ORDER-CONSENT.md`
   Rule for menu-only, test-order, and live-order node states.
+- `NODE-IMPLEMENTER-KIT.md`
+  Short packet for independent node builders and interop sessions.
 - `NODE-OPERATOR-LITE.md`
   Reference node-owned operator surface for controlling order mode, modules, and registry health.
 - `NODE-IDENTITY.md`

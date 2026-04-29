@@ -142,6 +142,7 @@ That same module economy may also reach backward into production and supply chai
 - `PILOT-LIVE.md` — first live restaurant pilot scope, topology, and stop conditions
 - `PROOF.md` — public online proof target for `v0.1`
 - `docs/` — schemas and example payloads for the core contract
+- `docs/NODE-IMPLEMENTER-KIT.md` — independent node builder and interop-session guide
 - `docs/RELEASE-PLAN.md` — branch, tag, and alpha milestone rules
 - `docs/PUBLIC-GITHUB.md` — safe public/private GitHub split for publishing
 - `modules/` — reference module manifests and examples
