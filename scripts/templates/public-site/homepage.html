@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="{{author_name}}">
+  <title>Pizza4People - Open Protocol for Direct Restaurant Ordering</title>
+  <meta name="description" content="Pizza4People is a public open-protocol proof and controlled live-pilot path for restaurant discovery, direct menu access, direct ordering, and node-owned identity.">
+  <link rel="canonical" href="{{site_url}}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Pizza4People - Open Protocol for Direct Restaurant Ordering">
+  <meta property="og:description" content="A public protocol proof and controlled live-pilot path for direct restaurant-customer ordering.">
+  <meta property="og:url" content="{{site_url}}">
+  <meta property="og:site_name" content="Pizza4People">
+  <meta property="og:image" content="https://pizza4people.com/assets/card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://pizza4people.com/assets/card.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- {{generated_comment}} -->
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Pizza4People home">
+      <span class="brand-mark">P4P</span>
+      <span class="brand-copy">Pizza4People</span>
+    </a>
+    <nav class="top-nav" aria-label="Primary navigation">
+      <a href="#proof">Proof</a>
+      <a href="#story">Story</a>
+      <a href="#press">Press</a>
+      <a href="press-kit/">Press kit DK</a>
+      <a href="press-kit/en.html">Press kit EN</a>
+      <a href="#trust">Trust</a>
+      <a href="#modules">Modules</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">{{hero_eyebrow}}</p>
+        <h1 id="hero-title">{{hero_title}}</h1>
+        <p class="hero-lede">{{hero_lede}}</p>
+        <div class="hero-actions" aria-label="Proof links">
+          <a class="button" href="#story">60-second version</a>
+          <a class="button button-secondary" href="#proof">See the proof</a>
+          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+          <a class="button button-secondary" href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
+          <a class="button button-secondary" href="{{umbrella_url}}" rel="noopener noreferrer">Broader vision</a>
+          <a class="button button-secondary" href="press-kit/">Press kit DK</a>
+          <a class="button button-secondary" href="press-kit/en.html">Press kit EN</a>
+        </div>
+      </div>
+      <figure class="proof-figure">
+        <img src="assets/protocol-proof-map.svg" alt="Diagram showing client discovery through registries and direct menu/order flow to the restaurant node.">
+        <figcaption>Discovery can go through registries. Menu and orders go directly to the restaurant node.</figcaption>
+      </figure>
+    </section>
+
+    <section class="notice" aria-label="Current status">
+      <p>{{notice}} <a href="{{just_eat_source_url}}" rel="noopener noreferrer">Source</a>.</p>
+    </section>
+
+    <section class="press-ready" id="press" aria-labelledby="press-ready-title">
+      <div>
+        <p class="section-kicker">For journalists</p>
+        <h2 id="press-ready-title">{{press_heading}}</h2>
+        <p>{{press_lede}}</p>
+      </div>
+      <div class="press-facts" aria-label="Current press facts">
+{{press_facts_html}}
+      </div>
+    </section>
+
+    <section class="journalist-brief" id="story" aria-labelledby="story-title">
+      <div class="brief-copy">
+        <p class="section-kicker">The story</p>
+        <h2 id="story-title">{{story_heading}}</h2>
+        <p>{{story_body}}</p>
+      </div>
+      <div class="brief-card">
+        <p class="brief-label">In one sentence</p>
+        <p class="brief-line">{{one_sentence}}</p>
+      </div>
+    </section>
+
+    <section class="plain-demo" aria-labelledby="plain-demo-title">
+      <div class="section-heading">
+        <p class="section-kicker">What a journalist can see</p>
+        <h2 id="plain-demo-title">Four visible things, no protocol knowledge required.</h2>
+      </div>
+      <div class="plain-grid">
+{{plain_cards_html}}
+      </div>
+    </section>
+
+    <section class="section-grid" id="problem" aria-labelledby="problem-title">
+      <div>
+        <p class="section-kicker">Problem</p>
+        <h2 id="problem-title">{{problem_heading}}</h2>
+      </div>
+      <div class="section-body">
+        <p>{{problem_body_1}}</p>
+        <p>{{problem_body_2}}</p>
+      </div>
+    </section>
+
+    <section class="section-grid" id="proof" aria-labelledby="proof-title">
+      <div>
+        <p class="section-kicker">Proof</p>
+        <h2 id="proof-title">The public proof demonstrates one narrow loop.</h2>
+      </div>
+      <div class="proof-list" aria-label="Proof flow">
+{{proof_steps_html}}
+      </div>
+    </section>
+
+    <section class="press-takeaway" aria-labelledby="press-title">
+      <p class="section-kicker">Press takeaway</p>
+      <h2 id="press-title">{{takeaway_heading}}</h2>
+      <p>{{takeaway_body}}</p>
+    </section>
+
+    <section class="two-column" aria-label="Proof boundaries">
+      <article class="fact-panel">
+        <p class="section-kicker">What this proves</p>
+        {{proves_list_html}}
+      </article>
+      <article class="fact-panel">
+        <p class="section-kicker warning">What this does not prove</p>
+        {{does_not_prove_list_html}}
+      </article>
+    </section>
+
+    <section class="section-grid" id="trust" aria-labelledby="trust-title">
+      <div>
+        <p class="section-kicker">Trust direction</p>
+        <h2 id="trust-title">{{trust_heading}}</h2>
+      </div>
+      <div class="section-body">
+        <p>{{trust_body}}</p>
+        <div class="trace" role="list" aria-label="Verification chain">
+{{trace_html}}
+        </div>
+      </div>
+    </section>
+
+    <section id="modules" class="module-section" aria-labelledby="modules-title">
+      <div class="section-heading">
+        <p class="section-kicker">Module Catalog</p>
+        <h2 id="modules-title">Providers can add functions without owning discovery.</h2>
+        <p>Modules are declared capabilities. The node operator decides which modules a restaurant node announces and uses. This catalog is generated from module manifests in the repo.</p>
+      </div>
+      <div class="module-grid">
+{{modules_html}}
+      </div>
+    </section>
+
+    <section class="section-grid" id="gate" aria-labelledby="gate-title">
+      <div>
+        <p class="section-kicker">Proof gate</p>
+        <h2 id="gate-title">{{proof_gate_heading}}</h2>
+      </div>
+      <div class="gate-list">
+{{gate_html}}
+      </div>
+    </section>
+
+    <section class="section-grid" id="roadmap" aria-labelledby="roadmap-title">
+      <div>
+        <p class="section-kicker">Roadmap</p>
+        <h2 id="roadmap-title">From public protocol proof to controlled live pilot.</h2>
+      </div>
+      <ol class="roadmap-list">
+{{roadmap_html}}
+      </ol>
+    </section>
+
+    <section class="contact-section" id="contact" aria-labelledby="contact-title">
+      <p class="section-kicker">Contact</p>
+      <h2 id="contact-title">This is a public protocol proof and controlled pilot path, not a commercial marketplace launch.</h2>
+      <p>For technical review, protocol questions, or press context: <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
+      <p>Source and protocol work: <a href="{{repo_url}}" rel="noopener noreferrer">{{repo_url}}</a>.</p>
+      <p>Broader protocol-family direction: <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
+      <p class="fine-print">Pizza4People is the concrete restaurant-ordering proof. Protocols4People is the broader protocol-family direction.</p>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <span>Pizza4People / P4P</span>
+    <span>{{footer_status}}</span>
+  </footer>
+</body>
+</html>

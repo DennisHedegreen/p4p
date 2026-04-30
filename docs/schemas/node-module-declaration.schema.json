@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/node-module-declaration.schema.json",
+  "title": "P4P Node Module Declaration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "module_id",
+    "provider_id",
+    "version",
+    "status",
+    "visibility",
+    "readiness",
+    "capabilities",
+    "data_access"
+  ],
+  "$defs": {
+    "moduleId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:\\.[a-z0-9-]+)+$"
+    },
+    "providerId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:\\.[a-z0-9-]+)+$"
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z0-9_][a-z0-9_.-]*$"
+    }
+  },
+  "properties": {
+    "module_id": {
+      "$ref": "#/$defs/moduleId"
+    },
+    "provider_id": {
+      "$ref": "#/$defs/providerId"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "fallback_only", "disabled"]
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["public", "operator_only", "trust_only"]
+    },
+    "readiness": {
+      "type": "string",
+      "enum": ["planned", "test", "live"]
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/token"
+      }
+    },
+    "data_access": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/token"
+      }
+    },
+    "customer_notice": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

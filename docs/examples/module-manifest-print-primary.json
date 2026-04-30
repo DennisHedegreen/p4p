@@ -1,0 +1,56 @@
+{
+  "module_id": "p4p.order.print",
+  "module_class": "printer",
+  "lane": "operator",
+  "type": "order-routing",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "planned",
+  "description": "Prints or forwards accepted test orders to a restaurant-owned printer or POS surface.",
+  "visibility": "operator_only",
+  "capabilities": ["print_order", "report_status"],
+  "input_events": ["ORDER_ACCEPTED", "PRINT_REQUESTED"],
+  "output_events": [
+    "PRINT_SUCCESS_CONFIRMED",
+    "PRINT_FAILED_PRECHECK",
+    "PRINT_UNCERTAIN",
+    "PRINTER_OFFLINE",
+    "PAPER_LOW",
+    "PAPER_OUT",
+    "PAPER_JAM",
+    "PRINT_TIMEOUT"
+  ],
+  "permissions": [
+    "read.order.summary",
+    "read.order.items",
+    "read.order.note"
+  ],
+  "blocking_policy": "fallback_required",
+  "suggested_fallbacks": {
+    "PRINTER_OFFLINE": ["p4p.order.print.backup", "p4p.notify.email"],
+    "PRINT_TIMEOUT": ["p4p.order.print.backup", "p4p.notify.email"],
+    "PAPER_OUT": ["p4p.notify.email"]
+  },
+  "idempotency_scope": "order_print",
+  "failure_modes": [
+    "PRINT_FAILED_PRECHECK",
+    "PRINT_UNCERTAIN",
+    "PRINTER_OFFLINE",
+    "PAPER_LOW",
+    "PAPER_OUT",
+    "PAPER_JAM",
+    "PRINT_TIMEOUT"
+  ],
+  "required_configuration": ["printer_target"],
+  "requires": [],
+  "data_access": ["order_summary", "order_items", "note"],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Prints or forwards accepted test orders to a restaurant-owned printer/POS surface.",
+    "data_access_summary": "Order items, note, customer contact, and fulfillment type.",
+    "trust_status": "placeholder manifest",
+    "readiness": "planned",
+    "operator_status": "not enabled"
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/module-manifest.schema.json",
+  "title": "P4P Module Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "module_id",
+    "module_class",
+    "lane",
+    "type",
+    "provider_id",
+    "version",
+    "status",
+    "description",
+    "visibility",
+    "capabilities",
+    "input_events",
+    "output_events",
+    "permissions",
+    "blocking_policy",
+    "idempotency_scope",
+    "requires",
+    "data_access",
+    "entrypoint",
+    "signature",
+    "public_catalog"
+  ],
+  "$defs": {
+    "moduleId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:\\.[a-z0-9-]+)+$"
+    },
+    "providerId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:\\.[a-z0-9-]+)+$"
+    },
+    "token": {
+      "type": "string",
+      "pattern": "^[a-z0-9_][a-z0-9_.-]*$"
+    },
+    "eventName": {
+      "$ref": "module-event-name.schema.json"
+    },
+    "permission": {
+      "type": "string",
+      "pattern": "^(read|write|emit|store)\\.[a-z0-9_]+(?:\\.[a-z0-9_]+)+$"
+    }
+  },
+  "properties": {
+    "module_id": {
+      "$ref": "#/$defs/moduleId"
+    },
+    "module_class": {
+      "$ref": "#/$defs/token"
+    },
+    "lane": {
+      "type": "string",
+      "enum": ["public_capability", "operator", "trust", "observability"]
+    },
+    "type": {
+      "$ref": "#/$defs/token"
+    },
+    "provider_id": {
+      "$ref": "#/$defs/providerId"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["public", "operator_only", "trust_only"]
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/token"
+      }
+    },
+    "input_events": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/eventName"
+      }
+    },
+    "output_events": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/eventName"
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/permission"
+      }
+    },
+    "blocking_policy": {
+      "type": "string",
+      "enum": ["blocking", "non_blocking", "fallback_required"]
+    },
+    "suggested_fallbacks": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/eventName"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+          "$ref": "#/$defs/moduleId"
+        }
+      }
+    },
+    "idempotency_scope": {
+      "$ref": "#/$defs/token"
+    },
+    "failure_modes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/eventName"
+      }
+    },
+    "required_configuration": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/token"
+      }
+    },
+    "requires": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/token"
+      }
+    },
+    "data_access": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/token"
+      }
+    },
+    "entrypoint": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "signature": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^ed25519:"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "public_catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "function",
+        "data_access_summary",
+        "trust_status",
+        "readiness",
+        "operator_status"
+      ],
+      "properties": {
+        "function": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data_access_summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trust_status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "readiness": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operator_status": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

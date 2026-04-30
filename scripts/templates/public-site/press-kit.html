@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="{{lang_attr}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="{{author_name}}">
+  <title>{{page_title}}</title>
+  <meta name="description" content="{{page_description}}">
+  <link rel="canonical" href="{{canonical_url}}">
+  <style>
+{{press_style}}
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <section class="page">
+      <div class="topbar">
+        <span>{{topbar_label}}</span>
+        <span>{{date_label}}</span>
+      </div>
+      <div class="hero-grid">
+        <div>
+          <p class="kicker">{{kicker}}</p>
+          <h1>{{headline}}</h1>
+          <p class="lede">{{lede}}</p>
+          <div class="badge-row">
+{{badges_html}}
+          </div>
+        </div>
+        <aside class="quote-box">
+          <p><strong>{{quote}}</strong></p>
+          <div class="links">
+            <a href="p4p-press-kit-da.pdf">Download dansk PDF</a>
+            <a href="p4p-press-kit-en.pdf">Download English PDF</a>
+            <a href="{{other_lang_link}}">{{other_lang_label}}</a>
+            <a href="{{site_url}}">pizza4people.com</a>
+            <a href="{{umbrella_url}}">protocols4people.com</a>
+            <a href="{{repo_url}}">github.com/DennisHedegreen/p4p</a>
+          </div>
+        </aside>
+      </div>
+      <div class="footer-line">
+        <span>{{contact_name}} / {{contact_org}}</span>
+        <span>{{contact_email}}</span>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">{{why_now_label}}</p>
+      <h2>{{why_now_heading}}</h2>
+      <div class="two-col">
+        <div>
+{{why_now_body_html}}
+        </div>
+        <div class="card">
+          <h3>{{journalist_box_label}}</h3>
+          {{journalist_bullets_html}}
+        </div>
+      </div>
+      <div class="download-note">{{source_note}}</div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">{{system_label}}</p>
+      <h2>{{system_heading}}</h2>
+      <div class="diagram">
+        <p class="diagram-label">Core flow</p>
+        <div class="flow">
+          <div class="client"><h3>Client</h3><p>{{client_flow_text}}</p></div>
+          <div class="arrow">-&gt;</div>
+          <div class="registry"><h3>Registry</h3><p>{{registry_flow_text}}</p></div>
+          <div class="arrow">-&gt;</div>
+          <div class="node"><h3>{{node_flow_label}}</h3><p>{{node_flow_text}}</p></div>
+        </div>
+        <p class="caption">{{flow_caption}}</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">{{layers_label}}</p>
+      <h2>{{layers_heading}}</h2>
+      <div class="module-grid">
+{{module_cards_html}}
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">{{status_label}}</p>
+      <h2>{{status_heading}}</h2>
+      <div class="two-col">
+        <div class="status-card good">
+          <h3>{{current_status_title}}</h3>
+          {{current_status_items_html}}
+        </div>
+        <div class="status-card">
+          <h3>{{next_test_title}}</h3>
+          {{next_test_items_html}}
+        </div>
+      </div>
+      <div class="diagram" style="margin-top:1rem">
+        <p class="diagram-label">Pilot topology</p>
+        <div class="pilot-map">
+          <div class="registry"><h3>Primary registry</h3><p>{{primary_registry_text}}</p></div>
+          <div class="registry"><h3>Backup registry</h3><p>{{backup_registry_text}}</p></div>
+          <div class="node"><h3>{{pilot_node_label}}</h3><p>{{pilot_node_text}}</p></div>
+          <div class="client"><h3>Client</h3><p>{{pilot_client_text}}</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">{{verification_label}}</p>
+      <h2>{{verification_heading}}</h2>
+      <div class="two-col">
+        <div>
+{{verification_body_html}}
+        </div>
+        <div class="card">
+          <h3>Minimum node API</h3>
+          <ul>
+            <li><code>GET /p4p/info</code></li>
+            <li><code>GET /p4p/menu</code></li>
+            <li><code>POST /p4p/order</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <h3>Checker</h3>
+        <p><code>python3 scripts/check-node.py --node-url http://localhost:8101/p4p</code></p>
+        <p><code>python3 scripts/check-node.py --node-url http://localhost:8101/p4p --test-order</code></p>
+      </div>
+    </section>
+
+    <section class="page">
+      <p class="kicker">{{press_angles_label}}</p>
+      <h2>{{press_angles_heading}}</h2>
+      <div class="three-col">
+{{press_angles_html}}
+      </div>
+      <div class="two-col" style="margin-top:1rem">
+        <div class="card">
+          <h3>Contact</h3>
+          <p>{{contact_name}}<br>{{contact_org}}<br><a href="mailto:{{contact_email}}">{{contact_email}}</a></p>
+        </div>
+        <div class="card">
+          <h3>Links</h3>
+          <div class="source-list">
+            <a href="{{site_url}}">{{site_url}}</a>
+            <a href="{{umbrella_url}}">{{umbrella_url}}</a>
+            <a href="{{repo_url}}">{{repo_url}}</a>
+            <a href="{{just_eat_source_url}}">Just Eat Takeaway.com source</a>
+          </div>
+        </div>
+      </div>
+      <p class="download-note">{{status_line}}</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "module_id": "p4p.stock.basic",
+  "module_class": "inventory",
+  "lane": "operator",
+  "type": "stock-check",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "planned",
+  "description": "Performs a final local stock check between order acceptance and the next operator lane.",
+  "visibility": "operator_only",
+  "capabilities": ["check_stock", "emit_validation_result"],
+  "input_events": ["ORDER_ACCEPTED"],
+  "output_events": ["ORDER_VALIDATED", "ITEM_NOT_POSSIBLE"],
+  "permissions": [
+    "read.order.items",
+    "read.menu.stock_state"
+  ],
+  "blocking_policy": "blocking",
+  "suggested_fallbacks": {},
+  "idempotency_scope": "stock_validation",
+  "failure_modes": ["ITEM_NOT_POSSIBLE"],
+  "requires": [],
+  "data_access": ["order_items", "stock_state"],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Checks local stock before the next module continues the order flow.",
+    "data_access_summary": "Order items and local stock state.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "planned",
+    "operator_status": "not enabled"
+  }
+}

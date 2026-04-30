@@ -1,0 +1,37 @@
+{
+  "module_id": "p4p.trust.cvr-basic",
+  "module_class": "trust",
+  "lane": "trust",
+  "type": "trust",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "planned",
+  "description": "Connects a node identity claim to a Danish CVR lookup or trust claim.",
+  "visibility": "trust_only",
+  "capabilities": ["lookup_cvr_claim", "emit_trust_claim"],
+  "input_events": ["TRUST_CLAIM_REQUESTED", "NODE_IDENTITY_DECLARED"],
+  "output_events": [
+    "TRUST_CLAIM_EMITTED",
+    "CVR_MATCH_CONFIRMED",
+    "CVR_MATCH_MISSING"
+  ],
+  "permissions": [
+    "read.node.identity_public",
+    "emit.trust.claim"
+  ],
+  "blocking_policy": "non_blocking",
+  "idempotency_scope": "trust_claim_emit",
+  "failure_modes": ["CVR_MATCH_MISSING"],
+  "required_configuration": ["cvr_lookup_source"],
+  "requires": [],
+  "data_access": ["declared_cvr_identifiers", "node_public_identity"],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Connects a node identity claim to a Danish CVR lookup or trust claim.",
+    "data_access_summary": "Declared CVR/company identifiers and node public identity data.",
+    "trust_status": "planned trust module",
+    "readiness": "planned",
+    "operator_status": "not enabled"
+  }
+}

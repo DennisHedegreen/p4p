@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://p4p.example/schemas/module-result-event.schema.json",
+  "title": "P4P Module Result Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "source_module",
+    "action_id",
+    "outcome",
+    "severity",
+    "retryable",
+    "side_effect_state",
+    "timestamp"
+  ],
+  "properties": {
+    "event": {
+      "$ref": "module-event-name.schema.json"
+    },
+    "source_module": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:\\.[a-z0-9-]+)+$"
+    },
+    "order_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "SUCCESS",
+        "FAILED_RETRYABLE",
+        "FAILED_PERMANENT",
+        "TIMEOUT_UNKNOWN",
+        "UNAVAILABLE",
+        "NEEDS_INPUT",
+        "NEEDS_HUMAN"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_]+$"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "side_effect_state": {
+      "type": "string",
+      "enum": ["none", "confirmed", "unknown"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

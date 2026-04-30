@@ -63,6 +63,15 @@ Status: advanced prototype.
 
 The local proof is green.
 
+The immediate operating priority is not more feature breadth.
+
+It is to:
+
+- checkpoint the current cleanup landing on `dev`
+- keep the public proof chain green and honest
+- provision reproducible lab and pilot runtimes
+- cut the next `main` story as a proof-safe release, not a fast-forward of all of `dev`
+
 The reference implementation already proves:
 
 - node announce
@@ -179,7 +188,7 @@ P4P reaches `v1.0` only when an independent implementer can build a registry, no
 
 ## 4. Gate A: Public Core Proof
 
-Status: mostly done locally.
+Status: mostly done locally and still the active public-story gate.
 
 Purpose:
 
@@ -210,6 +219,8 @@ This gate may be recorded as a proof video.
 
 It is no longer the main goal if a real restaurant pilot is available.
 
+But it still remains the proof-safe release gate for `main`.
+
 ## 5. Gate B: Real Restaurant Pilot
 
 Status: next target.
@@ -217,6 +228,8 @@ Status: next target.
 Purpose:
 
 move from demo to controlled live restaurant use without widening scope.
+
+This gate stays separate from the public proof release.
 
 Topology:
 
@@ -273,6 +286,8 @@ Status: foundation built.
 Purpose:
 
 replace demo-node for real restaurant operation.
+
+This gate should harden the restaurant-owned control plane without widening the public proof claim.
 
 Required capabilities:
 
@@ -450,6 +465,8 @@ First module model should define:
 
 - provider manifest
 - module manifest
+- canonical event-name catalog
+- node module declaration shape
 - module id
 - provider id
 - module type
@@ -459,6 +476,12 @@ First module model should define:
 - node data required
 - test/live readiness
 - signature
+- execution contract
+- event inputs and typed outcomes
+- permission scopes
+- blocking vs non-blocking policy
+- idempotency scope
+- node-local fallback policy
 
 First practical module examples:
 
@@ -477,6 +500,11 @@ Rules:
 - reviews are modules
 - trust verification is claim-based, not permission-based
 - no module may be required for basic discovery and pickup ordering
+
+See also:
+
+- `docs/MODULE-EXECUTION-CONTRACT.md`
+- `docs/FIRST-FLOWS.md`
 
 ## 12. Gate I: Independent Implementation
 

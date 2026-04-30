@@ -1,0 +1,16 @@
+{
+  "event": "PRINT_TIMEOUT",
+  "source_module": "p4p.order.print",
+  "order_id": "ord_123",
+  "action_id": "act_print_001",
+  "idempotency_key": "print:ord_123:primary:v1",
+  "outcome": "FAILED_RETRYABLE",
+  "reason_code": "USB_TIMEOUT",
+  "severity": "high",
+  "retryable": true,
+  "side_effect_state": "unknown",
+  "timestamp": "2026-04-30T12:10:00Z",
+  "metadata": {
+    "device": "usb-printer-a"
+  }
+}

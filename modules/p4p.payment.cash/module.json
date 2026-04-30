@@ -1,12 +1,35 @@
 {
   "module_id": "p4p.payment.cash",
+  "module_class": "payment",
+  "lane": "public_capability",
   "type": "payment",
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
   "description": "Restaurant accepts cash or direct in-person payment outside the P4P protocol.",
+  "visibility": "public",
+  "capabilities": ["mark_pay_at_pickup", "report_payment_mode"],
+  "input_events": ["PAYMENT_REQUIRED", "PAYMENT_FAILED"],
+  "output_events": ["PAYMENT_MODE_CHANGED", "PAYMENT_FAILED"],
+  "permissions": [
+    "read.order.summary",
+    "write.payment.state"
+  ],
+  "blocking_policy": "blocking",
+  "suggested_fallbacks": {
+    "PAYMENT_FAILED": ["p4p.notify.email"]
+  },
+  "idempotency_scope": "payment_mode_resolution",
+  "failure_modes": ["PAYMENT_FAILED"],
   "requires": [],
-  "data_access": [],
+  "data_access": ["order_total", "fulfillment_type"],
   "entrypoint": null,
-  "signature": null
+  "signature": null,
+  "public_catalog": {
+    "function": "Marks a node as accepting cash payment at pickup or delivery.",
+    "data_access_summary": "Order total and fulfillment type. No card or account data.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "test",
+    "operator_status": "enabled in the demo node"
+  }
 }

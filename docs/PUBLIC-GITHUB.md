@@ -86,6 +86,19 @@ Use this when the public repo should be `github.com/DennisHedegreen/p4p`.
 
 Do not make the current private repository public while `dev` exists on GitHub.
 
+## Push Cadence
+
+Do not let GitHub go quiet for too long while the code keeps moving.
+
+Default discipline:
+
+- push `dev` after each meaningful green checkpoint
+- prefer small named commits over large silent piles
+- if a push changes what the repo now means, update `README.md` or `docs/RELEASE-NOTES.md` in the same pass
+- if public `main` lags `dev`, the public repo should still explain the lag honestly instead of pretending nothing changed
+
+The GitHub surface is part of the project explanation layer, not only a code dump.
+
 ## Local Pre-Publication Audit
 
 Run this from the repository root before pushing a public branch:

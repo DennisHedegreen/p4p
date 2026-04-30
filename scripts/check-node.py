@@ -18,6 +18,9 @@ from typing import Any
 
 ORDER_MODES = {"disabled", "menu_only", "test", "live"}
 SAFE_ORDER_MODES = {"disabled", "menu_only", "test"}
+MODULE_STATUSES = {"active", "fallback_only", "disabled"}
+MODULE_VISIBILITIES = {"public", "operator_only", "trust_only"}
+MODULE_READINESS = {"planned", "test", "live"}
 
 
 @dataclass
@@ -25,6 +28,17 @@ class CheckResult:
     level: str
     name: str
     message: str
+
+
+def _is_string_list(value: Any, *, allow_empty: bool = True) -> bool:
+    if not isinstance(value, list):
+        return False
+    for entry in value:
+        if not isinstance(entry, str):
+            return False
+        if not allow_empty and not entry:
+            return False
+    return True
 
 
 def normalize_base_url(url: str) -> str:
@@ -85,6 +99,103 @@ def validate_info(info: dict[str, Any]) -> list[CheckResult]:
             results.append(CheckResult("PASS", f"info.{field}", "present"))
         else:
             results.append(CheckResult("WARN", f"info.{field}", "missing; recommended for independent interop tests"))
+
+    results.extend(validate_module_projection(info, path="info"))
+    return results
+
+
+def validate_module_projection(payload: dict[str, Any], *, path: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    modules = payload.get("modules")
+    declarations = payload.get("module_declarations")
+    undeclared_modules = payload.get("undeclared_modules")
+
+    if modules is None and declarations is None and undeclared_modules is None:
+        return results
+
+    normalized_modules: list[str] = []
+    if modules is None:
+        results.append(CheckResult("WARN", f"{path}.modules", "missing; raw module ids are recommended when richer declarations are exposed"))
+    elif not _is_string_list(modules, allow_empty=False):
+        results.append(CheckResult("FAIL", f"{path}.modules", "must be an array of non-empty strings"))
+    else:
+        normalized_modules = list(modules)
+        results.append(CheckResult("PASS", f"{path}.modules", f"{len(normalized_modules)} public module id(s)"))
+
+    declared_ids: list[str] = []
+    if declarations is not None:
+        if not isinstance(declarations, list):
+            results.append(CheckResult("FAIL", f"{path}.module_declarations", "must be an array when present"))
+        else:
+            declaration_failures = 0
+            for index, declaration in enumerate(declarations):
+                if not isinstance(declaration, dict):
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}]", "entry must be an object"))
+                    continue
+                module_id = declaration.get("module_id")
+                provider_id = declaration.get("provider_id")
+                version = declaration.get("version")
+                status = declaration.get("status")
+                visibility = declaration.get("visibility")
+                readiness = declaration.get("readiness")
+                capabilities = declaration.get("capabilities")
+                data_access = declaration.get("data_access", [])
+                customer_notice = declaration.get("customer_notice")
+
+                if not isinstance(module_id, str) or not module_id:
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].module_id", "must be a non-empty string"))
+                else:
+                    declared_ids.append(module_id)
+                if not isinstance(provider_id, str) or not provider_id:
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].provider_id", "must be a non-empty string"))
+                if not isinstance(version, str) or not version:
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].version", "must be a non-empty string"))
+                if status not in MODULE_STATUSES:
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].status", "must be active, fallback_only, or disabled"))
+                if visibility not in MODULE_VISIBILITIES:
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].visibility", "must be public, operator_only, or trust_only"))
+                if readiness not in MODULE_READINESS:
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].readiness", "must be planned, test, or live"))
+                if not _is_string_list(capabilities, allow_empty=False):
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].capabilities", "must be a non-empty array of strings"))
+                if not _is_string_list(data_access):
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].data_access", "must be an array of strings"))
+                if customer_notice is not None and (not isinstance(customer_notice, str) or not customer_notice):
+                    declaration_failures += 1
+                    results.append(CheckResult("FAIL", f"{path}.module_declarations[{index}].customer_notice", "must be a non-empty string when present"))
+
+            if declaration_failures == 0:
+                results.append(CheckResult("PASS", f"{path}.module_declarations", f"{len(declarations)} manifest-backed declaration(s)"))
+
+    normalized_undeclared: list[str] = []
+    if undeclared_modules is not None:
+        if not _is_string_list(undeclared_modules, allow_empty=False):
+            results.append(CheckResult("FAIL", f"{path}.undeclared_modules", "must be an array of non-empty strings when present"))
+        else:
+            normalized_undeclared = list(undeclared_modules)
+            results.append(CheckResult("PASS", f"{path}.undeclared_modules", f"{len(normalized_undeclared)} opaque compatibility module id(s)"))
+
+    if normalized_modules and declared_ids:
+        missing = [module_id for module_id in declared_ids if module_id not in normalized_modules]
+        if missing:
+            results.append(CheckResult("FAIL", f"{path}.module_declarations", f"declared module ids missing from {path}.modules: {', '.join(missing)}"))
+    if normalized_modules and normalized_undeclared:
+        missing = [module_id for module_id in normalized_undeclared if module_id not in normalized_modules]
+        if missing:
+            results.append(CheckResult("FAIL", f"{path}.undeclared_modules", f"opaque module ids missing from {path}.modules: {', '.join(missing)}"))
+    if declared_ids and normalized_undeclared:
+        overlap = sorted(set(declared_ids).intersection(normalized_undeclared))
+        if overlap:
+            results.append(CheckResult("FAIL", f"{path}.undeclared_modules", f"module ids cannot be both declared and opaque: {', '.join(overlap)}"))
 
     return results
 

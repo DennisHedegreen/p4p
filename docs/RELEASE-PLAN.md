@@ -18,9 +18,25 @@ Use it for fast protocol, reference implementation, and documentation work.
 
 Feature branches are optional and should only be used for risky or conflicting changes.
 
+If a local public snapshot branch such as `public-main` exists, treat it as a reference snapshot only.
+
+Do not use it as a normal integration branch or merge base for active development.
+
 Because `dev` may be ahead of the release story, do not fast-forward `main` from `dev` unless the whole current `dev` state is ready to become the next public story.
 
 When pacing matters, create a short release branch or cherry-pick the specific milestone commits into `main`.
+
+The current cleanup landing is a `dev` checkpoint, not by itself a reason to move `main`.
+
+## Cadence
+
+`dev` should be pushed often enough that GitHub shows the shape of the work while it is happening.
+
+Default rule:
+
+- a meaningful green checkpoint belongs on `dev`
+- if the checkpoint changes the story an outsider would tell about the repo, it should also update `README.md` or `docs/RELEASE-NOTES.md`
+- public `main` may move slower, but it should not stay under-explained while `dev` races ahead
 
 ## Release Milestones
 
@@ -90,13 +106,29 @@ First public proof deployment:
 
 This is the first release that should be easy to explain to people outside the repo.
 
+It must stay narrower than the controlled live-pilot claim.
+
+### `pilot.1` - Controlled Live Pilot Preparation
+
+First live-pilot-ready story state:
+
+- `pilot-node/` is the live-directed node surface
+- pickup only
+- pay at pickup
+- explicit operator activation before `order_mode=live`
+- no delivery, no online payment, no accounts, no broad federation claims
+
+This milestone may live on `dev` or a short release branch before any public claim of live restaurant operation.
+
 ## Main Merge Rule
 
 A milestone can move to `main` only when:
 
-- the milestone has a short release note
+- the milestone has a short release note in `docs/RELEASE-NOTES.md`
 - existing tests pass
+- rescue-gate checks pass
 - `PROOF.md`, `ROADMAP.md`, or this file reflects the current claim
+- public wording across repo docs, proof site, and press companion is aligned
 - the release does not imply production security, live restaurant approval, payment, delivery, or CVR verification unless those are actually implemented
 
 Do not merge an impressive demo to `main` if its claim is unclear.
@@ -124,3 +156,5 @@ Keep building on `dev`.
 Keep `main` conservative.
 
 Use staged release tags to make the next weeks look deliberate, even if much of the work was built quickly.
+
+Cut the next `main` story from a proof-safe subset of `dev`, not from a blind fast-forward.

@@ -40,16 +40,26 @@ The provider may be commercial, open source, community-operated, public-sector, 
 
 A provider manifest should identify who publishes the module.
 
-Design target:
+The first concrete draft now lives in:
+
+- `docs/schemas/provider-manifest.schema.json`
+- `docs/examples/provider-manifest.json`
+- `modules/*/provider.json` as reference manifests
+
+Current frozen draft shape:
 
 ```json
 {
   "provider_id": "dk.example-pay",
   "name": "Example Pay",
+  "description": "Payment provider for direct restaurant checkout.",
   "website": "https://example-pay.test",
   "public_key": "ed25519:...",
   "contact": "security@example-pay.test",
-  "modules": ["p4p.payment.example-pay"]
+  "modules": ["p4p.payment.example-pay"],
+  "supported_lanes": ["public_capability"],
+  "status": "signed-provider",
+  "signature": "ed25519:..."
 }
 ```
 
@@ -61,24 +71,59 @@ It lets clients, nodes, and trust lists reason about who is behind a module with
 
 A module manifest should describe the capability itself.
 
-Design target:
+The first concrete draft now lives in:
+
+- `docs/schemas/module-manifest.schema.json`
+- `docs/examples/module-manifest-print-primary.json`
+- `modules/*/module.json` as reference manifests
+
+Current frozen draft shape:
 
 ```json
 {
   "module_id": "p4p.payment.example-pay",
+  "module_class": "payment",
+  "lane": "public_capability",
   "type": "payment",
   "provider_id": "dk.example-pay",
   "version": "0.1",
+  "status": "signed-provider-module",
+  "description": "Direct payment module for a named provider.",
+  "visibility": "public",
+  "capabilities": ["authorize_payment", "report_payment_state"],
+  "input_events": ["PAYMENT_REQUIRED"],
+  "output_events": ["PAYMENT_MODE_CHANGED", "PAYMENT_FAILED"],
+  "permissions": ["read.order.summary", "write.payment.state"],
+  "blocking_policy": "blocking",
+  "idempotency_scope": "payment_attempt",
   "requires": ["order_total", "customer_phone", "merchant_id"],
   "data_access": ["order_total", "customer_contact"],
   "entrypoint": "https://example-pay.test/p4p/payment",
-  "signature": "..."
+  "signature": "ed25519:...",
+  "public_catalog": {
+    "function": "Authorizes provider-backed payment for one restaurant node.",
+    "data_access_summary": "Order total, customer contact, and merchant identifier.",
+    "trust_status": "provider-signed manifest",
+    "readiness": "test",
+    "operator_status": "not enabled"
+  }
 }
 ```
 
-The exact schema belongs in `v0.2`.
+The important shift is that the manifest now carries not only provider and data-access information, but also the first execution-contract layer:
 
-For now, the important rule is that modules must declare what they need before a node enables them.
+- module lane
+- visibility
+- capabilities
+- input events
+- output events
+- permissions
+- blocking policy
+- idempotency scope
+
+That is still a `v0.2` draft.
+
+It does not change the active `v0.1` node payload, where nodes still announce opaque module ids only.
 
 ## Node Declarations
 
@@ -86,20 +131,50 @@ A node operator chooses which modules are active for a specific restaurant node.
 
 The node can then announce active modules in its public node metadata.
 
+That public declaration should stay smaller than the full module manifest.
+
+The first concrete draft now lives in:
+
+- `docs/schemas/node-module-declaration.schema.json`
+- `docs/examples/node-module-declaration.json`
+
 Illustrative direction:
 
 ```json
 {
-  "id": "p4p.payment.example-pay",
+  "module_id": "p4p.payment.example-pay",
+  "provider_id": "dk.example-pay",
   "version": "0.1",
   "status": "active",
-  "provider_id": "dk.example-pay"
+  "visibility": "public",
+  "readiness": "test",
+  "capabilities": ["authorize_payment"],
+  "data_access": ["order_total", "customer_contact"],
+  "customer_notice": "Customer pays through Example Pay."
 }
 ```
 
 This declaration says the node supports the module.
 
 It does not mean the registry has certified it.
+
+The node-declaration wire shape should stay smaller than the module manifest itself.
+
+The registry may expose that a node has activated `p4p.payment.cash`.
+
+It does not need to carry the entire provider, permission, and fallback contract inline in node metadata.
+
+The intended reading is:
+
+- provider manifest says who publishes the module
+- module manifest says how the module behaves in general
+- node module declaration says this specific node has activated the module and what the customer or client should minimally know
+
+The likely `v0.2` transition path is:
+
+- keep `modules: ["..."]` as the coarse list during transition
+- add `module_declarations: [...]` for the richer per-node public shape
+- let clients prefer `module_declarations` when present
 
 ## Data Access Principle
 
@@ -147,4 +222,3 @@ It may store provider credentials, API keys, merchant ids, printer settings, and
 It is not itself a module.
 
 It is the place where modules are controlled.
-

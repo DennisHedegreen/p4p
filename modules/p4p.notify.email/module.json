@@ -1,0 +1,44 @@
+{
+  "module_id": "p4p.notify.email",
+  "module_class": "notification",
+  "lane": "operator",
+  "type": "notification",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "planned",
+  "description": "Sends order notifications to an operator-controlled email address.",
+  "visibility": "operator_only",
+  "capabilities": ["send_operator_notification", "report_status"],
+  "input_events": [
+    "ORDER_ACCEPTED",
+    "ORDER_NEEDS_HUMAN",
+    "PRINTER_OFFLINE",
+    "PRINT_TIMEOUT",
+    "PAPER_OUT"
+  ],
+  "output_events": ["NOTIFICATION_SENT", "NOTIFICATION_FAILED"],
+  "permissions": [
+    "read.order.summary",
+    "read.order.items",
+    "read.order.note",
+    "read.node.operator_config"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {
+    "NOTIFICATION_FAILED": ["p4p.notify.sms"]
+  },
+  "idempotency_scope": "notification_send",
+  "failure_modes": ["NOTIFICATION_FAILED"],
+  "required_configuration": ["operator_destination"],
+  "requires": [],
+  "data_access": ["order_summary", "operator_destination"],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Sends order notifications to an operator-controlled email address.",
+    "data_access_summary": "Order summary and configured operator destination.",
+    "trust_status": "placeholder manifest",
+    "readiness": "planned",
+    "operator_status": "not enabled"
+  }
+}

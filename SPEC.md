@@ -589,26 +589,41 @@ Menu is not a module in P4P. The public menu endpoint is core. A future menu imp
 
 For `v0.2`, a node should be able to declare which modules it supports.
 
-A module declaration should say:
-- what capability is available
+A node-level module declaration should say:
+- which module is active
 - which provider supplies it, if any
 - which version is active
-- what data the module needs
-- whether the module is enabled for this node
+- whether it is public, operator-only, or trust-only
+- whether it is active, fallback-only, or disabled for this node
+- what the customer or client minimally needs to know about capability and data access
 
 Illustrative `v0.2` direction:
 
 ```json
 {
-  "id": "p4p.payment.mobilepay",
+  "module_id": "p4p.payment.mobilepay",
+  "provider_id": "dk.mobilepay",
   "version": "0.1",
   "status": "active",
-  "provider_id": "dk.mobilepay",
-  "requires": ["customer_phone", "order_total"]
+  "visibility": "public",
+  "readiness": "test",
+  "capabilities": ["authorize_payment"],
+  "data_access": ["customer_phone", "order_total"],
+  "customer_notice": "Customer pays through MobilePay."
 }
 ```
 
-This is not a `v0.1` schema change.
+The full module manifest stays a separate document.
+
+The node declaration is the smaller public per-node activation view.
+
+This is still not a `v0.1` schema change.
+
+The likely transition is:
+
+- `modules: ["..."]` remains the coarse compatibility field
+- a later `module_declarations: [...]` field carries the richer per-node shape
+- clients may prefer `module_declarations` when present
 
 Breaking changes are allowed before `v1.0`, so the exact module declaration shape may be introduced in `v0.2`.
 

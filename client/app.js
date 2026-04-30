@@ -5,9 +5,9 @@ const DEFAULT_REGISTRIES = [
 
 let registries = [];
 let pinnedRegistries = [];
-
 let activeRegistry = null;
 let selectedNode = null;
+let selectedNodeMenuState = "idle";
 
 const registryStatusEl = document.getElementById("registry-status");
 const nodesEl = document.getElementById("nodes");
@@ -47,9 +47,9 @@ function appendStrong(parent, value) {
   return element;
 }
 
-function appendPill(parent, value) {
+function appendPill(parent, value, variant = "") {
   const element = document.createElement("span");
-  element.className = "pill";
+  element.className = `pill${variant ? ` ${variant}` : ""}`;
   element.textContent = safeText(value);
   parent.appendChild(element);
   return element;
@@ -57,7 +57,7 @@ function appendPill(parent, value) {
 
 function appendStatus(parent, value, options = {}) {
   const element = document.createElement(options.block ? "div" : "span");
-  element.className = "status";
+  element.className = `status${options.variant ? ` ${options.variant}` : ""}`;
   element.textContent = safeText(value);
   if (options.marginTop) {
     element.style.marginTop = options.marginTop;
@@ -66,9 +66,9 @@ function appendStatus(parent, value, options = {}) {
   return element;
 }
 
-function appendEmptyStatus(parent, value) {
+function appendEmptyStatus(parent, value, variant = "") {
   const element = document.createElement("p");
-  element.className = "status";
+  element.className = `status${variant ? ` ${variant}` : ""}`;
   element.textContent = value;
   parent.appendChild(element);
 }
@@ -115,9 +115,9 @@ function discoverySourceLabel(node) {
         ? "trusted-relay"
         : node.source_discovery_basis === "manual_override_allow"
           ? "manual-allow"
-        : node.source_discovery_basis === "all_active_policy"
-          ? "active-policy"
-          : "mirrored";
+          : node.source_discovery_basis === "all_active_policy"
+            ? "active-policy"
+            : "mirrored";
     const freshness = node.source_freshness_state === "stale" ? "stale" : "fresh";
     if (node.source_signature_verified === false) {
       return relay
@@ -131,16 +131,144 @@ function discoverySourceLabel(node) {
   return "Local registry node";
 }
 
+function nodeLookupKey(node) {
+  if (typeof node?.node_id === "string" && node.node_id) {
+    return `node:${node.node_id}`;
+  }
+  if (typeof node?.endpoint === "string" && node.endpoint) {
+    return `endpoint:${node.endpoint}`;
+  }
+  return null;
+}
+
+function mergeDirectoryNodes(nodes, directoryNodes) {
+  const overlays = new Map();
+
+  for (const node of asArray(directoryNodes)) {
+    const key = nodeLookupKey(node);
+    if (key) {
+      overlays.set(key, node);
+    }
+  }
+
+  return asArray(nodes).map((node) => {
+    const key = nodeLookupKey(node);
+    const overlay = key ? overlays.get(key) : null;
+    if (!overlay) {
+      return node;
+    }
+    return {
+      ...node,
+      ...overlay,
+      modules: asArray(node.modules).length ? asArray(node.modules) : asArray(overlay.modules)
+    };
+  });
+}
+
+function moduleDeclarationSummary(entry) {
+  const parts = [];
+  if (typeof entry?.status === "string" && entry.status) {
+    parts.push(entry.status);
+  }
+  if (typeof entry?.readiness === "string" && entry.readiness) {
+    parts.push(entry.readiness);
+  }
+  if (typeof entry?.visibility === "string" && entry.visibility) {
+    parts.push(entry.visibility);
+  }
+  if (typeof entry?.provider_id === "string" && entry.provider_id) {
+    parts.push(entry.provider_id);
+  }
+  if (typeof entry?.customer_notice === "string" && entry.customer_notice) {
+    parts.push(entry.customer_notice);
+  }
+  return parts.join(" • ");
+}
+
+function moduleEntriesForNode(node) {
+  const declared = asArray(node?.module_declarations)
+    .filter((entry) => typeof entry?.module_id === "string" && entry.module_id)
+    .map((entry) => ({
+      label: entry.module_id,
+      title: moduleDeclarationSummary(entry)
+    }));
+  const undeclared = asArray(node?.undeclared_modules)
+    .filter((moduleId) => typeof moduleId === "string" && moduleId)
+    .map((moduleId) => ({
+      label: `${moduleId} (opaque)`,
+      title: "Compatibility module id without local manifest metadata."
+    }));
+
+  if (declared.length || undeclared.length) {
+    return [...declared, ...undeclared];
+  }
+
+  return asArray(node?.modules)
+    .filter((moduleId) => typeof moduleId === "string" && moduleId)
+    .map((moduleId) => ({ label: moduleId, title: "" }));
+}
+
+function appendNodeModules(parent, node, { marginTop = "12px" } = {}) {
+  const modules = moduleEntriesForNode(node);
+  if (!modules.length) {
+    return;
+  }
+
+  appendStatus(parent, "Modules:", {
+    block: true,
+    marginTop
+  });
+  const modulePills = document.createElement("div");
+  modulePills.className = "pill-row";
+  for (const moduleEntry of modules) {
+    const pill = appendPill(modulePills, moduleEntry.label);
+    if (moduleEntry.title) {
+      pill.title = moduleEntry.title;
+    }
+  }
+  parent.appendChild(modulePills);
+}
+
+function resetSelectedNodeView(message = "No node selected yet.") {
+  selectedNodeEl.replaceChildren();
+  const label = document.createElement("span");
+  label.className = "status-label";
+  label.textContent = "Selected node";
+  selectedNodeEl.appendChild(label);
+  appendEmptyStatus(selectedNodeEl, message);
+}
+
+function setMenuMessage(message, variant = "") {
+  menuEl.replaceChildren();
+  appendEmptyStatus(menuEl, message, variant);
+}
+
 function updateOrderControls() {
   if (!selectedNode) {
     placeOrderButton.disabled = true;
     orderStatusEl.textContent = "Select a node before placing an order.";
+    orderStatusEl.className = "status";
+    return;
+  }
+
+  if (selectedNodeMenuState === "loading") {
+    placeOrderButton.disabled = true;
+    orderStatusEl.textContent = "Loading direct menu from node...";
+    orderStatusEl.className = "status";
+    return;
+  }
+
+  if (selectedNodeMenuState === "error") {
+    placeOrderButton.disabled = true;
+    orderStatusEl.textContent = `${selectedNode.name} was discovered, but the node menu could not be reached yet.`;
+    orderStatusEl.className = "status error";
     return;
   }
 
   if (!nodeAcceptsOrders(selectedNode)) {
     placeOrderButton.disabled = true;
     orderStatusEl.textContent = `${selectedNode.name} is discoverable, but does not accept orders in ${getOrderMode(selectedNode)} mode.`;
+    orderStatusEl.className = "status";
     return;
   }
 
@@ -149,6 +277,7 @@ function updateOrderControls() {
     getOrderMode(selectedNode) === "test"
       ? "This node accepts test orders only."
       : "This node accepts live orders.";
+  orderStatusEl.className = "status good";
 }
 
 function normalizeRegistryUrl(url) {
@@ -320,8 +449,24 @@ async function discoverNodes() {
   });
 
   const payload = await fetchWithFailover(`/discover?${params.toString()}`);
-  renderNodes(payload.nodes || []);
-  setLog(payload);
+  let nodes = asArray(payload.nodes);
+
+  if (activeRegistry) {
+    try {
+      const directoryPayload = await fetchJsonWithTimeout(
+        buildRegistryUrl(activeRegistry, `/directory?${params.toString()}`)
+      );
+      nodes = mergeDirectoryNodes(nodes, directoryPayload.nodes);
+    } catch (error) {
+      // Keep discovery usable even when the richer directory overlay is missing.
+    }
+  }
+
+  renderNodes(nodes);
+  setLog({
+    ...payload,
+    nodes
+  });
 }
 
 function renderNodes(nodes) {
@@ -338,51 +483,55 @@ function renderNodes(nodes) {
 
     appendStrong(wrapper, node.name);
     appendBreak(wrapper);
-    appendPill(wrapper, node.city);
-    appendPill(wrapper, `${safeText(node.distance_km, "?")} km`);
-    appendPill(wrapper, asArray(node.categories).join(", "));
-    appendPill(wrapper, orderModeLabel(node));
-    appendPill(wrapper, nodeIdentityLabel(node));
-    appendPill(wrapper, discoverySourceLabel(node));
 
-    const modules = asArray(node.modules);
-    if (modules.length) {
-      const moduleRow = appendStatus(wrapper, "Modules: ", {
-        block: true,
-        marginTop: "8px"
-      });
-      for (const moduleId of modules) {
-        appendPill(moduleRow, moduleId);
-      }
-    }
+    const pills = document.createElement("div");
+    pills.className = "pill-row";
+    appendPill(pills, node.city);
+    appendPill(pills, `${safeText(node.distance_km, "?")} km`);
+    appendPill(pills, asArray(node.categories).join(", "));
+    appendPill(pills, orderModeLabel(node));
+    appendPill(pills, nodeIdentityLabel(node));
+    appendPill(pills, discoverySourceLabel(node));
+    wrapper.appendChild(pills);
+
+    appendNodeModules(wrapper, node, { marginTop: "12px" });
 
     appendStatus(wrapper, node.endpoint, {
       block: true,
-      marginTop: "8px"
+      marginTop: "12px"
     });
 
     const button = document.createElement("button");
     button.textContent = "Use This Node";
-    button.addEventListener("click", () => selectNode(node));
+    button.addEventListener("click", () => {
+      void selectNode(node);
+    });
     wrapper.appendChild(button);
     nodesEl.appendChild(wrapper);
   }
 }
 
-async function selectNode(node) {
-  selectedNode = node;
+function renderSelectedNode(node) {
   selectedNodeEl.replaceChildren();
+  const label = document.createElement("span");
+  label.className = "status-label";
+  label.textContent = "Selected node";
+  selectedNodeEl.appendChild(label);
   appendStrong(selectedNodeEl, node.name);
   appendBreak(selectedNodeEl);
-  appendPill(selectedNodeEl, orderModeLabel(node));
-  appendPill(selectedNodeEl, nodeIdentityLabel(node));
-  appendPill(selectedNodeEl, discoverySourceLabel(node));
-  appendStatus(selectedNodeEl, node.endpoint);
-  updateOrderControls();
 
-  const menu = await fetchJsonWithTimeout(`${node.endpoint}/menu`);
-  renderMenu(menu.items || []);
-  setLog(menu);
+  const pills = document.createElement("div");
+  pills.className = "pill-row";
+  appendPill(pills, orderModeLabel(node));
+  appendPill(pills, nodeIdentityLabel(node));
+  appendPill(pills, discoverySourceLabel(node));
+  selectedNodeEl.appendChild(pills);
+  appendNodeModules(selectedNodeEl, node, { marginTop: "12px" });
+
+  appendStatus(selectedNodeEl, node.endpoint, {
+    block: true,
+    marginTop: "12px"
+  });
 }
 
 function renderMenu(items) {
@@ -400,16 +549,50 @@ function renderMenu(items) {
     wrapper.appendChild(document.createTextNode(` - ${safeText(item.price, "?")} DKK`));
     appendBreak(wrapper);
     appendStatus(wrapper, item.description);
-    appendBreak(wrapper);
-    appendPill(wrapper, item.id);
-    appendPill(wrapper, item.category);
+    const meta = document.createElement("div");
+    meta.className = "pill-row";
+    appendPill(meta, item.id);
+    appendPill(meta, item.category);
+    wrapper.appendChild(meta);
     menuEl.appendChild(wrapper);
+  }
+}
+
+async function selectNode(node) {
+  selectedNode = node;
+  selectedNodeMenuState = "loading";
+  renderSelectedNode(node);
+  setMenuMessage("Loading menu directly from node...");
+  updateOrderControls();
+
+  try {
+    const menu = await fetchJsonWithTimeout(`${node.endpoint}/menu`);
+    selectedNodeMenuState = "ready";
+    renderMenu(menu.items || []);
+    updateOrderControls();
+    setLog(menu);
+    return { ok: true, menu };
+  } catch (error) {
+    selectedNodeMenuState = "error";
+    setMenuMessage(`Menu unavailable: ${error.message}`, "error");
+    appendStatus(selectedNodeEl, "Node discovered, but direct menu fetch failed.", {
+      block: true,
+      marginTop: "12px",
+      variant: "error"
+    });
+    updateOrderControls();
+    setLog(`Node fetch failed: ${error.message}`);
+    return { ok: false, error };
   }
 }
 
 async function placeOrder() {
   if (!selectedNode) {
     setLog("Select a node first.");
+    return;
+  }
+  if (selectedNodeMenuState !== "ready") {
+    setLog("Selected node menu is not available yet.");
     return;
   }
   if (!nodeAcceptsOrders(selectedNode)) {
@@ -431,11 +614,15 @@ async function placeOrder() {
     client_version: "p4p-web-0.1"
   };
 
+  orderStatusEl.textContent = "Submitting direct order to node...";
+  orderStatusEl.className = "status";
   const data = await fetchJsonWithTimeout(`${selectedNode.endpoint}/order`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  orderStatusEl.textContent = data.accepted ? "Direct order accepted." : "Direct order rejected.";
+  orderStatusEl.className = `status ${data.accepted ? "good" : "error"}`;
   setLog(data);
 }
 
@@ -462,7 +649,11 @@ document.getElementById("discover").addEventListener("click", () => {
 });
 
 placeOrderButton.addEventListener("click", () => {
-  placeOrder().catch((error) => setLog(`Order failed: ${error.message}`));
+  placeOrder().catch((error) => {
+    orderStatusEl.textContent = `Order failed: ${error.message}`;
+    orderStatusEl.className = "status error";
+    setLog(`Order failed: ${error.message}`);
+  });
 });
 
 document.getElementById("use-location").addEventListener("click", useBrowserLocation);
@@ -474,4 +665,16 @@ setRegistryStatus(
     ? `idle, seed tier ${registries[0].tier} at ${registries[0].url}`
     : "idle, no registries configured"
 );
+resetSelectedNodeView();
+setMenuMessage("Select a node to fetch its menu.");
 updateOrderControls();
+
+window.__P4PClientTestHooks = {
+  buildRegistryUrl,
+  discoverNodes,
+  fetchJsonWithTimeout,
+  mergeDirectoryNodes,
+  moduleEntriesForNode,
+  normalizeRegistries,
+  selectNode
+};

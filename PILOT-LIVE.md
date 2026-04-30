@@ -6,6 +6,12 @@ It is not a demo-node proof.
 
 It is a controlled live pilot with one real restaurant, pickup orders, and direct client-to-node order flow.
 
+The public proof and the live pilot are separate gates.
+
+`demo-node/` belongs to the public proof.
+
+`pilot-node/` belongs to this pilot document.
+
 ## 1. Pilot Goal
 
 The pilot should prove one thing:
@@ -64,7 +70,7 @@ Allowed in `pilot.1`:
 - primary and backup registry announcement
 - persistent menu
 - persistent order history
-- operator login
+- operator login via token-protected operator surface
 - operator order dashboard
 - order status updates
 
@@ -138,10 +144,13 @@ The first restaurant node must have:
 
 Operator endpoints must require an operator token.
 
+The pilot node should complete a local SQLite-backed dry run before public DNS, HTTPS, or restaurant onboarding is treated as ready.
+
 ## 7. Launch Checklist
 
 Before the restaurant goes live:
 
+- pilot-node has passed the local dry run in `TEST-GUIDE.md`
 - public HTTPS works for client, both registries, and restaurant node
 - node announces to both registries
 - both registries discover the node
@@ -150,6 +159,7 @@ Before the restaurant goes live:
 - orders persist after node restart
 - operator login works
 - restaurant can accept, reject, mark ready, complete, and cancel orders
+- restaurant can inspect operator order events if a module lane escalates or becomes uncertain
 - restaurant can set `order_mode=menu_only` quickly
 - restaurant can set `open=false` quickly
 - primary registry can be stopped and backup discovery still works

@@ -4,6 +4,14 @@ This folder holds the concrete contract layer for `v0.1`.
 
 Use it when building code, validating payloads, or comparing independent implementations.
 
+The public reading of these docs is still narrow:
+
+- public protocol proof now
+- controlled live pilot next
+- no silent promotion of `v0.2` design material into the active `v0.1` claim
+
+If you arrived here from GitHub and need the short orientation first, read `docs/GITHUB-READER-GUIDE.md` before diving into schemas or flow packs.
+
 ## Structure
 
 - `schemas/`
@@ -14,6 +22,12 @@ Use it when building code, validating payloads, or comparing independent impleme
   Planned `v0.2` model for module providers, module manifests, data access, signatures, and trust claims.
 - `MODULE-RULES.md`
   Practical boundary rules for deciding what is core, what is a module, and what registries must not control.
+- `EVENT-CATALOG.md`
+  Planned `v0.2` canonical event-name list shared by module manifests, flows, and typed runtime events.
+- `MODULE-EXECUTION-CONTRACT.md`
+  Planned `v0.2` execution contract for module lanes, event/result shape, permissions, fallback policy, and idempotency.
+- `FIRST-FLOWS.md`
+  First concrete module-flow sketches for printer, payment, AI-menu fallback, and duplicate-protection behavior.
 - `ORDER-CONSENT.md`
   Rule for menu-only, test-order, and live-order node states.
 - `NODE-IMPLEMENTER-KIT.md`
@@ -22,6 +36,12 @@ Use it when building code, validating payloads, or comparing independent impleme
   Reference node-owned operator surface for controlling order mode, modules, and registry health.
 - `NODE-IDENTITY.md`
   Ed25519 signed announcements and signed heartbeats for protecting node metadata updates.
+- `PROOF-STATUS.md`
+  Current dated proof checkpoint for public hosting behavior, browser verification, and source-of-truth alignment.
+- `GITHUB-READER-GUIDE.md`
+  Short map for GitHub readers who need the repo to explain itself quickly before they read the deeper docs.
+- `RELEASE-NOTES.md`
+  Short checkpoint and release-candidate notes used before cutting a proof-safe story to `main`.
 - `RELEASE-PLAN.md`
   Branch, tag, and alpha milestone rules for publishing the work without changing the active protocol contract.
 
@@ -54,6 +74,10 @@ Use it when building code, validating payloads, or comparing independent impleme
 `schemas/registry-source.schema.json` is the read-only registry snapshot contract for later mirroring, umbrella ingestion, and signed source export.
 
 `schemas/registry-source.schema.json` now also carries `registry_metadata`, so runtime scope and capability declarations travel with the exported snapshot.
+
+`schemas/provider-manifest.schema.json`, `schemas/module-manifest.schema.json`, `schemas/module-event-name.schema.json`, and `schemas/module-result-event.schema.json` are the first concrete `v0.2` draft shapes for provider identity, module execution contracts, canonical event names, and typed module result events.
+
+`schemas/node-module-declaration.schema.json` is the small bridge shape for what a node may later announce publicly about one active module without embedding the full provider or module manifest inline in node metadata.
 
 `schemas/curated-promotions.schema.json` is the inspection contract for persisted curated-promotion decisions: why a mirrored source was promoted or denied, and which node ids are currently exposed through the curated active index.
 
@@ -92,6 +116,8 @@ Repo alpha releases do not automatically change `protocol_version`.
 
 The module-provider model is design documentation for `v0.2`; it does not change the active `v0.1` payload contracts.
 
-`modules/` contains reference examples. In `v0.1`, module ids are opaque strings only.
+The module-execution contract and first-flow pack are also `v0.2` design documents. They describe how later runtime modules should behave without changing the active `v0.1` node, registry, menu, or order payload shapes.
+
+`modules/` contains reference manifests for the planned `v0.2` provider/module shape. In the active `v0.1` wire contract, node-announced module ids are still opaque strings only.
 
 Loopback HTTP is allowed only for local reference development where the spec explicitly says so.

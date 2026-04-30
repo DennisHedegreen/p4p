@@ -360,4 +360,6 @@ def links() -> dict[str, str]:
         "client": "http://127.0.0.1:8765/",
         "primary_registry": "http://127.0.0.1:8000",
         "backup_registry": "http://127.0.0.1:8002",
+        "primary_directory": "http://127.0.0.1:8000/directory?lat=55.6517&lng=12.4126&radius=50",
+        "backup_directory": "http://127.0.0.1:8002/directory?lat=55.6517&lng=12.4126&radius=50",
     }

@@ -2,6 +2,10 @@
 
 This document defines the public proof target for `v0.1`.
 
+It is the proof-safe public story for the current repo state.
+
+It is narrower than the full `dev` runtime and narrower than `PILOT-LIVE.md`.
+
 The point is not to prove that the code is complex.
 
 The point is to prove that direct restaurant-customer discovery and ordering can work without a platform middleman.
@@ -14,6 +18,12 @@ The online proof should use separate public services:
 - one public primary registry
 - one public backup registry
 - one public demo restaurant node marked with `order_mode: "test"`
+
+Use `demo-node/` for this proof.
+
+Do not use `pilot-node/` for the public proof story or proof video.
+
+`pilot-node/` belongs to the next gate: controlled live pilot preparation.
 
 Example shape:
 
@@ -73,6 +83,14 @@ The proof is allowed to be narrow.
 
 It should be honest about what it proves.
 
+## Verification Note
+
+If public hosting shows browser-only behavior, WAF filtering, or SSL differences, log that honestly.
+
+Do not widen the public claim to hide runtime differences between curl, browser, and hosted infrastructure.
+
+Use `docs/PROOF-STATUS.md` as the dated proof checkpoint log.
+
 ## Acceptance Checklist
 
 Before calling `v0.1` launched:
@@ -86,9 +104,14 @@ Before calling `v0.1` launched:
 - client can discover through backup after primary fails
 - menu request goes to the node, not the registry
 - order request goes to the node, not the registry
+- public proof wording matches README, `pizza4people.com`, the press kit, and the companion article
+- current browser/curl hosting behavior is logged in `docs/PROOF-STATUS.md`
+- any WAF or SSL differences are logged honestly
 - proof video exists
-- README or launch note links to the proof
+- README or `docs/RELEASE-NOTES.md` links to the proof
 
 When this checklist is complete, P4P is no longer only a local demo.
 
 It is a public protocol proof.
+
+The controlled live pilot remains a separate next gate under `PILOT-LIVE.md`.

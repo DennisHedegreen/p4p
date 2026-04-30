@@ -34,6 +34,7 @@ Open:
 
 ## Notes
 
+- `TEST-GUIDE.md` is the canonical rescue and proof sequence; `lab/README.md` is only the local harness quickstart.
 - The panel expects the existing `registry/.venv` and `demo-node/.venv` runtimes to exist in the repo root.
 - It starts subprocesses locally and captures their stdout logs.
 - It can spawn many demo nodes with distinct ports and slightly shifted coordinates.

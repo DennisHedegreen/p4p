@@ -1,0 +1,11 @@
+{
+  "module_id": "p4p.payment.cash",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "active",
+  "visibility": "public",
+  "readiness": "test",
+  "capabilities": ["mark_pay_at_pickup", "report_payment_mode"],
+  "data_access": ["order_total", "fulfillment_type"],
+  "customer_notice": "Pay at pickup. No online charge."
+}

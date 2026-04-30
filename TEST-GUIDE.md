@@ -27,11 +27,16 @@ The live lab pass proves the real user-visible flow.
 
 ## 2. Prerequisites
 
-You need these runtimes available:
+You need these runtimes available for the full rescue, proof, and pilot pass:
 
 - `registry/.venv`
 - `demo-node/.venv`
 - `lab/.venv`
+- `pilot-node/.venv`
+
+For proof-only work, `registry/.venv`, `demo-node/.venv`, and `lab/.venv` are enough.
+
+`pilot-node/.venv` is required for the local pilot gate in section 10.
 
 If they do not exist yet:
 
@@ -53,6 +58,12 @@ python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
 ```
 
+```bash
+cd /path/to/p4p/pilot-node
+python3 -m venv .venv
+./.venv/bin/python -m pip install -r requirements.txt
+```
+
 Ports to keep free if you use default settings:
 
 - `8000` primary registry
@@ -63,17 +74,24 @@ Ports to keep free if you use default settings:
 
 If `8899` is busy, start the lab on another port such as `8898`.
 
-## 3. Fast automated pass
+## 3. Rescue gate
 
 Run this from `P4P/`:
 
 ```bash
 cd /path/to/p4p
 demo-node/.venv/bin/python -m unittest discover -s tests -v
+bash scripts/public-audit.sh
+node --check client/app.js
+demo-node/.venv/bin/python -m compileall demo_node pilot_node registry p4p_core scripts
 ```
 
 What should pass:
 
+- truthfulness and cleanup tests stay green
+- public audit does not find tracked sensitive-looking files or hard secret literals
+- client JavaScript parses cleanly
+- shared runtime modules compile cleanly
 - single-registry fallback still works
 - dual registration makes the node discoverable in both registries
 - closed nodes are excluded from discover and reject orders
@@ -269,7 +287,102 @@ What to watch:
 - node health moves between `ready` and `not_ready`
 - batch remains discoverable from backup after primary dies
 
-## 10. How to read lab status
+## 10. Pilot-node local gate
+
+This is the local dry run for the controlled live-pilot shape.
+
+Start primary and backup registries first, then run the pilot node:
+
+```bash
+cd /path/to/p4p/pilot-node
+P4P_PILOT_NODE_DB_PATH=/tmp/p4p-pilot-node.sqlite3 \
+P4P_OPERATOR_TOKEN=change-this \
+P4P_NODE_ORDER_MODE=menu_only \
+P4P_REGISTRY_URLS=http://127.0.0.1:8000,http://127.0.0.1:8002 \
+P4P_NODE_BASE_URL=http://127.0.0.1:8201 \
+./.venv/bin/uvicorn pilot_node:app --port 8201
+```
+
+Then verify this sequence:
+
+1. `GET /health` shows the node as running and registered.
+2. `GET /operator/state` without a token returns `401`.
+3. `PATCH /operator/state` with the bearer token can move the node from `menu_only` to `live`.
+4. A direct `POST /p4p/order` succeeds only after the node is in `live` or `test`.
+5. `GET /operator/orders` shows the stored order.
+6. `PATCH /operator/orders/{order_id}` can move the order through `accepted`, `ready`, and `completed`.
+7. `GET /operator/orders/{order_id}/events` stays available for module evidence or print-lane inspection.
+8. After a restart, the stored order is still present in SQLite.
+9. The operator can quickly return the node to `menu_only` or set `open=false`.
+
+Useful local commands:
+
+```bash
+curl -sS http://127.0.0.1:8201/health
+
+curl -sS http://127.0.0.1:8201/operator/state \
+  -H 'Authorization: Bearer change-this'
+
+curl -sS -X PATCH http://127.0.0.1:8201/operator/state \
+  -H 'Authorization: Bearer change-this' \
+  -H 'Content-Type: application/json' \
+  -d '{"order_mode":"live"}'
+
+curl -sS -X POST http://127.0.0.1:8201/p4p/order \
+  -H 'Content-Type: application/json' \
+  -d '{"customer_name":"Anna Hansen","customer_contact":"+4512345678","fulfillment":"pickup","items":[{"id":"kebab-pita","quantity":1}],"note":"Pilot dry run","client_version":"p4p-web-0.1"}'
+
+curl -sS http://127.0.0.1:8201/operator/orders \
+  -H 'Authorization: Bearer change-this'
+
+curl -sS -X PATCH http://127.0.0.1:8201/operator/orders/<order_id> \
+  -H 'Authorization: Bearer change-this' \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"accepted","estimated_ready_minutes":15}'
+
+curl -sS -X PATCH http://127.0.0.1:8201/operator/orders/<order_id> \
+  -H 'Authorization: Bearer change-this' \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"ready"}'
+
+curl -sS -X PATCH http://127.0.0.1:8201/operator/orders/<order_id> \
+  -H 'Authorization: Bearer change-this' \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"completed"}'
+```
+
+## 11. Public proof gate
+
+The local proof gate and the local pilot gate do not by themselves prove the public internet setup.
+
+Use them to make the public claim honest before recording a proof video or widening outreach.
+
+Check both the browser path and the plain HTTP path:
+
+```bash
+curl -I -L --max-redirs 2 https://pizza4people.com/
+curl -I -L --max-redirs 2 https://pizza4people.com/press-kit/
+curl -I -L --max-redirs 2 https://protocols4people.com/
+curl -I -L --max-redirs 2 https://github.com/DennisHedegreen/p4p
+```
+
+```bash
+google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=8000 --dump-dom https://pizza4people.com/
+google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=8000 --dump-dom https://pizza4people.com/press-kit/
+google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=8000 --dump-dom https://protocols4people.com/
+google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=8000 --dump-dom https://hedegreenresearch.com/articles/nar-en-platform-forlader-markedet/
+```
+
+What to watch:
+
+- browser-rendered DOM still shows the narrow claim: public protocol proof now, controlled live pilot next
+- the press-kit HTML is reachable in both languages
+- the companion article still matches the repo and proof-site wording
+- anonymous GitHub access works
+- if plain `curl` shows Simply `455` or another edge-layer difference while browser DOM still loads, log that honestly in `docs/PROOF-STATUS.md`
+- if the hosted homepage copy differs from the locally generated `public/www/pizza4people/index.html`, treat that as upload drift and fix the host before broad outreach
+
+## 12. How to read lab status
 
 In `lab/`:
 
@@ -286,7 +399,7 @@ A node can be:
 
 Only the first state is truly green.
 
-## 11. Common failure cases
+## 13. Common failure cases
 
 ### Port already in use
 
@@ -323,7 +436,7 @@ Check:
 - backup registry was running before or during node heartbeat cycles
 - backup `/discover` really contains the node before primary shutdown
 
-## 12. Minimum release confidence for v0.1
+## 14. Minimum release confidence for v0.1
 
 Before calling `v0.1` stable enough for demo, this should be true:
 
@@ -332,5 +445,6 @@ Before calling `v0.1` stable enough for demo, this should be true:
 3. closed-node rejection is confirmed
 4. false-green test is confirmed
 5. 10-node batch survives discovery failover from primary to backup
+6. public browser pass is logged in `docs/PROOF-STATUS.md`
 
 If one of those is missing, the system is not yet honest enough to present as proven.

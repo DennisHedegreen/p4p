@@ -14,6 +14,23 @@ Companies are allowed to build on top.
 
 But the connection itself should stay open.
 
+## If You Opened This On GitHub
+
+If you only have a few minutes, read in this order:
+
+1. this `README.md`
+2. `PROOF.md`
+3. `SPEC.md`
+4. `docs/GITHUB-READER-GUIDE.md`
+5. `docs/RELEASE-NOTES.md`
+
+That path should tell you:
+
+- what P4P is trying to prove
+- what is real in the code now
+- what is still only design material
+- how the public and private GitHub repos are split
+
 ## What v0.1 is
 
 The current target is not a full product stack.
@@ -43,6 +60,65 @@ The next identity slice now also exists: a root-signed node manifest can be post
 In `v0.1`, failover means client failover across registries while nodes dual-register to both.
 
 It does not mean automatic registry-to-registry synchronization.
+
+## Current Reading
+
+Status: advanced prototype.
+
+The public story should stay narrower than the full `dev` runtime:
+
+- public claim: public protocol proof plus controlled live-pilot path
+- `demo-node/` is the proof and lab node, not a live restaurant node
+- `pilot-node/` is the controlled live-pilot foundation and the only live-directed node surface
+- identity, manifests, mirroring, curated directory, trust claims, and module manifests exist as real prototype layers, but they are not production guarantees
+
+## What Is Real Today
+
+These things are implemented in the reference runtime today:
+
+- signed node announcements and heartbeats
+- optional root-signed delegation and manifest-based key lifecycle
+- registry failover for discovery
+- direct node menu fetch and direct order submission
+- moderated directory and signed trust-claim skeletons
+- manifest-backed module and provider reference catalogs
+- additive flow contracts for pilot runtime lanes
+
+These things are explicitly not the claim today:
+
+- production restaurant rollout
+- online payment
+- delivery orchestration
+- user-account platform
+- broad federation finished as a stable product
+
+## Start Here By Goal
+
+If you want to understand the public proof claim:
+
+- `PROOF.md`
+- `docs/PROOF-STATUS.md`
+- `docs/RELEASE-NOTES.md`
+
+If you want to understand the wire contract:
+
+- `SPEC.md`
+- `docs/README.md`
+- `docs/schemas/`
+- `docs/examples/`
+
+If you want to understand the module/runtime direction:
+
+- `ARCHITECTURE.md`
+- `docs/MODULE-EXECUTION-CONTRACT.md`
+- `docs/FIRST-FLOWS.md`
+- `modules/`
+
+If you want to understand the current live-pilot boundary:
+
+- `PILOT-LIVE.md`
+- `pilot-node/README.md`
+- `TEST-GUIDE.md`
 
 ## Long-Term Network Shape
 
@@ -138,17 +214,21 @@ That same module economy may also reach backward into production and supply chai
 - `demo-node/operator.html` — demo-only node operator surface
 - `SPEC.md` — canonical protocol spec
 - `ARCHITECTURE.md` — long-term system boundaries and module model
-- `ROADMAP.md` — build sequence from local proof to modules and trust
+- `ROADMAP.md` — gate-based path from proof-safe cleanup to pilot, hardening, and later trust or module work
 - `PILOT-LIVE.md` — first live restaurant pilot scope, topology, and stop conditions
-- `PROOF.md` — public online proof target for `v0.1`
+- `PROOF.md` — proof-safe public story and online proof target for `v0.1`
 - `docs/` — schemas and example payloads for the core contract
 - `docs/NODE-IMPLEMENTER-KIT.md` — independent node builder and interop-session guide
+- `docs/PROOF-STATUS.md` — current public proof checkpoint, hosting reality, and remaining public gate
+- `docs/RELEASE-NOTES.md` — short checkpoint and release-candidate notes
 - `docs/RELEASE-PLAN.md` — branch, tag, and alpha milestone rules
+- `docs/GITHUB-READER-GUIDE.md` — short map for GitHub readers, reviewers, and first-time contributors
 - `docs/PUBLIC-GITHUB.md` — safe public/private GitHub split for publishing
 - `modules/` — reference module manifests and examples
 - `deploy/` — public proof deployment notes and example runtime config
+- `scripts/build_public_site.py` — generator for `public/www/pizza4people/` from `private/data/p4p/site-data.json` plus `modules/`
 - `scripts/public-audit.sh` — local pre-publication audit helper
-- `TEST-GUIDE.md` — practical manual and automated testing flow for `v0.1`
+- `TEST-GUIDE.md` — rescue gate, local proof flow, and local pilot dry-run guide
 - `TEST-GUIDE-OPERATOR.md` — short Danish operator version of the testing flow
 
 `lab/` lives beside the protocol implementation as a local debug harness.
@@ -159,9 +239,16 @@ The reference node operator is also not part of the public protocol surface.
 
 It is the first restaurant-owned control layer for toggling node state, order mode, modules, and registry health.
 
+Treat `scripts/build_public_site.py` plus `private/data/p4p/site-data.json` as the canonical public-site source for `pizza4people.com`.
+
+The press-kit HTML files under `public/www/pizza4people/press-kit/` are the maintained source.
+
+The PDFs are artifacts.
+
 ## Current stance
 
 - `v0.1` proves discovery and direct ordering
+- the public claim should stay: public protocol proof + controlled live pilot next
 - `protocol_version: "0.1"` is separate from repo alpha release tags
 - `main` should stay showable; `dev` can move faster
 - public `main` and private `dev` must live in separate GitHub repositories, because GitHub visibility is repository-level
@@ -188,7 +275,7 @@ It is the first restaurant-owned control layer for toggling node state, order mo
 
 Just Eat exits Denmark on April 30, 2026.
 
-That makes the timing window real, but the immediate goal is proof, not product theater.
+That makes the timing window real, but the immediate goal is proof, not product theater, and the next gate after proof is a controlled live pilot rather than a broad rollout.
 
 ## Legacy project folders
 
@@ -216,6 +303,8 @@ bash scripts/public-audit.sh
 ```
 
 See `docs/PUBLIC-GITHUB.md` for the full split and release sequence.
+
+For repo workflow and push cadence, see `CONTRIBUTING.md`.
 
 ## License
 

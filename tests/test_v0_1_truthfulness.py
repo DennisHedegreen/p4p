@@ -229,6 +229,92 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(demo.NODE.modules, ["p4p.payment.cash", "p4p.delivery.pickup"])
         self.assertEqual(discover_result.nodes[0].modules, demo.NODE.modules)
 
+    def test_demo_operator_state_declares_known_modules_without_rejecting_opaque_ids(self) -> None:
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_MODULES": "p4p.payment.cash,p4p.delivery.pickup",
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        state = demo.operator_state()
+
+        self.assertEqual(state["enabled_modules"], ["p4p.payment.cash", "p4p.delivery.pickup"])
+        self.assertEqual(state["public_modules"], ["p4p.payment.cash", "p4p.delivery.pickup"])
+        self.assertEqual(
+            [entry["module_id"] for entry in state["module_declarations"]],
+            ["p4p.payment.cash"],
+        )
+        self.assertEqual(
+            [entry["module_id"] for entry in state["public_module_declarations"]],
+            ["p4p.payment.cash"],
+        )
+        self.assertEqual(state["undeclared_modules"], ["p4p.delivery.pickup"])
+        self.assertIn("p4p.payment.cash", state["available_modules"])
+        self.assertIn("p4p.delivery.pickup", state["available_modules"])
+
+    def test_demo_health_and_info_project_known_and_opaque_modules(self) -> None:
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_MODULES": "p4p.payment.cash,p4p.delivery.pickup",
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        response = Response()
+        health = demo.health(response)
+        info = demo.info()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(health["modules"], ["p4p.payment.cash", "p4p.delivery.pickup"])
+        self.assertEqual(
+            [entry["module_id"] for entry in health["module_declarations"]],
+            ["p4p.payment.cash"],
+        )
+        self.assertEqual(health["undeclared_modules"], ["p4p.delivery.pickup"])
+        self.assertEqual(info["modules"], ["p4p.payment.cash", "p4p.delivery.pickup"])
+        self.assertEqual(
+            [entry["module_id"] for entry in info["module_declarations"]],
+            ["p4p.payment.cash"],
+        )
+        self.assertEqual(info["undeclared_modules"], ["p4p.delivery.pickup"])
+
+    def test_directory_declares_known_modules_without_widening_discover(self) -> None:
+        registry = load_module("registry/main.py")
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_MODULES": "p4p.payment.cash,p4p.delivery.pickup",
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.announce(registry.Node(**demo.sign_node_announcement()))
+        discover_result = registry.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        directory_result = registry.directory(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+
+        self.assertEqual(discover_result.nodes[0].modules, ["p4p.payment.cash", "p4p.delivery.pickup"])
+        self.assertNotIn("module_declarations", discover_result.nodes[0].model_dump(mode="json", exclude_none=True))
+        self.assertEqual(
+            [entry.module_id for entry in directory_result.nodes[0].module_declarations],
+            ["p4p.payment.cash"],
+        )
+        self.assertEqual(directory_result.nodes[0].undeclared_modules, ["p4p.delivery.pickup"])
+
     def test_root_delegation_accepts_valid_operational_node_and_exposes_role(self) -> None:
         registry = load_module("registry/main.py")
         identity = load_module("p4p_identity.py")
@@ -2452,6 +2538,14 @@ class P4PTruthfulnessTests(unittest.TestCase):
             [sys.executable, "-m", "http.server", "8765", "--directory", str(lab.CLIENT_ROOT)],
         )
         self.assertEqual(lab.links()["client"], "http://127.0.0.1:8765/")
+        self.assertEqual(
+            lab.links()["primary_directory"],
+            "http://127.0.0.1:8000/directory?lat=55.6517&lng=12.4126&radius=50",
+        )
+        self.assertEqual(
+            lab.links()["backup_directory"],
+            "http://127.0.0.1:8002/directory?lat=55.6517&lng=12.4126&radius=50",
+        )
 
     def test_lab_nodes_advertise_reference_cash_module(self) -> None:
         lab = load_module("lab/app.py")
@@ -2486,6 +2580,79 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(response.reason, "orders_disabled")
             self.assertEqual(pilot.store.list_orders(), [])
             pilot.store.close()
+
+    def test_pilot_node_announces_only_public_modules_but_keeps_internal_declarations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print,p4p.notify.email",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            node = pilot.node_state()
+            operator_state = pilot.operator_state(authorization="Bearer operator-secret")
+
+            self.assertEqual(node.modules, ["p4p.payment.cash"])
+            self.assertEqual(
+                operator_state["enabled_modules"],
+                ["p4p.payment.cash", "p4p.order.print", "p4p.notify.email"],
+            )
+            self.assertEqual(operator_state["public_modules"], ["p4p.payment.cash"])
+            self.assertEqual(
+                [entry["module_id"] for entry in operator_state["module_declarations"]],
+                ["p4p.payment.cash", "p4p.order.print", "p4p.notify.email"],
+            )
+            self.assertEqual(
+                [entry["module_id"] for entry in operator_state["public_module_declarations"]],
+                ["p4p.payment.cash"],
+            )
+            self.assertEqual(operator_state["module_declarations"][1]["visibility"], "operator_only")
+            pilot.store.close()
+
+    def test_pilot_public_info_only_exposes_public_module_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print,p4p.notify.email",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            info = pilot.public_info()
+
+            self.assertEqual(info["modules"], ["p4p.payment.cash"])
+            self.assertEqual(
+                [entry["module_id"] for entry in info["module_declarations"]],
+                ["p4p.payment.cash"],
+            )
+            self.assertEqual(info["undeclared_modules"], [])
+            pilot.store.close()
+
+    def test_pilot_node_rejects_unknown_module_ids_at_config_load(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(ValueError) as error:
+                load_module(
+                    "pilot-node/pilot_node.py",
+                    {
+                        "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                        "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                        "P4P_NODE_MODULES": "p4p.payment.cash,p4p.unknown.module",
+                        "P4P_OPERATOR_TOKEN": "operator-secret",
+                    },
+                )
+
+            self.assertIn("Unknown P4P module id", str(error.exception))
 
     def test_pilot_node_persists_orders_and_operator_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2522,6 +2689,551 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(persisted_orders[0].order_id, accepted.order_id)
             self.assertEqual(persisted_orders[0].status, "accepted")
             reloaded.store.close()
+
+    def test_pilot_node_print_module_emits_confirmed_result_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PRINT_SUCCESS_CONFIRMED"],
+            )
+            self.assertEqual(events[1].metadata["contract_phase"], "request")
+            self.assertEqual(events[2].metadata["contract_phase"], "result")
+            self.assertEqual(events[-1].outcome, "SUCCESS")
+            self.assertEqual(events[-1].metadata["adapter_target"], "printer")
+            self.assertEqual(stored[0].status, "accepted")
+            self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
+            pilot.store.close()
+
+    def test_pilot_node_rejects_undeclared_print_output_event(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            execution = sys.modules["pilot_node.execution"]
+            print_adapters = sys.modules["pilot_node.print_adapters"]
+
+            class BrokenAdapter:
+                target_id = "printer"
+                confirmed_status_message = "Order accepted. Print confirmed."
+                needs_human_status_message = "Order accepted. Printer issue detected. Human attention required."
+                alerted_status_message = "Order accepted. Printer issue detected. Operator alerted by email. Human attention required."
+                alert_failed_status_message = "Order accepted. Printer issue detected. Email alert failed. Human attention required."
+
+                def decide(self, configured_mode: str):
+                    return print_adapters.PrintAdapterDecision(
+                        event="OUTBOUND_ACTION_REQUESTED",
+                        outcome="SUCCESS",
+                        severity="low",
+                        retryable=False,
+                        side_effect_state="none",
+                    )
+
+            with patch.object(execution, "build_print_adapter", return_value=BrokenAdapter()):
+                with self.assertRaises(ValueError) as error:
+                    pilot.public_order(self.make_pilot_order_request(pilot))
+
+            self.assertIn("p4p.order.print", str(error.exception))
+            self.assertIn("OUTBOUND_ACTION_REQUESTED", str(error.exception))
+            pilot.store.close()
+
+    def test_pilot_node_rejects_notification_trigger_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print,p4p.notify.email",
+                    "P4P_PRINT_MODULE_MODE": "printer_offline",
+                    "P4P_NOTIFY_EMAIL_MODE": "sent",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            execution = sys.modules["pilot_node.execution"]
+
+            def broken_notification_result_event(*, runtime, order, trigger_event, adapter_target, hardware_profile_metadata):
+                return execution.build_result_event(
+                    runtime=runtime,
+                    event="NOTIFICATION_SENT",
+                    source_module=execution.NOTIFY_EMAIL_MODULE_ID,
+                    order=order,
+                    action_id=f"order:{order.order_id}:notify:email",
+                    idempotency_key=f"notify:{order.order_id}:email",
+                    outcome="SUCCESS",
+                    severity="medium",
+                    retryable=False,
+                    side_effect_state="confirmed",
+                    metadata={
+                        **hardware_profile_metadata,
+                        "configured_mode": "sent",
+                        "trigger_event": "PRINT_TIMEOUT",
+                        "adapter_target": adapter_target,
+                        "broken_from": trigger_event,
+                    },
+                )
+
+            with patch.object(execution, "build_notification_result_event", side_effect=broken_notification_result_event):
+                with self.assertRaises(ValueError) as error:
+                    pilot.public_order(self.make_pilot_order_request(pilot))
+
+            self.assertIn("notification trigger_event=PRINTER_OFFLINE", str(error.exception))
+            pilot.store.close()
+
+    def test_pilot_node_print_module_can_target_screen_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "screen",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PRINT_SUCCESS_CONFIRMED"],
+            )
+            self.assertEqual(events[-1].metadata["adapter_target"], "screen")
+            self.assertEqual(events[-1].metadata["delivery_surface"], "screen")
+            self.assertEqual(stored[0].status_message, "Order accepted. Operator screen confirmed.")
+            pilot.store.close()
+
+    def test_pilot_node_hardware_profile_can_activate_box_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            serial_path = Path(tmpdir) / "box-v1-sensor.txt"
+            serial_path.write_text("precheck:ok\npostcheck:confirmed\n", encoding="utf-8")
+            device_path = Path(tmpdir) / "box-v1-printer.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_HARDWARE_PROFILE": "box_v1",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_SENSOR_SERIAL_PATH": str(serial_path),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(events[1].metadata["hardware_profile"], "box_v1")
+            self.assertFalse(events[1].metadata["hardware_profile_customized"])
+            self.assertEqual(events[1].metadata["adapter_target"], "printer")
+            self.assertEqual(events[1].metadata["print_driver"], "escpos_raw")
+            self.assertEqual(events[1].metadata["sensor_source"], "serial_status")
+            self.assertEqual(events[-1].metadata["cut_mode"], "partial")
+            self.assertEqual(events[-1].metadata["sensor_raw_line"], "postcheck:confirmed")
+            self.assertTrue(device_path.exists())
+            self.assertTrue(device_path.read_bytes().startswith(b"\x1b@"))
+            pilot.store.close()
+
+    def test_pilot_node_hardware_profile_still_allows_explicit_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_HARDWARE_PROFILE": "box_v1",
+                    "P4P_PRINT_MODULE_TARGET": "screen",
+                    "P4P_PRINT_MODULE_DRIVER": "simulated",
+                    "P4P_PRINT_SENSOR_SOURCE": "simulated",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(events[1].metadata["hardware_profile"], "box_v1")
+            self.assertTrue(events[1].metadata["hardware_profile_customized"])
+            self.assertEqual(events[-1].metadata["adapter_target"], "screen")
+            self.assertEqual(events[-1].metadata["print_driver"], "simulated")
+            self.assertEqual(events[-1].metadata["sensor_source"], "simulated")
+            self.assertEqual(events[-1].metadata["delivery_surface"], "screen")
+            pilot.store.close()
+
+    def test_pilot_node_print_module_can_spool_ticket_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spool_dir = Path(tmpdir) / "spool"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "file_spool",
+                    "P4P_PRINT_SPOOL_DIR": str(spool_dir),
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            ticket_path = Path(events[-1].metadata["spool_path"])
+
+            self.assertEqual(events[-1].event, "PRINT_SUCCESS_CONFIRMED")
+            self.assertEqual(events[-1].metadata["print_driver"], "file_spool")
+            self.assertEqual(events[-1].metadata["side_effect_delivery"], "artifact_written")
+            self.assertTrue(ticket_path.exists())
+            ticket_text = ticket_path.read_text(encoding="utf-8")
+            self.assertIn(accepted.order_id, ticket_text)
+            self.assertIn("kebab-pita", ticket_text)
+            pilot.store.close()
+
+    def test_pilot_node_print_module_can_write_to_device_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device_path = Path(tmpdir) / "fake-printer-device.txt"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(events[-1].event, "PRINT_SUCCESS_CONFIRMED")
+            self.assertEqual(events[-1].metadata["print_driver"], "device_path")
+            self.assertEqual(events[-1].metadata["side_effect_delivery"], "device_written")
+            self.assertEqual(events[-1].metadata["device_path"], str(device_path))
+            self.assertTrue(device_path.exists())
+            ticket_bytes = device_path.read_bytes()
+            self.assertIn(accepted.order_id.encode("utf-8"), ticket_bytes)
+            self.assertIn(b"kebab-pita", ticket_bytes)
+            pilot.store.close()
+
+    def test_pilot_node_print_module_can_write_escpos_raw_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device_path = Path(tmpdir) / "fake-escpos-device.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "escpos_raw",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_ESCPOS_CUT_MODE": "partial",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(events[-1].event, "PRINT_SUCCESS_CONFIRMED")
+            self.assertEqual(events[-1].metadata["print_driver"], "escpos_raw")
+            self.assertEqual(events[-1].metadata["cut_mode"], "partial")
+            ticket_bytes = device_path.read_bytes()
+            self.assertTrue(ticket_bytes.startswith(b"\x1b@"))
+            self.assertTrue(ticket_bytes.endswith(b"\x1dV\x01"))
+            self.assertIn(accepted.order_id.encode("ascii"), ticket_bytes)
+            self.assertIn(b"kebab-pita", ticket_bytes)
+            pilot.store.close()
+
+    def test_pilot_node_print_precheck_can_block_before_device_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device_path = Path(tmpdir) / "blocked-printer-device.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_SENSOR_PRECHECK": "paper_out",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PAPER_OUT", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertFalse(device_path.exists())
+            self.assertEqual(events[2].metadata["sensor_phase"], "precheck")
+            pilot.store.close()
+
+    def test_pilot_node_print_postcheck_can_mark_device_write_uncertain(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device_path = Path(tmpdir) / "uncertain-printer-device.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_SENSOR_POSTCHECK": "uncertain",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PRINT_UNCERTAIN", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertTrue(device_path.exists())
+            self.assertEqual(events[2].metadata["sensor_phase"], "postcheck")
+            self.assertEqual(events[2].metadata["side_effect_delivery"], "device_written")
+            self.assertEqual(events[2].side_effect_state, "unknown")
+            pilot.store.close()
+
+    def test_pilot_node_print_sensor_can_read_precheck_from_status_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status_path = Path(tmpdir) / "printer-sensor.json"
+            status_path.write_text('{"precheck":"paper_out","postcheck":"confirmed"}', encoding="utf-8")
+            device_path = Path(tmpdir) / "status-file-printer.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_SENSOR_SOURCE": "status_file",
+                    "P4P_PRINT_SENSOR_STATUS_PATH": str(status_path),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PAPER_OUT", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].metadata["sensor_source"], "status_file")
+            self.assertEqual(events[2].metadata["sensor_status_path"], str(status_path))
+            self.assertFalse(device_path.exists())
+            pilot.store.close()
+
+    def test_pilot_node_print_sensor_can_read_postcheck_from_status_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            status_path = Path(tmpdir) / "printer-sensor.json"
+            status_path.write_text('{"precheck":"ok","postcheck":"uncertain"}', encoding="utf-8")
+            device_path = Path(tmpdir) / "status-file-printer.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_SENSOR_SOURCE": "status_file",
+                    "P4P_PRINT_SENSOR_STATUS_PATH": str(status_path),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PRINT_UNCERTAIN", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].metadata["sensor_source"], "status_file")
+            self.assertEqual(events[2].metadata["sensor_status_path"], str(status_path))
+            self.assertTrue(device_path.exists())
+            pilot.store.close()
+
+    def test_pilot_node_print_sensor_can_read_precheck_from_serial_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            serial_path = Path(tmpdir) / "printer-sensor-serial.txt"
+            serial_path.write_text("precheck:paper_out\npostcheck:confirmed\n", encoding="utf-8")
+            device_path = Path(tmpdir) / "serial-status-printer.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_SENSOR_SOURCE": "serial_status",
+                    "P4P_PRINT_SENSOR_SERIAL_PATH": str(serial_path),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PAPER_OUT", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].metadata["sensor_source"], "serial_status")
+            self.assertEqual(events[2].metadata["sensor_serial_path"], str(serial_path))
+            self.assertEqual(events[2].metadata["sensor_raw_line"], "precheck:paper_out")
+            self.assertFalse(device_path.exists())
+            pilot.store.close()
+
+    def test_pilot_node_print_sensor_can_read_postcheck_from_serial_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            serial_path = Path(tmpdir) / "printer-sensor-serial.txt"
+            serial_path.write_text("precheck:ok\npostcheck=uncertain\n", encoding="utf-8")
+            device_path = Path(tmpdir) / "serial-status-printer.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_SENSOR_SOURCE": "serial_status",
+                    "P4P_PRINT_SENSOR_SERIAL_PATH": str(serial_path),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PRINT_REQUESTED", "PRINT_UNCERTAIN", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].metadata["sensor_source"], "serial_status")
+            self.assertEqual(events[2].metadata["sensor_serial_path"], str(serial_path))
+            self.assertEqual(events[2].metadata["sensor_raw_line"], "postcheck=uncertain")
+            self.assertTrue(device_path.exists())
+            pilot.store.close()
+
+    def test_pilot_node_print_failure_alerts_and_escalates_to_human(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print,p4p.notify.email",
+                    "P4P_PRINT_MODULE_MODE": "printer_offline",
+                    "P4P_NOTIFY_EMAIL_MODE": "sent",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                [
+                    "ORDER_ACCEPTED",
+                    "PRINT_REQUESTED",
+                    "PRINTER_OFFLINE",
+                    "NOTIFICATION_SENT",
+                    "ORDER_NEEDS_HUMAN",
+                ],
+            )
+            self.assertEqual(events[2].outcome, "UNAVAILABLE")
+            self.assertEqual(events[3].source_module, "p4p.notify.email")
+            self.assertEqual(stored[0].status, "accepted")
+            self.assertIn("Human attention required.", stored[0].status_message or "")
+            pilot.store.close()
 
     def test_pilot_node_operator_endpoints_require_token(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2609,6 +3321,21 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "endpoint": "http://127.0.0.1:9001/p4p",
                 "order_mode": "test",
                 "protocol_version": "0.1",
+                "modules": ["p4p.payment.cash", "p4p.delivery.pickup"],
+                "module_declarations": [
+                    {
+                        "module_id": "p4p.payment.cash",
+                        "provider_id": "p4p.reference",
+                        "version": "0.1",
+                        "status": "active",
+                        "visibility": "public",
+                        "readiness": "live",
+                        "capabilities": ["accept_cash"],
+                        "data_access": ["order_total"],
+                        "customer_notice": "Pay at pickup.",
+                    }
+                ],
+                "undeclared_modules": ["p4p.delivery.pickup"],
             }
         )
         self.assertFalse([result for result in info_results if result.level == "FAIL"])
