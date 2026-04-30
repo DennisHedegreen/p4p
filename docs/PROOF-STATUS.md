@@ -20,7 +20,7 @@ Use it to log what is actually true on the hosted internet surface, not only wha
 
 Verified on 30 April 2026:
 
-- `demo-node/.venv/bin/python -m unittest discover -s tests -v` passed with `82/82`
+- `demo-node/.venv/bin/python -m unittest discover -s tests -v` passed with `109/109`
 - `bash scripts/public-audit.sh` passed
 - `node --check client/app.js` passed
 - `demo-node/.venv/bin/python -m compileall demo_node pilot_node registry p4p_core scripts` passed
@@ -34,15 +34,15 @@ It does not by itself mean the hosted surface is fully green.
 Observed on 30 April 2026:
 
 - plain `curl -I -L --max-redirs 2 https://pizza4people.com/` returned Simply `455`
+- plain `curl -I -L --max-redirs 2 https://www.pizza4people.com/` returned Simply `455`
 - plain `curl -I -L --max-redirs 2 https://pizza4people.com/press-kit/` returned Simply `455`
 - plain `curl -I -L --max-redirs 2 https://protocols4people.com/` returned Simply `455`
 - plain `curl -I -L --max-redirs 2 https://github.com/DennisHedegreen/p4p` returned `200`
-- the current local `public/www/pizza4people/` and `public/www/protocols4people/` trees were uploaded to the matching Simply domain roots
+- public `p4p/main` now points at commit `8682167` (`Public proof update and GitHub reading path`)
+- `./_local/publish.sh --upload-special-domain pizza4people --yes` uploaded the current local `public/www/pizza4people/` tree to `/pizza4people.com`
 - headless browser verification with `google-chrome --headless=new --dump-dom` loaded `pizza4people.com/`
-- headless browser verification with `google-chrome --headless=new --dump-dom` loaded `protocols4people.com/`
 - headless browser verification with `google-chrome --headless=new --dump-dom` loaded `pizza4people.com/press-kit/`
-- headless browser verification with `google-chrome --headless=new --dump-dom` loaded `https://hedegreenresearch.com/articles/nar-en-platform-forlader-markedet/`
-- browser screenshots were captured under `editorial/work/p4p-is-live/snapshots/2026-04-30-browser-pass/`
+- headless browser verification confirmed the hosted homepage now shows the `Proof note` button, the `Where to start on GitHub` card, and the `public repo is the conservative story branch` wording
 
 Read this honestly:
 
@@ -61,10 +61,10 @@ The hosted browser-visible copy is now back in sync with the current repo source
 
 Confirmed after the 30 April 2026 upload:
 
-- `pizza4people.com/` now shows the generated homepage wording for `Where to verify`
-- `pizza4people.com/` now shows the maintained-source wording for the press-kit HTML
+- `pizza4people.com/` now shows the generated `Proof note` hero action
+- `pizza4people.com/` now shows the `Where to start on GitHub` card with direct links to README, proof note, spec, and release notes
+- `pizza4people.com/` now shows the `public repo is the conservative story branch` wording
 - `pizza4people.com/press-kit/` loads the current Danish press-kit HTML
-- `protocols4people.com/` loads the current umbrella homepage
 
 Local repo truth remains:
 
