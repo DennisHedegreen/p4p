@@ -1,0 +1,49 @@
+{
+  "module_id": "p4p.menu.list",
+  "module_class": "customer_surface",
+  "lane": "public_capability",
+  "type": "menu-list",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "reference-example",
+  "description": "Customer-facing list menu built from the node's active structured catalog items.",
+  "visibility": "public",
+  "capabilities": [
+    "view_active_menu_items",
+    "build_order_draft",
+    "submit_order"
+  ],
+  "input_events": [
+    "CATALOG_UPDATED",
+    "ITEM_NOT_POSSIBLE",
+    "ORDER_REJECTED"
+  ],
+  "output_events": [
+    "CUSTOMER_MENU_VIEWED"
+  ],
+  "permissions": [
+    "read.catalog.items",
+    "emit.customer.menu_view"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {},
+  "idempotency_scope": "customer_menu_list_view",
+  "requires": [],
+  "data_access": [
+    "catalog_item_id",
+    "catalog_item_name",
+    "catalog_item_description",
+    "catalog_item_price",
+    "catalog_item_category",
+    "catalog_item_active"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Shows a classic customer menu list from the active catalog and posts ordinary order requests to the node.",
+    "data_access_summary": "Active item ids, names, descriptions, prices, and categories only. It does not own prices, inventory, payment, or operator data.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "test",
+    "operator_status": "available as the pilot-node customer menu list route when enabled"
+  }
+}

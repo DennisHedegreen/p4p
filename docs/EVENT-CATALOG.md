@@ -26,6 +26,7 @@ This is how P4P avoids hidden event drift between:
 ## Customer And Menu Events
 
 - `CUSTOMER_MENU_AREA_SELECTED`
+- `CUSTOMER_MENU_VIEWED`
 - `CUSTOMER_INTENT_SUBMITTED`
 - `ORDER_ITEM_CREATED`
 - `OPTIONS_REQUIRED`

@@ -175,6 +175,7 @@ class P4PDevCleanupTests(unittest.TestCase):
                 "p4p.catalog.editor",
                 "p4p.customer.status",
                 "p4p.kitchen.screen",
+                "p4p.menu.list",
                 "p4p.notify.email",
                 "p4p.order.print",
                 "p4p.payment.cash",

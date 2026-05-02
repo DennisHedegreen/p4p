@@ -18,6 +18,7 @@ It is the smallest real node shape for one restaurant:
 - pay at pickup
 - optional stock validation lane
 - optional catalog editor operator surface
+- optional customer list-menu surface
 - optional pay-at-pickup payment-mode lane
 - optional kitchen-screen operator surface
 - optional customer order-status surface
@@ -45,6 +46,7 @@ active payment-module selection, and order history.
 Enable the small reference runtime lanes with `P4P_NODE_MODULES`:
 
 - `p4p.catalog.editor` exposes the built-in operator catalog editor for item ids, prices, categories, and active availability.
+- `p4p.menu.list` exposes the built-in customer list-menu page from active catalog items.
 - `p4p.stock.basic` emits `ORDER_VALIDATED`, or `ITEM_NOT_POSSIBLE` when a configured item is unavailable.
 - `p4p.customer.status` exposes read-only public order status without customer contact details, notes, or operator event logs.
 - `p4p.kitchen.screen` exposes the built-in operator order queue for kitchen status updates.
@@ -116,6 +118,7 @@ The first pilot order-state set is:
 - `GET /`
 - `GET /health`
 - `GET /p4p/menu`
+- `GET /p4p/menu/list`
 - `POST /p4p/order`
 - `GET /p4p/orders/{order_id}`
 - `GET /p4p/orders/{order_id}/status`

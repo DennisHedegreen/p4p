@@ -5,6 +5,7 @@
   "type": "string",
   "enum": [
     "CUSTOMER_MENU_AREA_SELECTED",
+    "CUSTOMER_MENU_VIEWED",
     "CUSTOMER_INTENT_SUBMITTED",
     "ORDER_ITEM_CREATED",
     "OPTIONS_REQUIRED",

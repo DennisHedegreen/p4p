@@ -37,6 +37,7 @@ from pilot_node.routes import (
     operator_update_state as _operator_update_state,
     public_info as _public_info,
     public_menu as _public_menu,
+    public_menu_list_page as _public_menu_list_page,
     public_order as _public_order,
     public_order_status as _public_order_status,
     public_order_status_page as _public_order_status_page,
@@ -69,6 +70,10 @@ async def run_registry_cycle(*, force_announce: bool):
 
 def public_menu():
     return _public_menu(RUNTIME)
+
+
+def public_menu_list_page() -> str:
+    return _public_menu_list_page(RUNTIME)
 
 
 def public_order(payload: OrderRequest):
@@ -216,6 +221,7 @@ __all__ = [
     "operator_update_state",
     "public_info",
     "public_menu",
+    "public_menu_list_page",
     "public_order",
     "public_order_status",
     "public_order_status_page",
