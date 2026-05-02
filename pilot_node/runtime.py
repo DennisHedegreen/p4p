@@ -307,6 +307,30 @@ class PilotStore:
             assert updated is not None
             return updated
 
+    def update_order_payment_method(self, order_id: str, payment_method: str) -> StoredOrder:
+        normalized_payment_method = payment_method.strip()
+        if not normalized_payment_method:
+            raise HTTPException(status_code=400, detail="payment_method must not be blank")
+        with self._lock, self._connection:
+            if self.get_order(order_id) is None:
+                raise HTTPException(status_code=404, detail=f"Unknown order_id: {order_id}")
+            now = utc_now()
+            self._connection.execute(
+                """
+                UPDATE orders
+                SET payment_method = ?, updated_at = ?
+                WHERE order_id = ?
+                """,
+                (
+                    normalized_payment_method,
+                    serialize_datetime(now),
+                    order_id,
+                ),
+            )
+            updated = self.get_order(order_id)
+            assert updated is not None
+            return updated
+
     def _row_to_order(self, row: sqlite3.Row) -> StoredOrder:
         return StoredOrder(
             order_id=row["order_id"],

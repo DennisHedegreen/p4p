@@ -2785,6 +2785,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(payment_client.posts[0][1]["customer_user_id"], "usr_test_customer")
             self.assertEqual(payment_client.posts[0][1]["amount"], 65)
             self.assertEqual(payment_client.posts[1][0], "http://127.0.0.1:8301/p4p/payment/pay_test_001/confirm")
+            self.assertEqual(stored[0].payment_method, "external_test_payment")
             self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
             pilot.store.close()
 

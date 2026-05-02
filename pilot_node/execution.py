@@ -718,6 +718,7 @@ def execute_external_payment_module(
     )
 
     if event_name == "PAYMENT_MODE_CHANGED":
+        runtime.store.update_order_payment_method(order.order_id, "external_test_payment")
         updated_order = runtime.store.update_order_status(
             order.order_id,
             OrderStatusUpdate(status="accepted", status_message="Order accepted. External payment confirmed."),
