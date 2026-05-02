@@ -102,6 +102,7 @@ All operator endpoints require either:
 
 Endpoints:
 
+- `GET /operator`
 - `GET /operator/state`
 - `PATCH /operator/state`
 - `GET /operator/modules`
@@ -111,6 +112,9 @@ Endpoints:
 - `GET /operator/orders/{order_id}/events`
 - `PATCH /operator/orders/{order_id}`
 - `POST /operator/reannounce`
+
+`GET /operator` serves the local browser dashboard. The HTML shell is readable
+without a token, but all operator data requests still require the operator token.
 
 ## Local Dry Run
 

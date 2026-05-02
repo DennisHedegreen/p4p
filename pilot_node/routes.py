@@ -4,12 +4,14 @@ import asyncio
 import secrets
 from contextlib import asynccontextmanager, suppress
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from p4p_core import (
     Menu,
@@ -44,6 +46,9 @@ from pilot_node.runtime import (
     sign_node_announcement,
     signed_heartbeat_payload,
 )
+
+
+OPERATOR_HTML_PATH = Path(__file__).resolve().parents[1] / "pilot-node" / "operator.html"
 
 
 def header_value(value: str | None) -> str | None:
@@ -154,6 +159,7 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
             "info": "GET /p4p/info",
             "menu": "GET /p4p/menu",
             "order": "POST /p4p/order",
+            "operator_gui": "GET /operator",
             "operator_state": "GET /operator/state",
             "operator_modules": "GET /operator/modules",
             "operator_orders": "GET /operator/orders",
@@ -209,6 +215,10 @@ def operator_state(runtime: PilotRuntime) -> dict[str, Any]:
         "undeclared_modules": runtime.config.undeclared_node_modules,
         "registry": registration_payload(runtime),
     }
+
+
+def operator_gui(runtime: PilotRuntime) -> str:
+    return OPERATOR_HTML_PATH.read_text(encoding="utf-8")
 
 
 def module_execution_lane(manifest) -> str:
@@ -520,6 +530,10 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
     def public_info_route() -> dict[str, Any]:
         return public_info(runtime)
 
+    @app.get("/operator", response_class=HTMLResponse)
+    def operator_gui_route() -> str:
+        return operator_gui(runtime)
+
     @app.get("/operator/state")
     def operator_state_route(
         authorization: str | None = Header(default=None),
@@ -603,6 +617,7 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
 __all__ = [
     "build_app",
     "httpx",
+    "operator_gui",
     "operator_modules",
     "operator_order_events",
     "node_state",

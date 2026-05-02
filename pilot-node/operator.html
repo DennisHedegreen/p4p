@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P4P Pilot Operator</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f6f5;
+        --surface: #ffffff;
+        --surface-2: #eef3f1;
+        --line: #cfd8d5;
+        --ink: #10201d;
+        --muted: #51615d;
+        --accent: #00796b;
+        --accent-strong: #00594f;
+        --warn: #a04b00;
+        --bad: #b3261e;
+        --ok: #16794c;
+        --unknown: #60646c;
+        --shadow: 0 10px 30px rgba(16, 32, 29, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        min-height: 42px;
+        border-radius: 7px;
+        padding: 0 14px;
+        cursor: pointer;
+        font-weight: 650;
+      }
+
+      button.secondary {
+        background: #fff;
+        color: var(--accent-strong);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      input,
+      select {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        border-radius: 7px;
+        padding: 0 10px;
+      }
+
+      main {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 20px 14px 48px;
+      }
+
+      header {
+        display: grid;
+        gap: 16px;
+        padding: 18px 0 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      @media (min-width: 880px) {
+        header {
+          grid-template-columns: minmax(0, 1fr) minmax(420px, 0.9fr);
+          align-items: end;
+        }
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(1.45rem, 3vw, 2.1rem);
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 1rem;
+      }
+
+      h3 {
+        font-size: 0.96rem;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .token-row,
+      .actions,
+      .summary,
+      .filters {
+        display: grid;
+        gap: 10px;
+      }
+
+      @media (min-width: 720px) {
+        .token-row {
+          grid-template-columns: minmax(0, 1fr) auto auto;
+        }
+
+        .actions {
+          grid-template-columns: auto auto auto;
+          justify-content: start;
+        }
+
+        .summary {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .filters {
+          grid-template-columns: minmax(0, 1fr) 190px 190px;
+        }
+      }
+
+      .toolbar {
+        display: grid;
+        gap: 10px;
+      }
+
+      .status-line {
+        min-height: 24px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .summary {
+        margin: 18px 0;
+      }
+
+      .metric {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px;
+        min-height: 86px;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 7px;
+        font-size: 1.1rem;
+        word-break: break-word;
+      }
+
+      .layout {
+        display: grid;
+        gap: 16px;
+      }
+
+      @media (min-width: 980px) {
+        .layout {
+          grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+          align-items: start;
+        }
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel-head {
+        display: grid;
+        gap: 12px;
+        padding: 15px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel-body {
+        padding: 15px;
+      }
+
+      .module-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .module-row {
+        display: grid;
+        gap: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px;
+        background: #fff;
+      }
+
+      @media (min-width: 760px) {
+        .module-row {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: start;
+        }
+      }
+
+      .module-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .module-id {
+        font-weight: 750;
+        word-break: break-word;
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        border-radius: 999px;
+        padding: 0 8px;
+        background: var(--surface-2);
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 650;
+      }
+
+      .badge.ok {
+        background: #e3f5ec;
+        color: var(--ok);
+      }
+
+      .badge.warn {
+        background: #fff1df;
+        color: var(--warn);
+      }
+
+      .badge.bad {
+        background: #fde7e4;
+        color: var(--bad);
+      }
+
+      .badge.dark {
+        background: #e7ecea;
+        color: var(--ink);
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .side {
+        display: grid;
+        gap: 10px;
+      }
+
+      dl {
+        display: grid;
+        grid-template-columns: minmax(100px, 0.45fr) minmax(0, 1fr);
+        gap: 8px 12px;
+        margin: 0;
+      }
+
+      dt {
+        color: var(--muted);
+      }
+
+      dd {
+        margin: 0;
+        min-width: 0;
+        word-break: break-word;
+      }
+
+      pre {
+        margin: 0;
+        max-height: 420px;
+        overflow: auto;
+        white-space: pre-wrap;
+        background: #101815;
+        color: #effaf4;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 0.84rem;
+      }
+
+      .empty {
+        padding: 22px;
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        color: var(--muted);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>P4P Pilot Operator</h1>
+          <p class="muted" id="node-label">127.0.0.1</p>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="Operator token">
+            <button id="save-token" type="button">Use token</button>
+            <button id="clear-token" class="secondary" type="button">Clear</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">Refresh</button>
+            <button id="copy-json" class="secondary" type="button">Copy JSON</button>
+          </div>
+          <div class="status-line" id="status-line">Waiting for token.</div>
+        </div>
+      </header>
+
+      <section class="summary" aria-label="Summary">
+        <div class="metric">
+          <span>Node</span>
+          <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Payment</span>
+          <strong id="metric-payment">-</strong>
+        </div>
+        <div class="metric">
+          <span>Health</span>
+          <strong id="metric-health">-</strong>
+        </div>
+        <div class="metric">
+          <span>Modules</span>
+          <strong id="metric-count">-</strong>
+        </div>
+      </section>
+
+      <div class="layout">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Modules</h2>
+            <div class="filters">
+              <input id="search" type="search" placeholder="Search module id, provider, lane">
+              <select id="lane-filter">
+                <option value="">All lanes</option>
+              </select>
+              <select id="health-filter">
+                <option value="">All health</option>
+                <option value="up">up</option>
+                <option value="available">available</option>
+                <option value="down">down</option>
+                <option value="not_configured">not_configured</option>
+                <option value="undeclared">undeclared</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div id="modules" class="module-list"></div>
+          </div>
+        </section>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Node</h2>
+            </div>
+            <div class="panel-body">
+              <dl id="node-details"></dl>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Response</h2>
+            </div>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const modulesEl = document.getElementById("modules");
+      const rawEl = document.getElementById("raw");
+      const searchInput = document.getElementById("search");
+      const laneFilter = document.getElementById("lane-filter");
+      const healthFilter = document.getElementById("health-filter");
+      const nodeLabel = document.getElementById("node-label");
+      const metricNode = document.getElementById("metric-node");
+      const metricPayment = document.getElementById("metric-payment");
+      const metricHealth = document.getElementById("metric-health");
+      const metricCount = document.getElementById("metric-count");
+      const nodeDetails = document.getElementById("node-details");
+
+      const state = {
+        modules: null,
+        node: null
+      };
+
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function headers() {
+        return {
+          "Content-Type": "application/json",
+          "X-P4P-Operator-Token": token()
+        };
+      }
+
+      async function request(path) {
+        const response = await fetch(path, { headers: headers() });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function badge(text, tone) {
+        const el = document.createElement("span");
+        el.className = `badge ${tone || ""}`.trim();
+        el.textContent = text;
+        return el;
+      }
+
+      function healthTone(value) {
+        if (value === "up" || value === "available") return "ok";
+        if (value === "down" || value === "not_configured" || value === "undeclared") return "bad";
+        if (value === "degraded") return "warn";
+        return "";
+      }
+
+      function boolTone(value) {
+        return value ? "ok" : "warn";
+      }
+
+      function visibleModules() {
+        const payload = state.modules;
+        if (!payload) return [];
+        const query = searchInput.value.trim().toLowerCase();
+        const lane = laneFilter.value;
+        const health = healthFilter.value;
+        return payload.modules.filter((entry) => {
+          const haystack = [
+            entry.module_id,
+            entry.provider_id,
+            entry.lane,
+            entry.health,
+            entry.implementation,
+            entry.operator_status
+          ].join(" ").toLowerCase();
+          return (!query || haystack.includes(query)) &&
+            (!lane || entry.lane === lane) &&
+            (!health || entry.health === health);
+        });
+      }
+
+      function renderLaneOptions(payload) {
+        const current = laneFilter.value;
+        const lanes = Array.from(new Set(payload.modules.map((entry) => entry.lane))).sort();
+        laneFilter.innerHTML = '<option value="">All lanes</option>';
+        for (const lane of lanes) {
+          const option = document.createElement("option");
+          option.value = lane;
+          option.textContent = lane;
+          option.selected = lane === current;
+          laneFilter.appendChild(option);
+        }
+      }
+
+      function renderPairs(target, pairs) {
+        target.innerHTML = "";
+        for (const [key, value] of pairs) {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = Array.isArray(value) ? value.join(", ") : String(value ?? "-");
+          target.appendChild(dt);
+          target.appendChild(dd);
+        }
+      }
+
+      function renderModule(entry) {
+        const row = document.createElement("article");
+        row.className = "module-row";
+
+        const main = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "module-title";
+        const id = document.createElement("span");
+        id.className = "module-id";
+        id.textContent = entry.module_id;
+        title.appendChild(id);
+        title.appendChild(badge(entry.health, healthTone(entry.health)));
+        if (entry.active) title.appendChild(badge("active", "dark"));
+        if (!entry.declared) title.appendChild(badge("undeclared", "bad"));
+        if (!entry.configured) title.appendChild(badge("config", "warn"));
+        main.appendChild(title);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.appendChild(document.createTextNode(`${entry.provider_id || "no provider"} / ${entry.lane}`));
+        meta.appendChild(document.createTextNode(entry.implementation));
+        meta.appendChild(document.createTextNode(entry.operator_status || entry.status || ""));
+        main.appendChild(meta);
+
+        const side = document.createElement("div");
+        side.className = "badges";
+        side.appendChild(badge(entry.configured ? "configured" : "missing", boolTone(entry.configured)));
+        side.appendChild(badge(entry.executable ? "executable" : "not executable", boolTone(entry.executable)));
+        side.appendChild(badge(entry.readiness || "unknown"));
+        row.appendChild(main);
+        row.appendChild(side);
+
+        if (entry.health_reason || entry.missing_configuration?.length) {
+          const reason = document.createElement("div");
+          reason.className = "meta";
+          const missing = entry.missing_configuration?.length
+            ? `missing: ${entry.missing_configuration.join(", ")}`
+            : "";
+          reason.textContent = [entry.health_reason, missing].filter(Boolean).join(" | ");
+          row.appendChild(reason);
+        }
+
+        return row;
+      }
+
+      function renderModules() {
+        modulesEl.innerHTML = "";
+        const modules = visibleModules();
+        if (!modules.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No modules";
+          modulesEl.appendChild(empty);
+          return;
+        }
+        for (const entry of modules) {
+          modulesEl.appendChild(renderModule(entry));
+        }
+      }
+
+      function renderSummary() {
+        const modules = state.modules;
+        const node = state.node;
+        const activePayment = modules?.active_by_lane?.payment || "-";
+        const activePaymentEntry = modules?.modules.find((entry) => entry.module_id === activePayment);
+        nodeLabel.textContent = `${location.origin}/operator`;
+        metricNode.textContent = node?.node?.node_id || modules?.node_id || "-";
+        metricPayment.textContent = activePayment;
+        metricHealth.textContent = activePaymentEntry?.health || "-";
+        metricCount.textContent = String(modules?.modules?.length || 0);
+        renderPairs(nodeDetails, [
+          ["Open", node?.node?.open],
+          ["Order mode", node?.node?.order_mode],
+          ["Accepts orders", node?.accepts_orders],
+          ["Public modules", node?.public_modules],
+          ["Undeclared", modules?.undeclared_modules?.map((entry) => entry.module_id) || []],
+          ["Checked", modules?.checked_at]
+        ]);
+      }
+
+      function render() {
+        if (state.modules) {
+          renderLaneOptions(state.modules);
+          renderModules();
+          rawEl.textContent = JSON.stringify({ modules: state.modules, state: state.node }, null, 2);
+        }
+        renderSummary();
+      }
+
+      async function refresh() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Loading.");
+        const [modules, node] = await Promise.all([
+          request("/operator/modules"),
+          request("/operator/state")
+        ]);
+        state.modules = modules;
+        state.node = node;
+        render();
+        setStatus("Updated.", "ok");
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", () => {
+        navigator.clipboard.writeText(rawEl.textContent)
+          .then(() => setStatus("Copied JSON.", "ok"))
+          .catch((error) => setStatus(error.message, "bad"));
+      });
+
+      searchInput.addEventListener("input", renderModules);
+      laneFilter.addEventListener("change", renderModules);
+      healthFilter.addEventListener("change", renderModules);
+
+      if (token()) {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

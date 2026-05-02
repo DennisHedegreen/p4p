@@ -3699,7 +3699,28 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertTrue(index["accepts_orders"])
             self.assertEqual(index["endpoints"]["info"], "GET /p4p/info")
             self.assertEqual(index["endpoints"]["order"], "POST /p4p/order")
+            self.assertEqual(index["endpoints"]["operator_gui"], "GET /operator")
             self.assertEqual(index["endpoints"]["operator_modules"], "GET /operator/modules")
+            pilot.store.close()
+
+    def test_pilot_node_operator_gui_loads_module_dashboard_shell(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            html = pilot.operator_gui()
+
+            self.assertIn("<title>P4P Pilot Operator</title>", html)
+            self.assertIn('request("/operator/modules")', html)
+            self.assertIn('request("/operator/state")', html)
+            self.assertIn("X-P4P-Operator-Token", html)
+            self.assertIn("p4pOperatorToken", html)
             pilot.store.close()
 
     def test_pilot_node_dual_registers_to_primary_and_backup(self) -> None:
