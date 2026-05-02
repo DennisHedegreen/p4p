@@ -180,8 +180,14 @@ def _is_payment_flow_module(manifest: ModuleManifest) -> bool:
     )
 
 
-def _enabled_payment_flow_module_id(enabled_module_ids: tuple[str, ...]) -> str | None:
-    catalog = load_reference_module_catalog()
+def _enabled_payment_flow_module_id(
+    enabled_module_ids: tuple[str, ...],
+    *,
+    module_manifests: tuple[ModuleManifest, ...] | list[ModuleManifest] | None = None,
+) -> str | None:
+    catalog = load_reference_module_catalog() | {
+        manifest.module_id: manifest for manifest in (module_manifests or ())
+    }
     for module_id in enabled_module_ids:
         manifest = catalog.get(module_id)
         if manifest is not None and _is_payment_flow_module(manifest):
@@ -189,8 +195,15 @@ def _enabled_payment_flow_module_id(enabled_module_ids: tuple[str, ...]) -> str 
     return None
 
 
-def _payment_flow_extensions(enabled_module_ids: tuple[str, ...]) -> tuple[FlowExtension, ...]:
-    payment_module_id = _enabled_payment_flow_module_id(enabled_module_ids)
+def _payment_flow_extensions(
+    enabled_module_ids: tuple[str, ...],
+    *,
+    module_manifests: tuple[ModuleManifest, ...] | list[ModuleManifest] | None = None,
+) -> tuple[FlowExtension, ...]:
+    payment_module_id = _enabled_payment_flow_module_id(
+        enabled_module_ids,
+        module_manifests=module_manifests,
+    )
     if payment_module_id is None:
         return ()
     return (
@@ -233,11 +246,18 @@ def _flow_extension_sort_key(extension: FlowExtension) -> tuple[int, tuple[str, 
     )
 
 
-def build_pilot_order_flow_contract(enabled_module_ids: tuple[str, ...] | list[str] | None = None) -> FlowContract:
+def build_pilot_order_flow_contract(
+    enabled_module_ids: tuple[str, ...] | list[str] | None = None,
+    *,
+    module_manifests: tuple[ModuleManifest, ...] | list[ModuleManifest] | None = None,
+) -> FlowContract:
     enabled_sequence = tuple(enabled_module_ids or ())
     enabled = frozenset(enabled_sequence)
     contract = BASE_PILOT_ORDER_FLOW_CONTRACT
-    flow_extensions = PILOT_ORDER_FLOW_EXTENSIONS + _payment_flow_extensions(enabled_sequence)
+    flow_extensions = PILOT_ORDER_FLOW_EXTENSIONS + _payment_flow_extensions(
+        enabled_sequence,
+        module_manifests=module_manifests,
+    )
 
     for extension in sorted(flow_extensions, key=_flow_extension_sort_key):
         if not extension.applies_to(enabled):
@@ -287,11 +307,15 @@ def validate_pilot_order_event_flow(
     next_event: ModuleResultEvent,
     *,
     enabled_module_ids: tuple[str, ...] | list[str] | None = None,
+    module_manifests: tuple[ModuleManifest, ...] | list[ModuleManifest] | None = None,
 ) -> None:
     if next_event.order_id is None:
         raise ValueError(f"Pilot order flow events must carry order_id: {next_event.event}")
 
-    contract = build_pilot_order_flow_contract(enabled_module_ids)
+    contract = build_pilot_order_flow_contract(
+        enabled_module_ids,
+        module_manifests=module_manifests,
+    )
     previous_event = existing_events[-1] if existing_events else None
     previous_name = previous_event.event if previous_event is not None else None
     allowed_next = contract.transitions.get(previous_name)

@@ -49,6 +49,31 @@ Homebuilt or external module IDs can also be listed in `P4P_NODE_MODULES`.
 If a module has no reference manifest, the pilot node keeps it as `undeclared_modules`
 in operator state and does not execute or publish it as a P4P reference module.
 
+External modules become declared only when the operator imports a local module manifest.
+The first test path is `local.pizzacoin.wallet`, which remains outside `P4P/`.
+
+Example local Pizzacoin payment selection:
+
+```bash
+P4P_NODE_MODULES=p4p.payment.cash,local.pizzacoin.wallet,p4p.order.print \
+P4P_EXTERNAL_MODULE_MANIFESTS="../../Pizzacoin/contracts/module.json" \
+P4P_PAYMENT_MODULE_ID=local.pizzacoin.wallet \
+P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID=usr_from_pizzacoin_gui \
+./.venv/bin/uvicorn pilot_node:app --port 8201
+```
+
+In that mode the payment lane posts to the manifest `entrypoint`, auto-confirms
+the fake payment by default, and emits `PAYMENT_REQUIRED -> PAYMENT_MODE_CHANGED`
+or `PAYMENT_FAILED -> ORDER_NEEDS_HUMAN`.
+
+The external HTTP payment executor is guarded:
+
+- the selected module must be enabled in `P4P_NODE_MODULES`
+- the module manifest must be imported with `P4P_EXTERNAL_MODULE_MANIFESTS`
+- `P4P_PAYMENT_MODULE_ID` must name that imported module
+- plain `http` entrypoints are accepted only on loopback hosts
+- `P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID` must be set for the fake wallet test
+
 ## Order States
 
 The first pilot order-state set is:

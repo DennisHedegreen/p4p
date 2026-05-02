@@ -120,6 +120,56 @@ class RegistrySourceAsyncClient:
         return httpx.Response(200, request=request, json=result.model_dump(mode="json"))
 
 
+class ExternalPaymentClient:
+    def __init__(self, *, confirmed: bool = True) -> None:
+        self.confirmed = confirmed
+        self.posts: list[tuple[str, dict[str, object]]] = []
+
+    def __enter__(self) -> "ExternalPaymentClient":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def post(self, url: str, json: dict[str, object]) -> httpx.Response:
+        self.posts.append((url, json))
+        request = httpx.Request("POST", url)
+        if url.endswith("/confirm"):
+            event = (
+                {
+                    "event": "PAYMENT_MODE_CHANGED",
+                    "source_module": "local.pizzacoin.wallet",
+                    "outcome": "SUCCESS",
+                    "side_effect_state": "confirmed",
+                }
+                if self.confirmed
+                else {
+                    "event": "PAYMENT_FAILED",
+                    "source_module": "local.pizzacoin.wallet",
+                    "outcome": "FAILED_PERMANENT",
+                    "reason_code": "INSUFFICIENT_TEST_BALANCE",
+                    "side_effect_state": "none",
+                }
+            )
+            return httpx.Response(
+                200,
+                request=request,
+                json={
+                    "payment_id": "pay_test_001",
+                    "status": "confirmed" if self.confirmed else "failed",
+                    "event": event,
+                },
+            )
+        return httpx.Response(
+            201,
+            request=request,
+            json={
+                "payment_id": "pay_test_001",
+                "status": "requires_confirmation",
+            },
+        )
+
+
 class P4PTruthfulnessTests(unittest.TestCase):
     def make_registry_metadata(self, **overrides) -> str:
         payload = {
@@ -2675,6 +2725,106 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 [executor.module_id for executor in execution.enabled_module_executors(runtime, lane="payment")],
                 ["p4p.payment.cash"],
             )
+            pilot.store.close()
+
+    def test_pilot_node_imports_external_pizzacoin_manifest_and_executes_selected_payment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,local.pizzacoin.wallet,p4p.order.print",
+                    "P4P_EXTERNAL_MODULE_MANIFESTS": str(pizzacoin_manifest),
+                    "P4P_PAYMENT_MODULE_ID": "local.pizzacoin.wallet",
+                    "P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID": "usr_test_customer",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            runtime = sys.modules[f"{pilot.__name__}_app"].RUNTIME
+            execution = sys.modules["pilot_node.execution"]
+            payment_client = ExternalPaymentClient(confirmed=True)
+            with patch.object(execution.httpx, "Client", return_value=payment_client):
+                accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+
+            operator_state = pilot.operator_state(authorization="Bearer operator-secret")
+            info = pilot.public_info()
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(runtime.config.payment_module_id, "local.pizzacoin.wallet")
+            self.assertEqual(runtime.config.flow_module_ids, ("local.pizzacoin.wallet", "p4p.order.print"))
+            self.assertEqual(operator_state["undeclared_modules"], [])
+            self.assertEqual(operator_state["public_modules"], ["p4p.payment.cash", "local.pizzacoin.wallet"])
+            self.assertEqual(info["payment_methods"], ["external_test_payment"])
+            self.assertEqual(
+                [executor.module_id for executor in execution.enabled_module_executors(runtime, lane="payment")],
+                ["local.pizzacoin.wallet"],
+            )
+            self.assertEqual(
+                [event.event for event in events],
+                [
+                    "ORDER_ACCEPTED",
+                    "PAYMENT_REQUIRED",
+                    "PAYMENT_MODE_CHANGED",
+                    "PRINT_REQUESTED",
+                    "PRINT_SUCCESS_CONFIRMED",
+                ],
+            )
+            self.assertEqual(events[1].source_module, "local.pizzacoin.wallet")
+            self.assertEqual(events[1].metadata["amount"], 65)
+            self.assertEqual(events[1].metadata["currency"], "PIZZACOIN")
+            self.assertEqual(events[2].source_module, "local.pizzacoin.wallet")
+            self.assertEqual(events[2].metadata["external_payment_id"], "pay_test_001")
+            self.assertEqual(payment_client.posts[0][0], "http://127.0.0.1:8301/p4p/payment")
+            self.assertEqual(payment_client.posts[0][1]["customer_user_id"], "usr_test_customer")
+            self.assertEqual(payment_client.posts[0][1]["amount"], 65)
+            self.assertEqual(payment_client.posts[1][0], "http://127.0.0.1:8301/p4p/payment/pay_test_001/confirm")
+            self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
+            pilot.store.close()
+
+    def test_pilot_node_external_payment_requires_explicit_customer_user(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "local.pizzacoin.wallet,p4p.order.print",
+                    "P4P_EXTERNAL_MODULE_MANIFESTS": str(pizzacoin_manifest),
+                    "P4P_PAYMENT_MODULE_ID": "local.pizzacoin.wallet",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            runtime = sys.modules[f"{pilot.__name__}_app"].RUNTIME
+            execution = sys.modules["pilot_node.execution"]
+            payment_client = ExternalPaymentClient(confirmed=True)
+            with patch.object(execution.httpx, "Client", return_value=payment_client):
+                accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(runtime.config.flow_module_ids, ("local.pizzacoin.wallet", "p4p.order.print"))
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PAYMENT_REQUIRED", "PAYMENT_FAILED", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].source_module, "local.pizzacoin.wallet")
+            self.assertEqual(events[2].reason_code, "PAYMENT_CUSTOMER_USER_ID_MISSING")
+            self.assertEqual(events[3].metadata["trigger_event"], "PAYMENT_FAILED")
+            self.assertEqual(payment_client.posts, [])
+            self.assertEqual(stored[0].status_message, "Order accepted. External payment needs human attention.")
             pilot.store.close()
 
     def test_pilot_node_persists_orders_and_operator_status(self) -> None:

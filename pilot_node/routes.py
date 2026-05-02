@@ -25,7 +25,7 @@ from p4p_core import (
 from p4p_core.constants import PROTOCOL_VERSION
 
 from pilot_node.config import OperatorStateUpdate
-from pilot_node.execution import process_accepted_order
+from pilot_node.execution import PAYMENT_CASH_MODULE_ID, process_accepted_order
 from pilot_node.runtime import (
     PilotRuntime,
     enabled_module_declarations,
@@ -134,6 +134,12 @@ def public_menu(runtime: PilotRuntime) -> Menu:
     return runtime.store.menu()
 
 
+def public_payment_methods(runtime: PilotRuntime) -> list[str]:
+    if runtime.config.payment_module_id and runtime.config.payment_module_id != PAYMENT_CASH_MODULE_ID:
+        return ["external_test_payment"]
+    return ["pay_at_pickup"]
+
+
 def public_order(runtime: PilotRuntime, payload: OrderRequest) -> OrderAccepted | OrderRejected:
     node = node_state(runtime)
     if not node.open:
@@ -145,7 +151,7 @@ def public_order(runtime: PilotRuntime, payload: OrderRequest) -> OrderAccepted 
     return OrderAccepted(
         order_id=order.order_id,
         estimated_ready=order.estimated_ready or (utc_now() + timedelta(minutes=20)),
-        message="Order received. Pay at pickup.",
+        message=order.status_message or "Order received.",
     )
 
 
@@ -156,7 +162,7 @@ def public_info(runtime: PilotRuntime) -> dict[str, Any]:
         "open": node.open,
         "order_mode": node.order_mode,
         "accepts_orders": node_accepts_orders(runtime, node),
-        "payment_methods": ["pay_at_pickup"],
+        "payment_methods": public_payment_methods(runtime),
         "fulfillment": ["pickup"],
         "node_public_key": runtime.config.node_public_key,
         **public_module_projection(runtime),

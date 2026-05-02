@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
+from urllib.parse import urlsplit
+
+import httpx
 
 from p4p_core import (
     CONTRACT_PHASE_METADATA_KEY,
@@ -28,6 +32,10 @@ PAYMENT_CASH_MODULE_ID = "p4p.payment.cash"
 INTERNAL_RUNTIME_MODULE_IDS = frozenset({ORDER_RECEIVER_MODULE_ID})
 REQUEST_PHASE = "request"
 RESULT_PHASE = "result"
+PAYMENT_RESULT_EVENTS = frozenset({"PAYMENT_MODE_CHANGED", "PAYMENT_FAILED"})
+PAYMENT_SUCCESS_OUTCOMES = frozenset({"SUCCESS"})
+PAYMENT_FAILURE_OUTCOMES = frozenset({"FAILED_RETRYABLE", "FAILED_PERMANENT", "UNAVAILABLE", "TIMEOUT_UNKNOWN"})
+SIDE_EFFECT_STATES = frozenset({"none", "confirmed", "unknown"})
 
 
 @dataclass(frozen=True)
@@ -168,7 +176,8 @@ def record_order_flow_event(runtime: PilotRuntime, event: ModuleResultEvent) -> 
     validate_pilot_order_event_flow(
         existing_events,
         event,
-        enabled_module_ids=runtime.config.resolved_modules.module_ids,
+        enabled_module_ids=runtime.config.flow_module_ids,
+        module_manifests=runtime.config.resolved_modules.manifests,
     )
     return runtime.store.record_order_event(event)
 
@@ -390,6 +399,358 @@ def execute_payment_cash_module(runtime: PilotRuntime, order: StoredOrder) -> tu
     return updated_order, True
 
 
+def _is_payment_manifest(manifest: ModuleManifest) -> bool:
+    module_class = str(manifest.raw.get("module_class") or manifest.raw.get("type") or "").strip()
+    return (
+        module_class == "payment"
+        and "PAYMENT_REQUIRED" in manifest.input_events
+        and PAYMENT_RESULT_EVENTS.issubset(set(manifest.output_events))
+    )
+
+
+def _external_payment_manifest(runtime: PilotRuntime, module_id: str) -> ModuleManifest | None:
+    manifest = runtime.config.resolved_modules.get(module_id)
+    if manifest is None or module_id == PAYMENT_CASH_MODULE_ID:
+        return None
+    raw_entrypoint = manifest.raw.get("entrypoint")
+    if not isinstance(raw_entrypoint, str) or not raw_entrypoint.strip():
+        return None
+    if not _is_payment_manifest(manifest):
+        return None
+    return manifest
+
+
+def _external_payment_url_error(url: str) -> str | None:
+    if not url:
+        return "PAYMENT_EXTERNAL_URL_MISSING"
+    parts = urlsplit(url)
+    if parts.scheme not in {"http", "https"} or not parts.netloc:
+        return "PAYMENT_EXTERNAL_URL_INVALID"
+    if parts.scheme == "http" and parts.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        return "PAYMENT_EXTERNAL_HTTP_NOT_LOOPBACK"
+    return None
+
+
+def _order_amount(runtime: PilotRuntime, order: StoredOrder) -> int:
+    menu = runtime.store.menu()
+    price_by_id = {item.id: item.price for item in menu.items}
+    total = 0
+    for item in order.items:
+        total += price_by_id[item.id] * item.quantity
+    return total
+
+
+def _payment_event_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    raw_event = payload.get("event")
+    if isinstance(raw_event, dict):
+        return raw_event
+    status = str(payload.get("status") or "").strip().lower()
+    if status == "confirmed":
+        return {
+            "event": "PAYMENT_MODE_CHANGED",
+            "outcome": "SUCCESS",
+            "side_effect_state": "confirmed",
+        }
+    return {
+        "event": "PAYMENT_FAILED",
+        "outcome": "FAILED_PERMANENT",
+        "reason_code": "EXTERNAL_PAYMENT_NOT_CONFIRMED",
+        "side_effect_state": "none",
+    }
+
+
+def _safe_payment_outcome(event_name: str, value: object) -> str:
+    outcome = str(value or "").strip()
+    allowed = PAYMENT_SUCCESS_OUTCOMES if event_name == "PAYMENT_MODE_CHANGED" else PAYMENT_FAILURE_OUTCOMES
+    if outcome in allowed:
+        return outcome
+    return "SUCCESS" if event_name == "PAYMENT_MODE_CHANGED" else "FAILED_PERMANENT"
+
+
+def _safe_side_effect_state(value: object, *, default: str) -> str:
+    state = str(value or "").strip()
+    return state if state in SIDE_EFFECT_STATES else default
+
+
+def _record_external_payment_failure(
+    runtime: PilotRuntime,
+    order: StoredOrder,
+    *,
+    module_id: str,
+    action_id: str,
+    idempotency_key: str,
+    reason_code: str,
+    metadata: dict[str, object],
+    outcome: str = "UNAVAILABLE",
+    retryable: bool = True,
+) -> tuple[StoredOrder, bool]:
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="PAYMENT_FAILED",
+            source_module=module_id,
+            order=order,
+            action_id=action_id,
+            idempotency_key=idempotency_key,
+            outcome=outcome,
+            reason_code=reason_code,
+            severity="high",
+            retryable=retryable,
+            side_effect_state="none",
+            trigger_event="PAYMENT_REQUIRED",
+            metadata=metadata,
+        ),
+    )
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="ORDER_NEEDS_HUMAN",
+            source_module=ORDER_RECEIVER_MODULE_ID,
+            order=order,
+            action_id=f"order:{order.order_id}:needs-human:payment",
+            idempotency_key=f"human:{order.order_id}:payment",
+            outcome="NEEDS_HUMAN",
+            severity="high",
+            retryable=False,
+            side_effect_state="none",
+            trigger_event="PAYMENT_FAILED",
+            metadata=metadata,
+        ),
+    )
+    updated_order = runtime.store.update_order_status(
+        order.order_id,
+        OrderStatusUpdate(
+            status="accepted",
+            status_message="Order accepted. External payment needs human attention.",
+        ),
+    )
+    return updated_order, False
+
+
+def execute_external_payment_module(
+    runtime: PilotRuntime,
+    order: StoredOrder,
+    *,
+    module_id: str,
+) -> tuple[StoredOrder, bool]:
+    manifest = _external_payment_manifest(runtime, module_id)
+    if manifest is None:
+        return order, True
+
+    payment_action_id = f"order:{order.order_id}:payment:external:{module_id}"
+    payment_idempotency_key = f"payment:{order.order_id}:{module_id}"
+    payment_url = runtime.config.payment_external_url or str(manifest.raw.get("entrypoint") or "").strip()
+    amount = _order_amount(runtime, order)
+    payment_metadata = {
+        **module_metadata(runtime, module_id),
+        "payment_scope": "external_test_module",
+        "payment_entrypoint": payment_url,
+        "payment_module_id": module_id,
+        "merchant_id": runtime.config.payment_external_merchant_id,
+        "currency": runtime.config.payment_external_currency,
+        "amount": amount,
+        "auto_confirm": runtime.config.payment_external_auto_confirm,
+    }
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="PAYMENT_REQUIRED",
+            source_module=module_id,
+            order=order,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="none",
+            contract_phase=REQUEST_PHASE,
+            metadata=payment_metadata,
+        ),
+    )
+
+    url_error = _external_payment_url_error(payment_url)
+    if url_error is not None:
+        return _record_external_payment_failure(
+            runtime,
+            order,
+            module_id=module_id,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            reason_code=url_error,
+            metadata=payment_metadata,
+            outcome="UNAVAILABLE",
+            retryable=False,
+        )
+    if not runtime.config.payment_external_customer_user_id:
+        return _record_external_payment_failure(
+            runtime,
+            order,
+            module_id=module_id,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            reason_code="PAYMENT_CUSTOMER_USER_ID_MISSING",
+            metadata=payment_metadata,
+            outcome="FAILED_PERMANENT",
+            retryable=False,
+        )
+
+    create_payload = {
+        "order_id": order.order_id,
+        "node_id": runtime.config.node_id,
+        "merchant_id": runtime.config.payment_external_merchant_id,
+        "customer_user_id": runtime.config.payment_external_customer_user_id,
+        "amount": amount,
+        "currency": runtime.config.payment_external_currency,
+        "idempotency_key": payment_idempotency_key,
+    }
+
+    try:
+        with httpx.Client(timeout=runtime.config.payment_external_timeout_seconds) as client:
+            create_response = client.post(payment_url, json=create_payload)
+            create_response.raise_for_status()
+            payment_payload = create_response.json()
+            if not isinstance(payment_payload, dict):
+                return _record_external_payment_failure(
+                    runtime,
+                    order,
+                    module_id=module_id,
+                    action_id=payment_action_id,
+                    idempotency_key=payment_idempotency_key,
+                    reason_code="PAYMENT_EXTERNAL_RESPONSE_INVALID",
+                    metadata=payment_metadata,
+                    outcome="FAILED_PERMANENT",
+                    retryable=False,
+                )
+            if runtime.config.payment_external_auto_confirm:
+                payment_id = str(payment_payload.get("payment_id") or "").strip()
+                if not payment_id:
+                    return _record_external_payment_failure(
+                        runtime,
+                        order,
+                        module_id=module_id,
+                        action_id=payment_action_id,
+                        idempotency_key=payment_idempotency_key,
+                        reason_code="PAYMENT_EXTERNAL_ID_MISSING",
+                        metadata=payment_metadata,
+                        outcome="FAILED_PERMANENT",
+                        retryable=False,
+                    )
+                confirm_url = f"{payment_url.rstrip('/')}/{payment_id}/confirm"
+                confirm_response = client.post(confirm_url, json={})
+                confirm_response.raise_for_status()
+                payment_payload = confirm_response.json()
+                if not isinstance(payment_payload, dict):
+                    return _record_external_payment_failure(
+                        runtime,
+                        order,
+                        module_id=module_id,
+                        action_id=payment_action_id,
+                        idempotency_key=payment_idempotency_key,
+                        reason_code="PAYMENT_EXTERNAL_RESPONSE_INVALID",
+                        metadata=payment_metadata,
+                        outcome="FAILED_PERMANENT",
+                        retryable=False,
+                    )
+            else:
+                return _record_external_payment_failure(
+                    runtime,
+                    order,
+                    module_id=module_id,
+                    action_id=payment_action_id,
+                    idempotency_key=payment_idempotency_key,
+                    reason_code="PAYMENT_REQUIRES_EXTERNAL_CONFIRMATION",
+                    metadata=payment_metadata,
+                    outcome="FAILED_PERMANENT",
+                    retryable=False,
+                )
+    except (httpx.HTTPError, ValueError) as exc:
+        return _record_external_payment_failure(
+            runtime,
+            order,
+            module_id=module_id,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            reason_code="PAYMENT_EXTERNAL_REQUEST_FAILED",
+            metadata={**payment_metadata, "error": str(exc)},
+            outcome="UNAVAILABLE",
+            retryable=True,
+        )
+
+    event_payload = _payment_event_payload(payment_payload)
+    event_name = str(event_payload.get("event") or "").strip()
+    if event_name not in PAYMENT_RESULT_EVENTS:
+        event_name = "PAYMENT_FAILED"
+    outcome = _safe_payment_outcome(event_name, event_payload.get("outcome"))
+    side_effect_state = _safe_side_effect_state(
+        event_payload.get("side_effect_state"),
+        default="confirmed" if event_name == "PAYMENT_MODE_CHANGED" else "none",
+    )
+    result_metadata = {
+        **payment_metadata,
+        "external_payment_id": payment_payload.get("payment_id"),
+        "external_payment_status": payment_payload.get("status"),
+    }
+    reason_code = event_payload.get("reason_code")
+    if not isinstance(reason_code, str) or not reason_code.strip():
+        reason_code = "EXTERNAL_PAYMENT_FAILED"
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event=event_name,
+            source_module=module_id,
+            order=order,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            outcome=outcome,
+            reason_code=reason_code if event_name == "PAYMENT_FAILED" else None,
+            severity="low" if event_name == "PAYMENT_MODE_CHANGED" else "high",
+            retryable=outcome in {"FAILED_RETRYABLE", "UNAVAILABLE", "TIMEOUT_UNKNOWN"},
+            side_effect_state=side_effect_state,
+            trigger_event="PAYMENT_REQUIRED",
+            metadata=result_metadata,
+        ),
+    )
+
+    if event_name == "PAYMENT_MODE_CHANGED":
+        updated_order = runtime.store.update_order_status(
+            order.order_id,
+            OrderStatusUpdate(status="accepted", status_message="Order accepted. External payment confirmed."),
+        )
+        return updated_order, True
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="ORDER_NEEDS_HUMAN",
+            source_module=ORDER_RECEIVER_MODULE_ID,
+            order=order,
+            action_id=f"order:{order.order_id}:needs-human:payment",
+            idempotency_key=f"human:{order.order_id}:payment",
+            outcome="NEEDS_HUMAN",
+            severity="high",
+            retryable=False,
+            side_effect_state="none",
+            trigger_event="PAYMENT_FAILED",
+            metadata=result_metadata,
+        ),
+    )
+    updated_order = runtime.store.update_order_status(
+        order.order_id,
+        OrderStatusUpdate(
+            status="accepted",
+            status_message="Order accepted. External payment needs human attention.",
+        ),
+    )
+    return updated_order, False
+
+
 MODULE_EXECUTORS = (
     ModuleExecutor(
         module_id=PAYMENT_CASH_MODULE_ID,
@@ -399,11 +760,33 @@ MODULE_EXECUTORS = (
 )
 
 
+def _external_payment_executors(runtime: PilotRuntime) -> tuple[ModuleExecutor, ...]:
+    executors: list[ModuleExecutor] = []
+    for manifest in runtime.config.resolved_modules.manifests:
+        if _external_payment_manifest(runtime, manifest.module_id) is None:
+            continue
+        module_id = manifest.module_id
+        executors.append(
+            ModuleExecutor(
+                module_id=module_id,
+                lane="payment",
+                execute=lambda runtime, order, module_id=module_id: execute_external_payment_module(
+                    runtime,
+                    order,
+                    module_id=module_id,
+                ),
+            )
+        )
+    return tuple(executors)
+
+
 def enabled_module_executors(runtime: PilotRuntime, *, lane: str) -> tuple[ModuleExecutor, ...]:
+    available_executors = MODULE_EXECUTORS + _external_payment_executors(runtime)
     return tuple(
         executor
-        for executor in MODULE_EXECUTORS
+        for executor in available_executors
         if executor.lane == lane and module_enabled(runtime, executor.module_id)
+        if lane != "payment" or not runtime.config.payment_module_id or executor.module_id == runtime.config.payment_module_id
     )
 
 
@@ -824,6 +1207,7 @@ __all__ = [
     "ORDER_RECEIVER_MODULE_ID",
     "PRINT_MODULE_ID",
     "enabled_module_executors",
+    "execute_external_payment_module",
     "execute_module_lane",
     "process_accepted_order",
 ]
