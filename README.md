@@ -70,7 +70,7 @@ The public story should stay narrower than the full `dev` runtime:
 - public claim: public protocol proof plus controlled live-pilot path
 - `demo-node/` is the proof and lab node, not a live restaurant node
 - `pilot-node/` is the controlled live-pilot foundation and the only live-directed node surface
-- identity, manifests, mirroring, curated directory, trust claims, and module manifests exist as real prototype layers, but they are not production guarantees
+- identity, manifests, mirroring, curated directory, trust claims, module manifests, and the first pilot runtime lanes exist as real prototype layers, but they are not production guarantees
 
 ## What Is Real Today
 
@@ -83,6 +83,7 @@ These things are implemented in the reference runtime today:
 - moderated directory and signed trust-claim skeletons
 - manifest-backed module and provider reference catalogs
 - additive flow contracts for pilot runtime lanes
+- pilot-node stock validation and pay-at-pickup payment-mode lanes
 
 These things are explicitly not the claim today:
 
@@ -260,7 +261,7 @@ The PDFs are artifacts.
 - no broad production restaurant operations yet
 - `pilot-node/` is the controlled live-pilot target, not the demo node
 - no CVR-backed restaurant verification
-- modules are opaque ids only, not executable contracts
+- modules are not a public third-party execution marketplace; only a small reference subset is executable inside `pilot-node`
 
 ## Protocol stance
 

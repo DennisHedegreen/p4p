@@ -69,7 +69,7 @@ This proves:
 - real restaurant operation
 - restaurant approval for live orders
 - CVR-backed restaurant verification
-- payment
+- online or protocol-managed payment
 - delivery
 - certification
 - CVR binding

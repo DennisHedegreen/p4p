@@ -4,6 +4,40 @@ This file holds short checkpoint and release-candidate notes.
 
 It is the place to point before cutting a proof-safe story to `main`.
 
+## 2 May 2026 — Pilot Runtime Lane Checkpoint
+
+Status:
+
+- public-facing runtime checkpoint
+- not a tag
+- still not a broad production restaurant release
+
+What changed:
+
+- `p4p.stock.basic` is now executable inside `pilot-node`
+- stock success emits `ORDER_VALIDATED` before the next lane
+- configured unavailable items emit `ITEM_NOT_POSSIBLE -> ORDER_NEEDS_HUMAN` and do not continue to print
+- `p4p.payment.cash` is now executable inside `pilot-node`
+- pay-at-pickup success emits `PAYMENT_REQUIRED -> PAYMENT_MODE_CHANGED` before the next lane
+- configured payment-mode failure emits `PAYMENT_FAILED -> ORDER_NEEDS_HUMAN` and does not continue to print
+- stock, payment, and print now compose as a real local pilot flow
+
+What this still does not imply:
+
+- online payment
+- card handling
+- settlement
+- third-party module marketplace
+- production restaurant rollout
+
+Verification:
+
+- focused stock/payment/print tests passed
+- full Python suite passed with 113 tests
+- public audit passed
+- JavaScript syntax check passed
+- Python compile check passed
+
 ## 30 April 2026 — Dev Cleanup Checkpoint
 
 Status:
@@ -57,6 +91,6 @@ It must not imply:
 
 - production security
 - live restaurant approval
-- payment
+- online or protocol-managed payment
 - delivery
 - broad restaurant rollout

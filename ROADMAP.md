@@ -455,11 +455,18 @@ They must not become second identity owners.
 
 ## 11. Gate H: Module Contract
 
-Status: opaque module ids only.
+Status: reference manifests and first pilot-node execution lanes exist.
 
 Purpose:
 
 define the first real module economy without making modules mandatory.
+
+Current reference runtime boundary:
+
+- `p4p.payment.cash` can run as a pay-at-pickup payment-mode lane in `pilot-node`
+- `p4p.stock.basic` can run as a local stock validation lane in `pilot-node`
+- `p4p.order.print` can run as the operator print/screen lane in `pilot-node`
+- this is not yet a third-party module marketplace or production certification model
 
 First module model should define:
 

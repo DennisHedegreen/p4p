@@ -15,6 +15,8 @@ It is the smallest real node shape for one restaurant:
 - signed heartbeat
 - pickup orders
 - pay at pickup
+- optional stock validation lane
+- optional pay-at-pickup payment-mode lane
 
 Start it in `menu_only`.
 
@@ -34,6 +36,14 @@ P4P_NODE_ORDER_MODE=menu_only \
 ```
 
 The SQLite path is the pilot node's source of truth for menu, operator state, and order history.
+
+Enable the small reference runtime lanes with `P4P_NODE_MODULES`:
+
+- `p4p.stock.basic` emits `ORDER_VALIDATED`, or `ITEM_NOT_POSSIBLE` when a configured item is unavailable.
+- `p4p.payment.cash` emits `PAYMENT_REQUIRED -> PAYMENT_MODE_CHANGED` for pay-at-pickup, or `PAYMENT_FAILED` when `P4P_PAYMENT_CASH_MODE=failed`.
+- `p4p.order.print` emits the operator print/screen lane.
+
+These lanes do not add online payment, card handling, or registry access to order contents.
 
 ## Order States
 
