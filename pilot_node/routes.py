@@ -172,6 +172,7 @@ def operator_state(runtime: PilotRuntime) -> dict[str, Any]:
         "public_modules": runtime.config.public_node_modules,
         "module_declarations": enabled_module_declarations(runtime),
         "public_module_declarations": public_module_declarations(runtime),
+        "undeclared_modules": runtime.config.undeclared_node_modules,
         "registry": registration_payload(runtime),
     }
 

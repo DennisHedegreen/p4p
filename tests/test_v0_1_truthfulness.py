@@ -2604,6 +2604,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 ["p4p.payment.cash", "p4p.order.print", "p4p.notify.email"],
             )
             self.assertEqual(operator_state["public_modules"], ["p4p.payment.cash"])
+            self.assertEqual(operator_state["undeclared_modules"], [])
             self.assertEqual(
                 [entry["module_id"] for entry in operator_state["module_declarations"]],
                 ["p4p.payment.cash", "p4p.order.print", "p4p.notify.email"],
@@ -2639,20 +2640,37 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(info["undeclared_modules"], [])
             pilot.store.close()
 
-    def test_pilot_node_rejects_unknown_module_ids_at_config_load(self) -> None:
+    def test_pilot_node_keeps_homebuilt_modules_undeclared_and_non_executable(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            with self.assertRaises(ValueError) as error:
-                load_module(
-                    "pilot-node/pilot_node.py",
-                    {
-                        "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
-                        "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
-                        "P4P_NODE_MODULES": "p4p.payment.cash,p4p.unknown.module",
-                        "P4P_OPERATOR_TOKEN": "operator-secret",
-                    },
-                )
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,local.pizzacoin.wallet",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
 
-            self.assertIn("Unknown P4P module id", str(error.exception))
+            runtime = sys.modules[f"{pilot.__name__}_app"].RUNTIME
+            operator_state = pilot.operator_state(authorization="Bearer operator-secret")
+            info = pilot.public_info()
+            node = pilot.node_state()
+
+            self.assertEqual(operator_state["enabled_modules"], ["p4p.payment.cash", "local.pizzacoin.wallet"])
+            self.assertEqual(operator_state["public_modules"], ["p4p.payment.cash"])
+            self.assertEqual(operator_state["undeclared_modules"], ["local.pizzacoin.wallet"])
+            self.assertEqual(
+                [entry["module_id"] for entry in operator_state["module_declarations"]],
+                ["p4p.payment.cash"],
+            )
+            self.assertEqual(node.modules, ["p4p.payment.cash"])
+            self.assertEqual(info["modules"], ["p4p.payment.cash"])
+            self.assertEqual(info["undeclared_modules"], [])
+            self.assertFalse(runtime.config.resolved_modules.contains("local.pizzacoin.wallet"))
+            pilot.store.close()
 
     def test_pilot_node_persists_orders_and_operator_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

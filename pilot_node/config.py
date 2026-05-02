@@ -5,7 +5,16 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
 
-from p4p_core import ResolvedModules, env_float, env_list, env_path, env_str, load_registry_urls, resolve_enabled_modules
+from p4p_core import (
+    ResolvedModules,
+    env_float,
+    env_list,
+    env_path,
+    env_str,
+    load_registry_urls,
+    normalize_module_ids,
+    resolve_enabled_modules,
+)
 from p4p_core.constants import OrderMode
 from p4p_identity import load_or_create_private_key, public_key_from_private
 
@@ -46,6 +55,7 @@ class PilotConfig:
     node_order_mode_default: str
     node_modules: list[str]
     public_node_modules: list[str]
+    undeclared_node_modules: list[str]
     resolved_modules: ResolvedModules
     hardware_profile: str
     hardware_profile_customized: bool
@@ -76,7 +86,10 @@ class PilotConfig:
 def build_pilot_config() -> PilotConfig:
     heartbeat_interval_seconds = int(os.environ.get("P4P_HEARTBEAT_INTERVAL_SECONDS", "60"))
     node_private_key = load_node_private_key()
-    resolved_modules = resolve_enabled_modules(env_list("P4P_NODE_MODULES", ["p4p.payment.cash"]))
+    node_modules = normalize_module_ids(env_list("P4P_NODE_MODULES", ["p4p.payment.cash"]))
+    resolved_modules = resolve_enabled_modules(node_modules, strict=False)
+    declared_module_ids = set(resolved_modules.module_ids)
+    undeclared_node_modules = [module_id for module_id in node_modules if module_id not in declared_module_ids]
 
     hardware_profile = resolve_hardware_profile(env_str("P4P_HARDWARE_PROFILE", "reference_printer"))
     print_module_target = env_str("P4P_PRINT_MODULE_TARGET", hardware_profile.print_module_target)
@@ -109,8 +122,9 @@ def build_pilot_config() -> PilotConfig:
         node_categories=env_list("P4P_NODE_CATEGORIES", ["kebab"]),
         node_open_default=env_str("P4P_NODE_OPEN", "true").lower() == "true",
         node_order_mode_default=env_str("P4P_NODE_ORDER_MODE", "menu_only"),
-        node_modules=list(resolved_modules.module_ids),
+        node_modules=node_modules,
         public_node_modules=resolved_modules.public_module_ids(),
+        undeclared_node_modules=undeclared_node_modules,
         resolved_modules=resolved_modules,
         hardware_profile=hardware_profile.profile_id,
         hardware_profile_customized=hardware_profile_customized,

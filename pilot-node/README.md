@@ -45,6 +45,10 @@ Enable the small reference runtime lanes with `P4P_NODE_MODULES`:
 
 These lanes do not add online payment, card handling, or registry access to order contents.
 
+Homebuilt or external module IDs can also be listed in `P4P_NODE_MODULES`.
+If a module has no reference manifest, the pilot node keeps it as `undeclared_modules`
+in operator state and does not execute or publish it as a P4P reference module.
+
 ## Order States
 
 The first pilot order-state set is:
