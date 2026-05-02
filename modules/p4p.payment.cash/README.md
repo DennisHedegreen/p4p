@@ -25,13 +25,21 @@ The first module should prove the module boundary, not payment complexity.
 
 It lets the node announce an optional capability while core P4P still works without it.
 
-## v0.1 Behavior
+## v0.1 Pilot Behavior
 
-In `v0.1`, this module is only an opaque module id:
+In the demo node, this module can still be announced as a simple public capability:
 
 ```json
 "modules": ["p4p.payment.cash"]
 ```
+
+In the pilot node, the same module can also be enabled as a local execution lane.
+
+When enabled, the node records `PAYMENT_REQUIRED` followed by
+`PAYMENT_MODE_CHANGED` before the next operator lane continues.
+
+If `P4P_PAYMENT_CASH_MODE=failed`, the node records `PAYMENT_FAILED` and then
+`ORDER_NEEDS_HUMAN` instead of continuing to print.
 
 Clients may display it.
 
@@ -47,4 +55,3 @@ In `v0.2`, this module can become a signed module manifest with:
 - trust claims
 
 It should still require no registry permission.
-

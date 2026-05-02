@@ -21,6 +21,7 @@ ORDER_RECEIVER_MODULE_ID = "p4p.order.receiver"
 PRINT_MODULE_ID = "p4p.order.print"
 NOTIFY_EMAIL_MODULE_ID = "p4p.notify.email"
 STOCK_BASIC_MODULE_ID = "p4p.stock.basic"
+PAYMENT_CASH_MODULE_ID = "p4p.payment.cash"
 INTERNAL_RUNTIME_MODULE_IDS = frozenset({ORDER_RECEIVER_MODULE_ID})
 REQUEST_PHASE = "request"
 RESULT_PHASE = "result"
@@ -187,6 +188,10 @@ def process_accepted_order(runtime: PilotRuntime, order: StoredOrder) -> StoredO
         accepted_order, stock_allows_next_step = execute_stock_lane(runtime, accepted_order)
         if not stock_allows_next_step:
             return accepted_order
+    if module_enabled(runtime, PAYMENT_CASH_MODULE_ID):
+        accepted_order, payment_allows_next_step = execute_payment_cash_lane(runtime, accepted_order)
+        if not payment_allows_next_step:
+            return accepted_order
     if not module_enabled(runtime, PRINT_MODULE_ID):
         return accepted_order
     return execute_print_lane(runtime, accepted_order)
@@ -274,6 +279,104 @@ def execute_stock_lane(runtime: PilotRuntime, order: StoredOrder) -> tuple[Store
     updated_order = runtime.store.update_order_status(
         order.order_id,
         OrderStatusUpdate(status="accepted", status_message="Order accepted. Stock validated."),
+    )
+    return updated_order, True
+
+
+def execute_payment_cash_lane(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
+    payment_action_id = f"order:{order.order_id}:payment:cash"
+    payment_idempotency_key = f"payment:{order.order_id}:cash"
+    configured_mode = runtime.config.payment_cash_mode.strip().lower()
+    payment_metadata = {
+        **module_metadata(runtime, PAYMENT_CASH_MODULE_ID),
+        "configured_mode": configured_mode or "pay_at_pickup",
+        "payment_method": "pay_at_pickup",
+        "payment_scope": "outside_protocol",
+    }
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="PAYMENT_REQUIRED",
+            source_module=PAYMENT_CASH_MODULE_ID,
+            order=order,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="none",
+            contract_phase=REQUEST_PHASE,
+            metadata=payment_metadata,
+        ),
+    )
+
+    if configured_mode in {"failed", "unavailable", "payment_failed"}:
+        record_order_flow_event(
+            runtime,
+            build_result_event(
+                runtime=runtime,
+                event="PAYMENT_FAILED",
+                source_module=PAYMENT_CASH_MODULE_ID,
+                order=order,
+                action_id=payment_action_id,
+                idempotency_key=payment_idempotency_key,
+                outcome="UNAVAILABLE",
+                reason_code="PAYMENT_MODE_UNAVAILABLE",
+                severity="high",
+                retryable=False,
+                side_effect_state="none",
+                trigger_event="PAYMENT_REQUIRED",
+                metadata=payment_metadata,
+            ),
+        )
+        record_order_flow_event(
+            runtime,
+            build_result_event(
+                runtime=runtime,
+                event="ORDER_NEEDS_HUMAN",
+                source_module=ORDER_RECEIVER_MODULE_ID,
+                order=order,
+                action_id=f"order:{order.order_id}:needs-human:payment",
+                idempotency_key=f"human:{order.order_id}:payment",
+                outcome="NEEDS_HUMAN",
+                severity="high",
+                retryable=False,
+                side_effect_state="none",
+                trigger_event="PAYMENT_FAILED",
+                metadata=payment_metadata,
+            ),
+        )
+        updated_order = runtime.store.update_order_status(
+            order.order_id,
+            OrderStatusUpdate(
+                status="accepted",
+                status_message="Order accepted. Payment mode needs human attention.",
+            ),
+        )
+        return updated_order, False
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="PAYMENT_MODE_CHANGED",
+            source_module=PAYMENT_CASH_MODULE_ID,
+            order=order,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="confirmed",
+            trigger_event="PAYMENT_REQUIRED",
+            metadata=payment_metadata,
+        ),
+    )
+    updated_order = runtime.store.update_order_status(
+        order.order_id,
+        OrderStatusUpdate(status="accepted", status_message="Order accepted. Payment set to pay at pickup."),
     )
     return updated_order, True
 

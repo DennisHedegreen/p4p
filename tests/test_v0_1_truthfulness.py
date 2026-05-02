@@ -2699,7 +2699,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_MODE": "confirmed",
                     "P4P_OPERATOR_TOKEN": "operator-secret",
                 },
@@ -2719,6 +2719,78 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(events[-1].metadata["adapter_target"], "printer")
             self.assertEqual(stored[0].status, "accepted")
             self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
+            pilot.store.close()
+
+    def test_pilot_node_payment_cash_lane_marks_pay_at_pickup_before_print(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                [
+                    "ORDER_ACCEPTED",
+                    "PAYMENT_REQUIRED",
+                    "PAYMENT_MODE_CHANGED",
+                    "PRINT_REQUESTED",
+                    "PRINT_SUCCESS_CONFIRMED",
+                ],
+            )
+            self.assertEqual(events[1].source_module, "p4p.payment.cash")
+            self.assertEqual(events[1].metadata["contract_phase"], "request")
+            self.assertEqual(events[2].metadata["payment_scope"], "outside_protocol")
+            self.assertEqual(events[2].metadata["trigger_event"], "PAYMENT_REQUIRED")
+            self.assertEqual(events[3].metadata["contract_phase"], "request")
+            self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
+            pilot.store.close()
+
+    def test_pilot_node_payment_cash_failure_stops_before_print_lane(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device_path = Path(tmpdir) / "should-not-print-payment.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_PAYMENT_CASH_MODE": "failed",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PAYMENT_REQUIRED", "PAYMENT_FAILED", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].source_module, "p4p.payment.cash")
+            self.assertEqual(events[2].reason_code, "PAYMENT_MODE_UNAVAILABLE")
+            self.assertEqual(events[3].metadata["trigger_event"], "PAYMENT_FAILED")
+            self.assertEqual(stored[0].status_message, "Order accepted. Payment mode needs human attention.")
+            self.assertFalse(device_path.exists())
             pilot.store.close()
 
     def test_pilot_node_stock_module_validates_before_print_lane(self) -> None:
@@ -2742,13 +2814,22 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
             self.assertEqual(
                 [event.event for event in events],
-                ["ORDER_ACCEPTED", "ORDER_VALIDATED", "PRINT_REQUESTED", "PRINT_SUCCESS_CONFIRMED"],
+                [
+                    "ORDER_ACCEPTED",
+                    "ORDER_VALIDATED",
+                    "PAYMENT_REQUIRED",
+                    "PAYMENT_MODE_CHANGED",
+                    "PRINT_REQUESTED",
+                    "PRINT_SUCCESS_CONFIRMED",
+                ],
             )
             self.assertEqual(events[1].source_module, "p4p.stock.basic")
             self.assertEqual(events[1].metadata["contract_phase"], "result")
             self.assertEqual(events[1].metadata["trigger_event"], "ORDER_ACCEPTED")
             self.assertEqual(events[1].metadata["requested_item_ids"], ["kebab-pita"])
+            self.assertEqual(events[2].source_module, "p4p.payment.cash")
             self.assertEqual(events[2].metadata["contract_phase"], "request")
+            self.assertEqual(events[4].metadata["contract_phase"], "request")
             self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
             pilot.store.close()
 
@@ -2796,7 +2877,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_OPERATOR_TOKEN": "operator-secret",
                 },
             )
@@ -2837,7 +2918,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print,p4p.notify.email",
+                    "P4P_NODE_MODULES": "p4p.order.print,p4p.notify.email",
                     "P4P_PRINT_MODULE_MODE": "printer_offline",
                     "P4P_NOTIFY_EMAIL_MODE": "sent",
                     "P4P_OPERATOR_TOKEN": "operator-secret",
@@ -2883,7 +2964,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "screen",
                     "P4P_PRINT_MODULE_MODE": "confirmed",
                     "P4P_OPERATOR_TOKEN": "operator-secret",
@@ -2915,7 +2996,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_HARDWARE_PROFILE": "box_v1",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
                     "P4P_PRINT_SENSOR_SERIAL_PATH": str(serial_path),
@@ -2946,7 +3027,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_HARDWARE_PROFILE": "box_v1",
                     "P4P_PRINT_MODULE_TARGET": "screen",
                     "P4P_PRINT_MODULE_DRIVER": "simulated",
@@ -2976,7 +3057,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "file_spool",
                     "P4P_PRINT_SPOOL_DIR": str(spool_dir),
@@ -3008,7 +3089,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "device_path",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3040,7 +3121,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "escpos_raw",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3073,7 +3154,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "device_path",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3104,7 +3185,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "device_path",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3139,7 +3220,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "device_path",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3173,7 +3254,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "device_path",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3207,7 +3288,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "device_path",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3242,7 +3323,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                    "P4P_NODE_MODULES": "p4p.order.print",
                     "P4P_PRINT_MODULE_TARGET": "printer",
                     "P4P_PRINT_MODULE_DRIVER": "device_path",
                     "P4P_PRINT_DEVICE_PATH": str(device_path),
@@ -3274,7 +3355,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
                     "P4P_NODE_OPEN": "true",
                     "P4P_NODE_ORDER_MODE": "live",
-                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print,p4p.notify.email",
+                    "P4P_NODE_MODULES": "p4p.order.print,p4p.notify.email",
                     "P4P_PRINT_MODULE_MODE": "printer_offline",
                     "P4P_NOTIFY_EMAIL_MODE": "sent",
                     "P4P_OPERATOR_TOKEN": "operator-secret",

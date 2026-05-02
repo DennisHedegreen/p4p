@@ -62,6 +62,7 @@ class PilotConfig:
     print_sensor_postcheck: str
     stock_module_mode: str
     stock_unavailable_item_ids: list[str]
+    payment_cash_mode: str
     notify_email_mode: str
     db_path: str
     menu_item_1_name: str
@@ -126,6 +127,7 @@ def build_pilot_config() -> PilotConfig:
         print_sensor_postcheck=env_str("P4P_PRINT_SENSOR_POSTCHECK", "confirmed"),
         stock_module_mode=env_str("P4P_STOCK_MODULE_MODE", "validated"),
         stock_unavailable_item_ids=env_list("P4P_STOCK_UNAVAILABLE_ITEM_IDS", []),
+        payment_cash_mode=env_str("P4P_PAYMENT_CASH_MODE", "pay_at_pickup"),
         notify_email_mode=env_str("P4P_NOTIFY_EMAIL_MODE", "sent"),
         db_path=os.environ.get("P4P_PILOT_NODE_DB_PATH", ":memory:"),
         menu_item_1_name=env_str("P4P_MENU_ITEM_1_NAME", "Kebab pita"),

@@ -30,6 +30,6 @@
     "data_access_summary": "Order total and fulfillment type. No card or account data.",
     "trust_status": "reference manifest, unsigned provider",
     "readiness": "test",
-    "operator_status": "enabled in the demo node"
+    "operator_status": "enabled in the demo node and executable in the pilot node when enabled"
   }
 }
