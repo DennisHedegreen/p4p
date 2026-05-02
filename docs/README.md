@@ -29,7 +29,7 @@ If you arrived here from GitHub and need the short orientation first, read `docs
 - `MODULE-EXECUTION-CONTRACT.md`
   Planned `v0.2` execution contract for module lanes, event/result shape, permissions, fallback policy, and idempotency.
 - `PAYMENT-ADAPTER-STANDARD.md`
-  Draft guardrail for payment modules: P4P routes payment requests to adapters but does not become a payment provider.
+  Public guardrail for payment modules: P4P routes payment requests to adapters but does not become a payment provider.
 - `FIRST-FLOWS.md`
   First concrete module-flow sketches for printer, payment, AI-menu fallback, and duplicate-protection behavior.
 - `ORDER-CONSENT.md`
