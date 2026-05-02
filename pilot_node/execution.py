@@ -20,6 +20,7 @@ from pilot_node.runtime import PilotRuntime
 ORDER_RECEIVER_MODULE_ID = "p4p.order.receiver"
 PRINT_MODULE_ID = "p4p.order.print"
 NOTIFY_EMAIL_MODULE_ID = "p4p.notify.email"
+STOCK_BASIC_MODULE_ID = "p4p.stock.basic"
 INTERNAL_RUNTIME_MODULE_IDS = frozenset({ORDER_RECEIVER_MODULE_ID})
 REQUEST_PHASE = "request"
 RESULT_PHASE = "result"
@@ -182,9 +183,99 @@ def process_accepted_order(runtime: PilotRuntime, order: StoredOrder) -> StoredO
             metadata={"order_mode": runtime.store.get_state("order_mode", runtime.config.node_order_mode_default)},
         )
     )
+    if module_enabled(runtime, STOCK_BASIC_MODULE_ID):
+        accepted_order, stock_allows_next_step = execute_stock_lane(runtime, accepted_order)
+        if not stock_allows_next_step:
+            return accepted_order
     if not module_enabled(runtime, PRINT_MODULE_ID):
         return accepted_order
     return execute_print_lane(runtime, accepted_order)
+
+
+def execute_stock_lane(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
+    stock_action_id = f"order:{order.order_id}:stock:basic"
+    stock_idempotency_key = f"stock:{order.order_id}:basic"
+    requested_item_ids = tuple(item.id for item in order.items)
+    unavailable_item_id_set = set(runtime.config.stock_unavailable_item_ids)
+    unavailable_item_ids = tuple(
+        item_id for item_id in requested_item_ids if item_id in unavailable_item_id_set
+    )
+    configured_mode = runtime.config.stock_module_mode.strip().lower()
+    stock_metadata = {
+        **module_metadata(runtime, STOCK_BASIC_MODULE_ID),
+        "configured_mode": configured_mode or "validated",
+        "requested_item_ids": list(requested_item_ids),
+        "unavailable_item_ids": list(unavailable_item_ids),
+    }
+
+    if unavailable_item_ids or configured_mode in {"item_not_possible", "unavailable", "failed"}:
+        blocked_item_ids = unavailable_item_ids or requested_item_ids[:1]
+        record_order_flow_event(
+            runtime,
+            build_result_event(
+                runtime=runtime,
+                event="ITEM_NOT_POSSIBLE",
+                source_module=STOCK_BASIC_MODULE_ID,
+                order=order,
+                action_id=stock_action_id,
+                idempotency_key=stock_idempotency_key,
+                outcome="FAILED_PERMANENT",
+                reason_code="ITEM_NOT_POSSIBLE",
+                severity="high",
+                retryable=False,
+                side_effect_state="none",
+                trigger_event="ORDER_ACCEPTED",
+                metadata={**stock_metadata, "blocked_item_ids": list(blocked_item_ids)},
+            ),
+        )
+        record_order_flow_event(
+            runtime,
+            build_result_event(
+                runtime=runtime,
+                event="ORDER_NEEDS_HUMAN",
+                source_module=ORDER_RECEIVER_MODULE_ID,
+                order=order,
+                action_id=f"order:{order.order_id}:needs-human:stock",
+                idempotency_key=f"human:{order.order_id}:stock",
+                outcome="NEEDS_HUMAN",
+                severity="high",
+                retryable=False,
+                side_effect_state="none",
+                trigger_event="ITEM_NOT_POSSIBLE",
+                metadata={**stock_metadata, "blocked_item_ids": list(blocked_item_ids)},
+            ),
+        )
+        updated_order = runtime.store.update_order_status(
+            order.order_id,
+            OrderStatusUpdate(
+                status="accepted",
+                status_message="Order accepted. Stock check needs human attention.",
+            ),
+        )
+        return updated_order, False
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="ORDER_VALIDATED",
+            source_module=STOCK_BASIC_MODULE_ID,
+            order=order,
+            action_id=stock_action_id,
+            idempotency_key=stock_idempotency_key,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="confirmed",
+            trigger_event="ORDER_ACCEPTED",
+            metadata=stock_metadata,
+        ),
+    )
+    updated_order = runtime.store.update_order_status(
+        order.order_id,
+        OrderStatusUpdate(status="accepted", status_message="Order accepted. Stock validated."),
+    )
+    return updated_order, True
 
 
 def execute_print_lane(runtime: PilotRuntime, order: StoredOrder) -> StoredOrder:

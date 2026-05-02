@@ -26,9 +26,15 @@ or:
 
 without forcing every node to have the same ladder.
 
-## v0.1 Behavior
+## v0.1 Pilot Behavior
 
-In `v0.1`, this module is still just a declared module id plus a local execution contract.
+In the pilot node, this module can be enabled with `p4p.stock.basic`.
+
+When enabled, the node records `ORDER_VALIDATED` after `ORDER_ACCEPTED` before the
+next operator lane continues.
+
+If a requested item is listed in `P4P_STOCK_UNAVAILABLE_ITEM_IDS`, the node records
+`ITEM_NOT_POSSIBLE` and then `ORDER_NEEDS_HUMAN` instead of continuing to print.
 
 Clients do not need to understand the full stock logic.
 
