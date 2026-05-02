@@ -170,6 +170,23 @@ class ExternalPaymentClient:
         )
 
 
+class ModuleHealthClient:
+    def __init__(self, *, ok: bool = True) -> None:
+        self.ok = ok
+        self.gets: list[str] = []
+
+    def __enter__(self) -> "ModuleHealthClient":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def get(self, url: str) -> httpx.Response:
+        self.gets.append(url)
+        request = httpx.Request("GET", url)
+        return httpx.Response(200, request=request, json={"ok": self.ok})
+
+
 class P4PTruthfulnessTests(unittest.TestCase):
     def make_registry_metadata(self, **overrides) -> str:
         payload = {
@@ -2707,6 +2724,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             runtime = sys.modules[f"{pilot.__name__}_app"].RUNTIME
             execution = sys.modules["pilot_node.execution"]
             operator_state = pilot.operator_state(authorization="Bearer operator-secret")
+            operator_modules = pilot.operator_modules(authorization="Bearer operator-secret")
             info = pilot.public_info()
             node = pilot.node_state()
 
@@ -2720,6 +2738,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(node.modules, ["p4p.payment.cash"])
             self.assertEqual(info["modules"], ["p4p.payment.cash"])
             self.assertEqual(info["undeclared_modules"], [])
+            self.assertEqual(
+                [entry["module_id"] for entry in operator_modules["undeclared_modules"]],
+                ["local.pizzacoin.wallet"],
+            )
+            self.assertEqual(operator_modules["undeclared_modules"][0]["health"], "undeclared")
+            self.assertFalse(operator_modules["undeclared_modules"][0]["executable"])
             self.assertFalse(runtime.config.resolved_modules.contains("local.pizzacoin.wallet"))
             self.assertEqual(
                 [executor.module_id for executor in execution.enabled_module_executors(runtime, lane="payment")],
@@ -2787,6 +2811,74 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(payment_client.posts[1][0], "http://127.0.0.1:8301/p4p/payment/pay_test_001/confirm")
             self.assertEqual(stored[0].payment_method, "external_test_payment")
             self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
+            pilot.store.close()
+
+    def test_pilot_node_operator_modules_reports_active_external_payment_health(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,local.pizzacoin.wallet,p4p.order.print",
+                    "P4P_EXTERNAL_MODULE_MANIFESTS": str(pizzacoin_manifest),
+                    "P4P_PAYMENT_MODULE_ID": "local.pizzacoin.wallet",
+                    "P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID": "usr_test_customer",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            health_client = ModuleHealthClient(ok=True)
+            with patch.object(pilot.httpx, "Client", return_value=health_client):
+                modules = pilot.operator_modules(authorization="Bearer operator-secret")
+
+            self.assertEqual(modules["active_by_lane"]["payment"], "local.pizzacoin.wallet")
+            payment_modules = {
+                entry["module_id"]: entry
+                for entry in modules["lanes"]["payment"]["modules"]
+            }
+            self.assertFalse(payment_modules["p4p.payment.cash"]["active"])
+            self.assertEqual(payment_modules["p4p.payment.cash"]["health"], "available")
+            self.assertFalse(payment_modules["p4p.payment.cash"]["executable"])
+            self.assertTrue(payment_modules["local.pizzacoin.wallet"]["active"])
+            self.assertTrue(payment_modules["local.pizzacoin.wallet"]["configured"])
+            self.assertTrue(payment_modules["local.pizzacoin.wallet"]["executable"])
+            self.assertEqual(payment_modules["local.pizzacoin.wallet"]["health"], "up")
+            self.assertEqual(payment_modules["local.pizzacoin.wallet"]["health_url"], "http://127.0.0.1:8301/health")
+            self.assertEqual(health_client.gets, ["http://127.0.0.1:8301/health"])
+            self.assertEqual(modules["lanes"]["operator"]["modules"][0]["module_id"], "p4p.order.print")
+            self.assertTrue(modules["lanes"]["operator"]["modules"][0]["active"])
+            pilot.store.close()
+
+    def test_pilot_node_operator_modules_marks_selected_payment_missing_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "local.pizzacoin.wallet",
+                    "P4P_EXTERNAL_MODULE_MANIFESTS": str(pizzacoin_manifest),
+                    "P4P_PAYMENT_MODULE_ID": "local.pizzacoin.wallet",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            modules = pilot.operator_modules(authorization="Bearer operator-secret")
+            payment_entry = modules["lanes"]["payment"]["modules"][0]
+
+            self.assertEqual(payment_entry["module_id"], "local.pizzacoin.wallet")
+            self.assertTrue(payment_entry["active"])
+            self.assertFalse(payment_entry["configured"])
+            self.assertFalse(payment_entry["executable"])
+            self.assertEqual(payment_entry["health"], "not_configured")
+            self.assertEqual(payment_entry["missing_configuration"], ["payment_external_customer_user_id"])
             pilot.store.close()
 
     def test_pilot_node_external_payment_requires_explicit_customer_user(self) -> None:
@@ -3579,8 +3671,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             with self.assertRaises(HTTPException) as wrong_token:
                 pilot.operator_orders(authorization="Bearer wrong-secret")
 
+            with self.assertRaises(HTTPException) as missing_modules_token:
+                pilot.operator_modules()
+
             self.assertEqual(missing_token.exception.status_code, 401)
             self.assertEqual(wrong_token.exception.status_code, 401)
+            self.assertEqual(missing_modules_token.exception.status_code, 401)
             pilot.store.close()
 
     def test_pilot_node_root_index_points_browser_to_public_endpoints(self) -> None:
@@ -3603,6 +3699,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertTrue(index["accepts_orders"])
             self.assertEqual(index["endpoints"]["info"], "GET /p4p/info")
             self.assertEqual(index["endpoints"]["order"], "POST /p4p/order")
+            self.assertEqual(index["endpoints"]["operator_modules"], "GET /operator/modules")
             pilot.store.close()
 
     def test_pilot_node_dual_registers_to_primary_and_backup(self) -> None:

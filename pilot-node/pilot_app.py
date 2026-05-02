@@ -15,6 +15,7 @@ from p4p_core import ModuleResultEvent, OrderItem, OrderRequest, OrderStatusUpda
 from pilot_node.config import OperatorStateUpdate
 from pilot_node.routes import (
     build_app,
+    operator_modules as _operator_modules,
     operator_order_events as _operator_order_events,
     operator_orders as _operator_orders,
     operator_reannounce as _operator_reannounce,
@@ -70,6 +71,15 @@ def operator_state(authorization=None, x_p4p_operator_token=None):
         x_p4p_operator_token=x_p4p_operator_token,
     )
     return _operator_state(RUNTIME)
+
+
+def operator_modules(authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_modules(RUNTIME)
 
 
 async def operator_update_state(payload: OperatorStateUpdate, authorization=None, x_p4p_operator_token=None):
@@ -130,6 +140,7 @@ __all__ = [
     "app",
     "httpx",
     "node_state",
+    "operator_modules",
     "operator_order_events",
     "operator_orders",
     "operator_reannounce",

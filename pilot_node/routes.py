@@ -5,6 +5,7 @@ import secrets
 from contextlib import asynccontextmanager, suppress
 from datetime import timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Response, status
@@ -25,7 +26,13 @@ from p4p_core import (
 from p4p_core.constants import PROTOCOL_VERSION
 
 from pilot_node.config import OperatorStateUpdate
-from pilot_node.execution import PAYMENT_CASH_MODULE_ID, process_accepted_order
+from pilot_node.execution import (
+    NOTIFY_EMAIL_MODULE_ID,
+    PAYMENT_CASH_MODULE_ID,
+    PRINT_MODULE_ID,
+    STOCK_BASIC_MODULE_ID,
+    process_accepted_order,
+)
 from pilot_node.runtime import (
     PilotRuntime,
     enabled_module_declarations,
@@ -148,6 +155,7 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
             "menu": "GET /p4p/menu",
             "order": "POST /p4p/order",
             "operator_state": "GET /operator/state",
+            "operator_modules": "GET /operator/modules",
             "operator_orders": "GET /operator/orders",
             "operator_reannounce": "POST /operator/reannounce",
         },
@@ -200,6 +208,222 @@ def operator_state(runtime: PilotRuntime) -> dict[str, Any]:
         "public_module_declarations": public_module_declarations(runtime),
         "undeclared_modules": runtime.config.undeclared_node_modules,
         "registry": registration_payload(runtime),
+    }
+
+
+def module_execution_lane(manifest) -> str:
+    module_class = str(manifest.raw.get("module_class") or manifest.raw.get("type") or "").strip()
+    if module_class == "payment":
+        return "payment"
+    return manifest.lane
+
+
+def module_entrypoint(manifest) -> str:
+    entrypoint = manifest.raw.get("entrypoint")
+    return entrypoint.strip() if isinstance(entrypoint, str) else ""
+
+
+def external_health_url(entrypoint: str) -> str:
+    parts = urlsplit(entrypoint)
+    if not parts.scheme or not parts.netloc:
+        return ""
+    return f"{parts.scheme}://{parts.netloc}/health"
+
+
+def module_configuration(runtime: PilotRuntime, manifest) -> tuple[bool, list[str]]:
+    lane = module_execution_lane(manifest)
+    if lane != "payment":
+        return True, []
+    if manifest.module_id == PAYMENT_CASH_MODULE_ID:
+        return True, []
+
+    missing: list[str] = []
+    entrypoint = module_entrypoint(manifest)
+    if manifest.module_id == runtime.config.payment_module_id:
+        if not runtime.config.payment_external_url:
+            missing.append("payment_external_url")
+        if not runtime.config.payment_external_customer_user_id:
+            missing.append("payment_external_customer_user_id")
+    elif not entrypoint:
+        missing.append("entrypoint")
+
+    return not missing, missing
+
+
+def module_active(runtime: PilotRuntime, manifest) -> bool:
+    if module_execution_lane(manifest) == "payment":
+        return manifest.module_id == runtime.config.payment_module_id
+    return manifest.module_id in runtime.config.flow_module_ids
+
+
+def module_health(runtime: PilotRuntime, manifest, *, active: bool, configured: bool) -> dict[str, Any]:
+    if manifest.module_id == PAYMENT_CASH_MODULE_ID:
+        return {
+            "health": "available",
+            "health_reason": "builtin_reference_module",
+            "health_url": None,
+            "last_checked_at": None,
+        }
+    if module_execution_lane(manifest) != "payment":
+        return {
+            "health": "available",
+            "health_reason": "enabled_manifest",
+            "health_url": None,
+            "last_checked_at": None,
+        }
+    if not active:
+        return {
+            "health": "not_checked",
+            "health_reason": "module_not_active",
+            "health_url": None,
+            "last_checked_at": None,
+        }
+    if not configured:
+        return {
+            "health": "not_configured",
+            "health_reason": "required_configuration_missing",
+            "health_url": None,
+            "last_checked_at": None,
+        }
+
+    health_url = external_health_url(runtime.config.payment_external_url or module_entrypoint(manifest))
+    checked_at = utc_now().isoformat()
+    if not health_url:
+        return {
+            "health": "unknown",
+            "health_reason": "no_health_endpoint",
+            "health_url": None,
+            "last_checked_at": checked_at,
+        }
+
+    try:
+        timeout = min(max(runtime.config.payment_external_timeout_seconds, 0.25), 2.0)
+        with httpx.Client(timeout=timeout) as client:
+            response = client.get(health_url)
+            response.raise_for_status()
+            payload = response.json()
+    except Exception as exc:
+        return {
+            "health": "down",
+            "health_reason": describe_http_error(exc),
+            "health_url": health_url,
+            "last_checked_at": checked_at,
+        }
+
+    if isinstance(payload, dict) and payload.get("ok") is True:
+        return {
+            "health": "up",
+            "health_reason": "external_health_ok",
+            "health_url": health_url,
+            "last_checked_at": checked_at,
+        }
+    return {
+        "health": "degraded",
+        "health_reason": "external_health_did_not_report_ok",
+        "health_url": health_url,
+        "last_checked_at": checked_at,
+    }
+
+
+BUILTIN_EXECUTOR_MODULE_IDS = frozenset(
+    {
+        PAYMENT_CASH_MODULE_ID,
+        PRINT_MODULE_ID,
+        STOCK_BASIC_MODULE_ID,
+        NOTIFY_EMAIL_MODULE_ID,
+    }
+)
+
+
+def operator_module_entry(runtime: PilotRuntime, manifest) -> dict[str, Any]:
+    lane = module_execution_lane(manifest)
+    active = module_active(runtime, manifest)
+    configured, missing_configuration = module_configuration(runtime, manifest)
+    implementation = "builtin_reference" if manifest.module_id in BUILTIN_EXECUTOR_MODULE_IDS else "external_http"
+    if manifest.module_id not in BUILTIN_EXECUTOR_MODULE_IDS and lane != "payment" and not module_entrypoint(manifest):
+        implementation = "manifest_only"
+    executable = active and configured and implementation != "manifest_only"
+    health = module_health(runtime, manifest, active=active, configured=configured)
+    return {
+        "module_id": manifest.module_id,
+        "provider_id": manifest.provider_id,
+        "version": manifest.version,
+        "lane": lane,
+        "declared": True,
+        "active": active,
+        "configured": configured,
+        "executable": executable,
+        "implementation": implementation,
+        "visibility": manifest.visibility,
+        "readiness": manifest.readiness,
+        "status": manifest.status,
+        "description": manifest.description,
+        "operator_status": manifest.operator_status,
+        "missing_configuration": missing_configuration,
+        "suggested_fallbacks": {
+            event_name: list(module_ids)
+            for event_name, module_ids in manifest.suggested_fallbacks.items()
+        },
+        **health,
+    }
+
+
+def undeclared_module_entry(runtime: PilotRuntime, module_id: str) -> dict[str, Any]:
+    return {
+        "module_id": module_id,
+        "provider_id": None,
+        "version": None,
+        "lane": "unknown",
+        "declared": False,
+        "active": False,
+        "configured": False,
+        "executable": False,
+        "implementation": "undeclared",
+        "visibility": "operator_only",
+        "readiness": "unknown",
+        "status": "undeclared",
+        "description": "Enabled by this node, but no local or reference manifest was loaded.",
+        "operator_status": "manifest required before execution or public declaration",
+        "missing_configuration": ["module_manifest"],
+        "health": "undeclared",
+        "health_reason": "module_manifest_missing",
+        "health_url": None,
+        "last_checked_at": None,
+        "suggested_fallbacks": {},
+    }
+
+
+def operator_modules(runtime: PilotRuntime) -> dict[str, Any]:
+    declared = [
+        operator_module_entry(runtime, manifest)
+        for manifest in runtime.config.resolved_modules.manifests
+    ]
+    undeclared = [
+        undeclared_module_entry(runtime, module_id)
+        for module_id in runtime.config.undeclared_node_modules
+    ]
+    modules = declared + undeclared
+    lanes: dict[str, dict[str, Any]] = {}
+    for entry in modules:
+        lane = str(entry["lane"])
+        lane_payload = lanes.setdefault(
+            lane,
+            {
+                "active_module_id": runtime.config.payment_module_id if lane == "payment" else None,
+                "modules": [],
+            },
+        )
+        lane_payload["modules"].append(entry)
+
+    return {
+        "node_id": runtime.config.node_id,
+        "checked_at": utc_now().isoformat(),
+        "active_by_lane": {
+            "payment": runtime.config.payment_module_id or None,
+        },
+        "modules": modules,
+        "lanes": lanes,
+        "undeclared_modules": undeclared,
     }
 
 
@@ -304,6 +528,14 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
         return operator_state(runtime)
 
+    @app.get("/operator/modules")
+    def operator_modules_route(
+        authorization: str | None = Header(default=None),
+        x_p4p_operator_token: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
+        return operator_modules(runtime)
+
     @app.patch("/operator/state")
     async def operator_update_state_route(
         payload: OperatorStateUpdate,
@@ -371,6 +603,7 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
 __all__ = [
     "build_app",
     "httpx",
+    "operator_modules",
     "operator_order_events",
     "node_state",
     "operator_orders",

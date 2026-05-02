@@ -104,6 +104,7 @@ Endpoints:
 
 - `GET /operator/state`
 - `PATCH /operator/state`
+- `GET /operator/modules`
 - `GET /operator/menu`
 - `PUT /operator/menu`
 - `GET /operator/orders`
