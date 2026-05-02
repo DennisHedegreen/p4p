@@ -1,0 +1,36 @@
+{
+  "module_id": "p4p.payment.godpay-mock",
+  "module_class": "payment",
+  "lane": "public_capability",
+  "type": "payment",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "internal-mock",
+  "description": "Internal random approval/failure payment mock for local P4P debugging.",
+  "visibility": "operator_only",
+  "capabilities": ["simulate_payment_decision", "report_payment_state"],
+  "input_events": ["PAYMENT_REQUIRED"],
+  "output_events": ["PAYMENT_MODE_CHANGED", "PAYMENT_FAILED"],
+  "permissions": [
+    "read.order.summary",
+    "write.payment.state"
+  ],
+  "blocking_policy": "blocking",
+  "suggested_fallbacks": {
+    "PAYMENT_FAILED": ["p4p.payment.cash"]
+  },
+  "idempotency_scope": "payment_attempt",
+  "failure_modes": ["PAYMENT_FAILED"],
+  "required_configuration": ["success_threshold"],
+  "requires": [],
+  "data_access": ["order_total"],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Internal mock that rolls 1..100 and accepts or rejects a test payment based on a configured threshold.",
+    "data_access_summary": "Order total only. No customer funds, wallet data, card data, settlement, or real provider data.",
+    "trust_status": "internal debug mock, not real payment",
+    "readiness": "test",
+    "operator_status": "executable in pilot-node when explicitly selected"
+  }
+}

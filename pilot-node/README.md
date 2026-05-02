@@ -41,9 +41,11 @@ Enable the small reference runtime lanes with `P4P_NODE_MODULES`:
 
 - `p4p.stock.basic` emits `ORDER_VALIDATED`, or `ITEM_NOT_POSSIBLE` when a configured item is unavailable.
 - `p4p.payment.cash` emits `PAYMENT_REQUIRED -> PAYMENT_MODE_CHANGED` for pay-at-pickup, or `PAYMENT_FAILED` when `P4P_PAYMENT_CASH_MODE=failed`.
+- `p4p.payment.godpay-mock` emits a random internal test payment success/failure based on `P4P_GODPAY_SUCCESS_THRESHOLD`.
+- `p4p.payment.chaospay-mock` is declared as a planned internal chaos-payment mock, but its scenario executor is intentionally not enabled yet.
 - `p4p.order.print` emits the operator print/screen lane.
 
-These lanes do not add online payment, card handling, or registry access to order contents.
+These lanes do not add online payment, card handling, real wallet handling, settlement, or registry access to order contents.
 
 Homebuilt or external module IDs can also be listed in `P4P_NODE_MODULES`.
 If a module has no reference manifest, the pilot node keeps it as `undeclared_modules`
@@ -73,6 +75,18 @@ The external HTTP payment executor is guarded:
 - `P4P_PAYMENT_MODULE_ID` must name that imported module
 - plain `http` entrypoints are accepted only on loopback hosts
 - `P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID` must be set for the fake wallet test
+
+Example internal GodPay mock selection:
+
+```bash
+P4P_NODE_MODULES=p4p.payment.godpay-mock,p4p.order.print \
+P4P_PAYMENT_MODULE_ID=p4p.payment.godpay-mock \
+P4P_GODPAY_SUCCESS_THRESHOLD=50 \
+./.venv/bin/uvicorn pilot_node:app --port 8201
+```
+
+GodPay is only an internal debug mock. It logs the roll, threshold, and outcome
+on the payment event. It is not money, not settlement, and not a provider.
 
 ## Order States
 

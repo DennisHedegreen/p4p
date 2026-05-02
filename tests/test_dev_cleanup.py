@@ -171,7 +171,15 @@ class P4PDevCleanupTests(unittest.TestCase):
         module_ids = [entry["module_id"] for entry in modules_payload["modules"]]
         self.assertEqual(
             module_ids,
-            ["p4p.notify.email", "p4p.order.print", "p4p.payment.cash", "p4p.stock.basic", "p4p.trust.cvr-basic"],
+            [
+                "p4p.notify.email",
+                "p4p.order.print",
+                "p4p.payment.cash",
+                "p4p.payment.chaospay-mock",
+                "p4p.payment.godpay-mock",
+                "p4p.stock.basic",
+                "p4p.trust.cvr-basic",
+            ],
         )
         self.assertIn("HTML kits are the maintained source", homepage)
         self.assertIn("Open base first. Commercial services on top.", press_kit_en)

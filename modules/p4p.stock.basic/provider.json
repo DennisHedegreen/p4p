@@ -9,6 +9,8 @@
     "p4p.notify.email",
     "p4p.order.print",
     "p4p.payment.cash",
+    "p4p.payment.chaospay-mock",
+    "p4p.payment.godpay-mock",
     "p4p.stock.basic",
     "p4p.trust.cvr-basic"
   ],

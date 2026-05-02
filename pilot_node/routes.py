@@ -29,6 +29,8 @@ from p4p_core.constants import PROTOCOL_VERSION
 
 from pilot_node.config import OperatorStateUpdate
 from pilot_node.execution import (
+    CHAOSPAY_MOCK_MODULE_ID,
+    GODPAY_MOCK_MODULE_ID,
     NOTIFY_EMAIL_MODULE_ID,
     PAYMENT_CASH_MODULE_ID,
     PRINT_MODULE_ID,
@@ -169,6 +171,10 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
 
 
 def public_payment_methods(runtime: PilotRuntime) -> list[str]:
+    if runtime.config.payment_module_id == GODPAY_MOCK_MODULE_ID:
+        return ["internal_godpay_mock"]
+    if runtime.config.payment_module_id == CHAOSPAY_MOCK_MODULE_ID:
+        return ["internal_chaospay_mock"]
     if runtime.config.payment_module_id and runtime.config.payment_module_id != PAYMENT_CASH_MODULE_ID:
         return ["external_test_payment"]
     return ["pay_at_pickup"]
@@ -244,8 +250,10 @@ def module_configuration(runtime: PilotRuntime, manifest) -> tuple[bool, list[st
     lane = module_execution_lane(manifest)
     if lane != "payment":
         return True, []
-    if manifest.module_id == PAYMENT_CASH_MODULE_ID:
+    if manifest.module_id in {PAYMENT_CASH_MODULE_ID, GODPAY_MOCK_MODULE_ID}:
         return True, []
+    if manifest.module_id == CHAOSPAY_MOCK_MODULE_ID:
+        return False, ["chaospay_scenario_executor"]
 
     missing: list[str] = []
     entrypoint = module_entrypoint(manifest)
@@ -271,6 +279,20 @@ def module_health(runtime: PilotRuntime, manifest, *, active: bool, configured: 
         return {
             "health": "available",
             "health_reason": "builtin_reference_module",
+            "health_url": None,
+            "last_checked_at": None,
+        }
+    if manifest.module_id == GODPAY_MOCK_MODULE_ID:
+        return {
+            "health": "available",
+            "health_reason": "internal_mock_available",
+            "health_url": None,
+            "last_checked_at": None,
+        }
+    if manifest.module_id == CHAOSPAY_MOCK_MODULE_ID:
+        return {
+            "health": "not_configured",
+            "health_reason": "chaospay_scenario_executor_not_enabled",
             "health_url": None,
             "last_checked_at": None,
         }
@@ -338,6 +360,7 @@ def module_health(runtime: PilotRuntime, manifest, *, active: bool, configured: 
 BUILTIN_EXECUTOR_MODULE_IDS = frozenset(
     {
         PAYMENT_CASH_MODULE_ID,
+        GODPAY_MOCK_MODULE_ID,
         PRINT_MODULE_ID,
         STOCK_BASIC_MODULE_ID,
         NOTIFY_EMAIL_MODULE_ID,
@@ -350,6 +373,10 @@ def operator_module_entry(runtime: PilotRuntime, manifest) -> dict[str, Any]:
     active = module_active(runtime, manifest)
     configured, missing_configuration = module_configuration(runtime, manifest)
     implementation = "builtin_reference" if manifest.module_id in BUILTIN_EXECUTOR_MODULE_IDS else "external_http"
+    if manifest.module_id == GODPAY_MOCK_MODULE_ID:
+        implementation = "internal_mock"
+    if manifest.module_id == CHAOSPAY_MOCK_MODULE_ID:
+        implementation = "internal_mock_planned"
     if manifest.module_id not in BUILTIN_EXECUTOR_MODULE_IDS and lane != "payment" and not module_entrypoint(manifest):
         implementation = "manifest_only"
     executable = active and configured and implementation != "manifest_only"
@@ -370,12 +397,41 @@ def operator_module_entry(runtime: PilotRuntime, manifest) -> dict[str, Any]:
         "description": manifest.description,
         "operator_status": manifest.operator_status,
         "missing_configuration": missing_configuration,
+        "configuration": module_operator_configuration(runtime, manifest),
         "suggested_fallbacks": {
             event_name: list(module_ids)
             for event_name, module_ids in manifest.suggested_fallbacks.items()
         },
         **health,
     }
+
+
+def module_operator_configuration(runtime: PilotRuntime, manifest) -> dict[str, Any]:
+    if manifest.module_id == GODPAY_MOCK_MODULE_ID:
+        return {
+            "success_threshold": runtime.config.godpay_success_threshold,
+            "seeded": bool(runtime.config.godpay_seed),
+            "forced_roll": runtime.config.godpay_force_roll,
+        }
+    if manifest.module_id == CHAOSPAY_MOCK_MODULE_ID:
+        return {
+            "status": "planned",
+            "scenarios": [
+                "instant_success",
+                "user_cancelled",
+                "provider_timeout",
+                "duplicate_callback",
+                "late_callback_after_expiry",
+                "wrong_amount",
+                "wrong_currency",
+                "invalid_signature",
+                "paid_after_cancelled",
+                "merchant_confirms_without_payment",
+                "out_of_order_status",
+                "conflicting_duplicate_callback",
+            ],
+        }
+    return {}
 
 
 def undeclared_module_entry(runtime: PilotRuntime, module_id: str) -> dict[str, Any]:

@@ -3065,6 +3065,165 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertFalse(device_path.exists())
             pilot.store.close()
 
+    def test_pilot_node_godpay_mock_success_records_roll_and_continues_to_print(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.godpay-mock,p4p.order.print",
+                    "P4P_PAYMENT_MODULE_ID": "p4p.payment.godpay-mock",
+                    "P4P_GODPAY_SUCCESS_THRESHOLD": "100",
+                    "P4P_GODPAY_FORCE_ROLL": "88",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+            operator_modules = pilot.operator_modules(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                [
+                    "ORDER_ACCEPTED",
+                    "PAYMENT_REQUIRED",
+                    "PAYMENT_MODE_CHANGED",
+                    "PRINT_REQUESTED",
+                    "PRINT_SUCCESS_CONFIRMED",
+                ],
+            )
+            self.assertEqual(events[1].source_module, "p4p.payment.godpay-mock")
+            self.assertEqual(events[2].source_module, "p4p.payment.godpay-mock")
+            self.assertEqual(events[2].metadata["payment_scope"], "internal_mock")
+            self.assertEqual(events[2].metadata["real_payment"], False)
+            self.assertEqual(events[2].metadata["roll"], 88)
+            self.assertEqual(events[2].metadata["success_threshold"], 100)
+            self.assertEqual(events[2].metadata["message"], "The pizza gods accepted the offering.")
+            self.assertEqual(stored[0].payment_method, "godpay_mock")
+            self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
+            godpay = {
+                entry["module_id"]: entry
+                for entry in operator_modules["lanes"]["payment"]["modules"]
+            }["p4p.payment.godpay-mock"]
+            self.assertTrue(godpay["active"])
+            self.assertTrue(godpay["configured"])
+            self.assertTrue(godpay["executable"])
+            self.assertEqual(godpay["implementation"], "internal_mock")
+            self.assertEqual(godpay["configuration"]["success_threshold"], 100)
+            self.assertEqual(godpay["configuration"]["forced_roll"], 88)
+            pilot.store.close()
+
+    def test_pilot_node_godpay_mock_failure_stops_before_print_lane(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device_path = Path(tmpdir) / "should-not-print-godpay.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.godpay-mock,p4p.order.print",
+                    "P4P_PAYMENT_MODULE_ID": "p4p.payment.godpay-mock",
+                    "P4P_GODPAY_SUCCESS_THRESHOLD": "0",
+                    "P4P_GODPAY_FORCE_ROLL": "1",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "device_path",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PAYMENT_REQUIRED", "PAYMENT_FAILED", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].source_module, "p4p.payment.godpay-mock")
+            self.assertEqual(events[2].reason_code, "GODPAY_DECLINED")
+            self.assertTrue(events[2].retryable)
+            self.assertEqual(events[2].metadata["roll"], 1)
+            self.assertEqual(events[2].metadata["success_threshold"], 0)
+            self.assertEqual(events[2].metadata["message"], "The pizza gods declined this order.")
+            self.assertEqual(events[3].metadata["trigger_event"], "PAYMENT_FAILED")
+            self.assertEqual(stored[0].payment_method, "pay_at_pickup")
+            self.assertEqual(stored[0].status_message, "The pizza gods declined this order.")
+            self.assertFalse(device_path.exists())
+            pilot.store.close()
+
+    def test_pilot_node_chaospay_mock_is_declared_but_not_executable_yet(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.payment.chaospay-mock",
+                    "P4P_PAYMENT_MODULE_ID": "p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            info = pilot.public_info()
+            operator_modules = pilot.operator_modules(authorization="Bearer operator-secret")
+            payment_modules = {
+                entry["module_id"]: entry
+                for entry in operator_modules["lanes"]["payment"]["modules"]
+            }
+
+            self.assertEqual(info["modules"], ["p4p.payment.cash"])
+            self.assertFalse(payment_modules["p4p.payment.chaospay-mock"]["active"])
+            self.assertFalse(payment_modules["p4p.payment.chaospay-mock"]["configured"])
+            self.assertFalse(payment_modules["p4p.payment.chaospay-mock"]["executable"])
+            self.assertEqual(payment_modules["p4p.payment.chaospay-mock"]["implementation"], "internal_mock_planned")
+            self.assertEqual(payment_modules["p4p.payment.chaospay-mock"]["health"], "not_configured")
+            self.assertIn(
+                "invalid_signature",
+                payment_modules["p4p.payment.chaospay-mock"]["configuration"]["scenarios"],
+            )
+            pilot.store.close()
+
+    def test_pilot_node_selected_payment_manifest_without_executor_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.chaospay-mock",
+                    "P4P_PAYMENT_MODULE_ID": "p4p.payment.chaospay-mock",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertEqual(
+                [event.event for event in events],
+                ["ORDER_ACCEPTED", "PAYMENT_REQUIRED", "PAYMENT_FAILED", "ORDER_NEEDS_HUMAN"],
+            )
+            self.assertEqual(events[2].source_module, "p4p.payment.chaospay-mock")
+            self.assertEqual(events[2].reason_code, "PAYMENT_EXECUTOR_UNAVAILABLE")
+            self.assertEqual(events[2].metadata["real_payment"], False)
+            self.assertEqual(stored[0].status_message, "Order accepted. External payment needs human attention.")
+            pilot.store.close()
+
     def test_pilot_node_stock_module_validates_before_print_lane(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pilot = load_module(

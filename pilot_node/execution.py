@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -29,6 +31,8 @@ PRINT_MODULE_ID = "p4p.order.print"
 NOTIFY_EMAIL_MODULE_ID = "p4p.notify.email"
 STOCK_BASIC_MODULE_ID = "p4p.stock.basic"
 PAYMENT_CASH_MODULE_ID = "p4p.payment.cash"
+GODPAY_MOCK_MODULE_ID = "p4p.payment.godpay-mock"
+CHAOSPAY_MOCK_MODULE_ID = "p4p.payment.chaospay-mock"
 INTERNAL_RUNTIME_MODULE_IDS = frozenset({ORDER_RECEIVER_MODULE_ID})
 REQUEST_PHASE = "request"
 RESULT_PHASE = "result"
@@ -399,6 +403,127 @@ def execute_payment_cash_module(runtime: PilotRuntime, order: StoredOrder) -> tu
     return updated_order, True
 
 
+def _godpay_roll(runtime: PilotRuntime, order: StoredOrder) -> int:
+    if runtime.config.godpay_force_roll is not None:
+        return runtime.config.godpay_force_roll
+    seed = runtime.config.godpay_seed
+    if seed:
+        digest = hashlib.sha256(f"{seed}:{order.order_id}".encode("utf-8")).digest()
+        return int.from_bytes(digest[:4], "big") % 100 + 1
+    return secrets.randbelow(100) + 1
+
+
+def execute_godpay_mock_module(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
+    payment_action_id = f"order:{order.order_id}:payment:godpay-mock"
+    payment_idempotency_key = f"payment:{order.order_id}:godpay-mock"
+    amount = _order_amount(runtime, order)
+    threshold = runtime.config.godpay_success_threshold
+    roll = _godpay_roll(runtime, order)
+    accepted = roll <= threshold
+    result_message = (
+        "The pizza gods accepted the offering."
+        if accepted
+        else "The pizza gods declined this order."
+    )
+    payment_metadata = {
+        **module_metadata(runtime, GODPAY_MOCK_MODULE_ID),
+        "payment_scope": "internal_mock",
+        "payment_method": "godpay_mock",
+        "mock_module": True,
+        "real_payment": False,
+        "settlement": "none",
+        "amount": amount,
+        "currency": "TEST",
+        "roll": roll,
+        "success_threshold": threshold,
+        "message": result_message,
+    }
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="PAYMENT_REQUIRED",
+            source_module=GODPAY_MOCK_MODULE_ID,
+            order=order,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="none",
+            contract_phase=REQUEST_PHASE,
+            metadata=payment_metadata,
+        ),
+    )
+
+    if accepted:
+        record_order_flow_event(
+            runtime,
+            build_result_event(
+                runtime=runtime,
+                event="PAYMENT_MODE_CHANGED",
+                source_module=GODPAY_MOCK_MODULE_ID,
+                order=order,
+                action_id=payment_action_id,
+                idempotency_key=payment_idempotency_key,
+                outcome="SUCCESS",
+                severity="low",
+                retryable=False,
+                side_effect_state="confirmed",
+                trigger_event="PAYMENT_REQUIRED",
+                metadata=payment_metadata,
+            ),
+        )
+        runtime.store.update_order_payment_method(order.order_id, "godpay_mock")
+        updated_order = runtime.store.update_order_status(
+            order.order_id,
+            OrderStatusUpdate(status="accepted", status_message=result_message),
+        )
+        return updated_order, True
+
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="PAYMENT_FAILED",
+            source_module=GODPAY_MOCK_MODULE_ID,
+            order=order,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            outcome="FAILED_PERMANENT",
+            reason_code="GODPAY_DECLINED",
+            severity="high",
+            retryable=True,
+            side_effect_state="none",
+            trigger_event="PAYMENT_REQUIRED",
+            metadata=payment_metadata,
+        ),
+    )
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="ORDER_NEEDS_HUMAN",
+            source_module=ORDER_RECEIVER_MODULE_ID,
+            order=order,
+            action_id=f"order:{order.order_id}:needs-human:payment",
+            idempotency_key=f"human:{order.order_id}:payment",
+            outcome="NEEDS_HUMAN",
+            severity="high",
+            retryable=False,
+            side_effect_state="none",
+            trigger_event="PAYMENT_FAILED",
+            metadata=payment_metadata,
+        ),
+    )
+    updated_order = runtime.store.update_order_status(
+        order.order_id,
+        OrderStatusUpdate(status="accepted", status_message=result_message),
+    )
+    return updated_order, False
+
+
 def _is_payment_manifest(manifest: ModuleManifest) -> bool:
     module_class = str(manifest.raw.get("module_class") or manifest.raw.get("type") or "").strip()
     return (
@@ -527,6 +652,50 @@ def _record_external_payment_failure(
         ),
     )
     return updated_order, False
+
+
+def execute_unavailable_payment_module(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
+    module_id = runtime.config.payment_module_id
+    if not module_id or not runtime.config.resolved_modules.contains(module_id):
+        return order, True
+
+    payment_action_id = f"order:{order.order_id}:payment:unavailable:{module_id}"
+    payment_idempotency_key = f"payment:{order.order_id}:unavailable:{module_id}"
+    payment_metadata = {
+        **module_metadata(runtime, module_id),
+        "payment_scope": "unavailable_payment_executor",
+        "payment_module_id": module_id,
+        "mock_module": module_id == CHAOSPAY_MOCK_MODULE_ID,
+        "real_payment": False,
+    }
+    record_order_flow_event(
+        runtime,
+        build_result_event(
+            runtime=runtime,
+            event="PAYMENT_REQUIRED",
+            source_module=module_id,
+            order=order,
+            action_id=payment_action_id,
+            idempotency_key=payment_idempotency_key,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="none",
+            contract_phase=REQUEST_PHASE,
+            metadata=payment_metadata,
+        ),
+    )
+    return _record_external_payment_failure(
+        runtime,
+        order,
+        module_id=module_id,
+        action_id=payment_action_id,
+        idempotency_key=payment_idempotency_key,
+        reason_code="PAYMENT_EXECUTOR_UNAVAILABLE",
+        metadata=payment_metadata,
+        outcome="UNAVAILABLE",
+        retryable=False,
+    )
 
 
 def execute_external_payment_module(
@@ -758,6 +927,11 @@ MODULE_EXECUTORS = (
         lane="payment",
         execute=execute_payment_cash_module,
     ),
+    ModuleExecutor(
+        module_id=GODPAY_MOCK_MODULE_ID,
+        lane="payment",
+        execute=execute_godpay_mock_module,
+    ),
 )
 
 
@@ -793,7 +967,10 @@ def enabled_module_executors(runtime: PilotRuntime, *, lane: str) -> tuple[Modul
 
 def execute_module_lane(runtime: PilotRuntime, order: StoredOrder, *, lane: str) -> tuple[StoredOrder, bool]:
     current_order = order
-    for executor in enabled_module_executors(runtime, lane=lane):
+    executors = enabled_module_executors(runtime, lane=lane)
+    if lane == "payment" and runtime.config.payment_module_id and not executors:
+        return execute_unavailable_payment_module(runtime, current_order)
+    for executor in executors:
         current_order, allows_next_step = executor.execute(runtime, current_order)
         if not allows_next_step:
             return current_order, False
@@ -1204,6 +1381,8 @@ def build_notification_result_event(
 
 __all__ = [
     "ModuleExecutor",
+    "CHAOSPAY_MOCK_MODULE_ID",
+    "GODPAY_MOCK_MODULE_ID",
     "NOTIFY_EMAIL_MODULE_ID",
     "ORDER_RECEIVER_MODULE_ID",
     "PRINT_MODULE_ID",

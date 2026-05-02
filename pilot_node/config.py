@@ -85,6 +85,9 @@ class PilotConfig:
     payment_external_currency: str
     payment_external_auto_confirm: bool
     payment_external_timeout_seconds: float
+    godpay_success_threshold: int
+    godpay_seed: str
+    godpay_force_roll: int | None
     notify_email_mode: str
     db_path: str
     menu_item_1_name: str
@@ -156,6 +159,17 @@ def _flow_module_ids(
             continue
         module_ids.append(manifest.module_id)
     return tuple(module_ids)
+
+
+def _env_int_range(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return default
+    return min(max(parsed, minimum), maximum)
 
 
 def build_pilot_config() -> PilotConfig:
@@ -252,6 +266,11 @@ def build_pilot_config() -> PilotConfig:
             not in {"0", "false", "no"}
         ),
         payment_external_timeout_seconds=env_float("P4P_PAYMENT_EXTERNAL_TIMEOUT_SECONDS", 5.0),
+        godpay_success_threshold=_env_int_range("P4P_GODPAY_SUCCESS_THRESHOLD", 50, minimum=0, maximum=100),
+        godpay_seed=env_str("P4P_GODPAY_SEED", "").strip(),
+        godpay_force_roll=(
+            _env_int_range("P4P_GODPAY_FORCE_ROLL", 0, minimum=0, maximum=100) or None
+        ),
         notify_email_mode=env_str("P4P_NOTIFY_EMAIL_MODE", "sent"),
         db_path=os.environ.get("P4P_PILOT_NODE_DB_PATH", ":memory:"),
         menu_item_1_name=env_str("P4P_MENU_ITEM_1_NAME", "Kebab pita"),

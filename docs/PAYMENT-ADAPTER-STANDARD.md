@@ -64,3 +64,14 @@ The endpoint is operator-token protected. It is for local operation and GUI surf
 `Pizzacoin` is only a sandbox ledger for local experiments. It is useful for testing adapter boundaries, module health, fake balances, idempotency, and failure paths.
 
 It must not be presented as a real coin, redeemable value, customer balance product, or production payment method.
+
+## Internal Mock Rule
+
+Internal mock payment modules may exist to test P4P flow behavior.
+
+Current internal mocks:
+
+- `p4p.payment.godpay-mock`: executable random success/failure debug module.
+- `p4p.payment.chaospay-mock`: planned chaos-scenario module for later edge-case testing.
+
+These modules must stay operator/test-facing. They must not be described as providers, funds movement, wallets, settlement, crypto, or production payment methods.
