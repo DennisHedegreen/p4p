@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 
 from .models import ModuleResultEvent
+from .modules import ModuleManifest, load_reference_module_catalog
 
 
 ORDER_RECEIVER_MODULE_ID = "p4p.order.receiver"
 PRINT_MODULE_ID = "p4p.order.print"
 NOTIFY_EMAIL_MODULE_ID = "p4p.notify.email"
-PAYMENT_CASH_MODULE_ID = "p4p.payment.cash"
 STOCK_BASIC_MODULE_ID = "p4p.stock.basic"
 CONTRACT_PHASE_METADATA_KEY = "contract_phase"
 TRIGGER_EVENT_METADATA_KEY = "trigger_event"
@@ -168,35 +168,61 @@ PILOT_ORDER_FLOW_EXTENSIONS = (
         },
         human_trigger_events=frozenset({"ITEM_NOT_POSSIBLE"}),
     ),
-    FlowExtension(
-        required_module_ids=frozenset({PAYMENT_CASH_MODULE_ID}),
-        priority=100,
-        add_transitions={
-            "ORDER_ACCEPTED": frozenset({"PAYMENT_REQUIRED"}),
-            "PAYMENT_REQUIRED": PAYMENT_RESULT_EVENTS,
-            "PAYMENT_MODE_CHANGED": frozenset({"PRINT_REQUESTED"}),
-            "PAYMENT_FAILED": frozenset({"ORDER_NEEDS_HUMAN"}),
-        },
-        expected_sources={
-            "PAYMENT_REQUIRED": PAYMENT_CASH_MODULE_ID,
-            "PAYMENT_MODE_CHANGED": PAYMENT_CASH_MODULE_ID,
-            "PAYMENT_FAILED": PAYMENT_CASH_MODULE_ID,
-        },
-        expected_phases={
-            "PAYMENT_REQUIRED": "request",
-            "PAYMENT_MODE_CHANGED": "result",
-            "PAYMENT_FAILED": "result",
-        },
-        human_trigger_events=frozenset({"PAYMENT_FAILED"}),
-    ),
-    FlowExtension(
-        required_module_ids=frozenset({STOCK_BASIC_MODULE_ID, PAYMENT_CASH_MODULE_ID}),
-        priority=200,
-        add_transitions={
-            "ORDER_VALIDATED": frozenset({"PAYMENT_REQUIRED"}),
-        },
-    ),
 )
+
+
+def _is_payment_flow_module(manifest: ModuleManifest) -> bool:
+    module_class = str(manifest.raw.get("module_class") or manifest.raw.get("type") or "").strip()
+    return (
+        module_class == "payment"
+        and "PAYMENT_REQUIRED" in manifest.input_events
+        and PAYMENT_RESULT_EVENTS.issubset(set(manifest.output_events))
+    )
+
+
+def _enabled_payment_flow_module_id(enabled_module_ids: tuple[str, ...]) -> str | None:
+    catalog = load_reference_module_catalog()
+    for module_id in enabled_module_ids:
+        manifest = catalog.get(module_id)
+        if manifest is not None and _is_payment_flow_module(manifest):
+            return module_id
+    return None
+
+
+def _payment_flow_extensions(enabled_module_ids: tuple[str, ...]) -> tuple[FlowExtension, ...]:
+    payment_module_id = _enabled_payment_flow_module_id(enabled_module_ids)
+    if payment_module_id is None:
+        return ()
+    return (
+        FlowExtension(
+            required_module_ids=frozenset({payment_module_id}),
+            priority=100,
+            add_transitions={
+                "ORDER_ACCEPTED": frozenset({"PAYMENT_REQUIRED"}),
+                "PAYMENT_REQUIRED": PAYMENT_RESULT_EVENTS,
+                "PAYMENT_MODE_CHANGED": frozenset({"PRINT_REQUESTED"}),
+                "PAYMENT_FAILED": frozenset({"ORDER_NEEDS_HUMAN"}),
+            },
+            expected_sources={
+                "PAYMENT_REQUIRED": payment_module_id,
+                "PAYMENT_MODE_CHANGED": payment_module_id,
+                "PAYMENT_FAILED": payment_module_id,
+            },
+            expected_phases={
+                "PAYMENT_REQUIRED": "request",
+                "PAYMENT_MODE_CHANGED": "result",
+                "PAYMENT_FAILED": "result",
+            },
+            human_trigger_events=frozenset({"PAYMENT_FAILED"}),
+        ),
+        FlowExtension(
+            required_module_ids=frozenset({STOCK_BASIC_MODULE_ID, payment_module_id}),
+            priority=200,
+            add_transitions={
+                "ORDER_VALIDATED": frozenset({"PAYMENT_REQUIRED"}),
+            },
+        ),
+    )
 
 
 def _flow_extension_sort_key(extension: FlowExtension) -> tuple[int, tuple[str, ...]]:
@@ -208,10 +234,12 @@ def _flow_extension_sort_key(extension: FlowExtension) -> tuple[int, tuple[str, 
 
 
 def build_pilot_order_flow_contract(enabled_module_ids: tuple[str, ...] | list[str] | None = None) -> FlowContract:
-    enabled = frozenset(enabled_module_ids or ())
+    enabled_sequence = tuple(enabled_module_ids or ())
+    enabled = frozenset(enabled_sequence)
     contract = BASE_PILOT_ORDER_FLOW_CONTRACT
+    flow_extensions = PILOT_ORDER_FLOW_EXTENSIONS + _payment_flow_extensions(enabled_sequence)
 
-    for extension in sorted(PILOT_ORDER_FLOW_EXTENSIONS, key=_flow_extension_sort_key):
+    for extension in sorted(flow_extensions, key=_flow_extension_sort_key):
         if not extension.applies_to(enabled):
             continue
         contract = _extend_contract(
@@ -322,7 +350,6 @@ __all__ = [
     "NOTIFY_EMAIL_MODULE_ID",
     "NOTIFICATION_RESULT_EVENTS",
     "ORDER_RECEIVER_MODULE_ID",
-    "PAYMENT_CASH_MODULE_ID",
     "PAYMENT_RESULT_EVENTS",
     "PRINT_FAILURE_EVENTS",
     "PRINT_MODULE_ID",

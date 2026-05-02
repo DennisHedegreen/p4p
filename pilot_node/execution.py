@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from p4p_core import (
     CONTRACT_PHASE_METADATA_KEY,
     ModuleManifest,
@@ -25,6 +28,13 @@ PAYMENT_CASH_MODULE_ID = "p4p.payment.cash"
 INTERNAL_RUNTIME_MODULE_IDS = frozenset({ORDER_RECEIVER_MODULE_ID})
 REQUEST_PHASE = "request"
 RESULT_PHASE = "result"
+
+
+@dataclass(frozen=True)
+class ModuleExecutor:
+    module_id: str
+    lane: str
+    execute: Callable[[PilotRuntime, StoredOrder], tuple[StoredOrder, bool]]
 
 
 def module_enabled(runtime: PilotRuntime, module_id: str) -> bool:
@@ -188,10 +198,9 @@ def process_accepted_order(runtime: PilotRuntime, order: StoredOrder) -> StoredO
         accepted_order, stock_allows_next_step = execute_stock_lane(runtime, accepted_order)
         if not stock_allows_next_step:
             return accepted_order
-    if module_enabled(runtime, PAYMENT_CASH_MODULE_ID):
-        accepted_order, payment_allows_next_step = execute_payment_cash_lane(runtime, accepted_order)
-        if not payment_allows_next_step:
-            return accepted_order
+    accepted_order, payment_allows_next_step = execute_module_lane(runtime, accepted_order, lane="payment")
+    if not payment_allows_next_step:
+        return accepted_order
     if not module_enabled(runtime, PRINT_MODULE_ID):
         return accepted_order
     return execute_print_lane(runtime, accepted_order)
@@ -283,7 +292,7 @@ def execute_stock_lane(runtime: PilotRuntime, order: StoredOrder) -> tuple[Store
     return updated_order, True
 
 
-def execute_payment_cash_lane(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
+def execute_payment_cash_module(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
     payment_action_id = f"order:{order.order_id}:payment:cash"
     payment_idempotency_key = f"payment:{order.order_id}:cash"
     configured_mode = runtime.config.payment_cash_mode.strip().lower()
@@ -379,6 +388,32 @@ def execute_payment_cash_lane(runtime: PilotRuntime, order: StoredOrder) -> tupl
         OrderStatusUpdate(status="accepted", status_message="Order accepted. Payment set to pay at pickup."),
     )
     return updated_order, True
+
+
+MODULE_EXECUTORS = (
+    ModuleExecutor(
+        module_id=PAYMENT_CASH_MODULE_ID,
+        lane="payment",
+        execute=execute_payment_cash_module,
+    ),
+)
+
+
+def enabled_module_executors(runtime: PilotRuntime, *, lane: str) -> tuple[ModuleExecutor, ...]:
+    return tuple(
+        executor
+        for executor in MODULE_EXECUTORS
+        if executor.lane == lane and module_enabled(runtime, executor.module_id)
+    )
+
+
+def execute_module_lane(runtime: PilotRuntime, order: StoredOrder, *, lane: str) -> tuple[StoredOrder, bool]:
+    current_order = order
+    for executor in enabled_module_executors(runtime, lane=lane):
+        current_order, allows_next_step = executor.execute(runtime, current_order)
+        if not allows_next_step:
+            return current_order, False
+    return current_order, True
 
 
 def execute_print_lane(runtime: PilotRuntime, order: StoredOrder) -> StoredOrder:
@@ -784,8 +819,11 @@ def build_notification_result_event(
 
 
 __all__ = [
+    "ModuleExecutor",
     "NOTIFY_EMAIL_MODULE_ID",
     "ORDER_RECEIVER_MODULE_ID",
     "PRINT_MODULE_ID",
+    "enabled_module_executors",
+    "execute_module_lane",
     "process_accepted_order",
 ]

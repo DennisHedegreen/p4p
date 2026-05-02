@@ -2655,6 +2655,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             )
 
             runtime = sys.modules[f"{pilot.__name__}_app"].RUNTIME
+            execution = sys.modules["pilot_node.execution"]
             operator_state = pilot.operator_state(authorization="Bearer operator-secret")
             info = pilot.public_info()
             node = pilot.node_state()
@@ -2670,6 +2671,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(info["modules"], ["p4p.payment.cash"])
             self.assertEqual(info["undeclared_modules"], [])
             self.assertFalse(runtime.config.resolved_modules.contains("local.pizzacoin.wallet"))
+            self.assertEqual(
+                [executor.module_id for executor in execution.enabled_module_executors(runtime, lane="payment")],
+                ["p4p.payment.cash"],
+            )
             pilot.store.close()
 
     def test_pilot_node_persists_orders_and_operator_status(self) -> None:
@@ -2757,6 +2762,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             accepted = pilot.public_order(self.make_pilot_order_request(pilot))
             events = pilot.operator_order_events(accepted.order_id, authorization="Bearer operator-secret")
             stored = pilot.operator_orders(authorization="Bearer operator-secret")
+            execution = sys.modules["pilot_node.execution"]
+            runtime = sys.modules[f"{pilot.__name__}_app"].RUNTIME
 
             self.assertEqual(
                 [event.event for event in events],
@@ -2773,6 +2780,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(events[2].metadata["payment_scope"], "outside_protocol")
             self.assertEqual(events[2].metadata["trigger_event"], "PAYMENT_REQUIRED")
             self.assertEqual(events[3].metadata["contract_phase"], "request")
+            self.assertEqual(
+                [executor.module_id for executor in execution.enabled_module_executors(runtime, lane="payment")],
+                ["p4p.payment.cash"],
+            )
             self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
             pilot.store.close()
 
