@@ -5,6 +5,16 @@ import sys
 from pathlib import Path
 
 
+P4P_ROOT = Path(__file__).resolve().parents[1]
+PILOT_PACKAGE_ROOT = P4P_ROOT / "pilot_node"
+if str(P4P_ROOT) not in sys.path:
+    sys.path.insert(0, str(P4P_ROOT))
+
+# Make this launcher module behave like the real pilot_node package so imports
+# inside pilot_app.py can resolve pilot_node.config/routes/runtime.
+__path__ = [str(PILOT_PACKAGE_ROOT)]
+
+
 def _load_app_module():
     module_path = Path(__file__).with_name("pilot_app.py")
     module_name = f"{__name__}_app"
