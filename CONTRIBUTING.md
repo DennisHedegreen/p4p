@@ -17,6 +17,7 @@ If you are new to the repo, use this order:
 If you want implementation detail after that:
 
 - `ARCHITECTURE.md`
+- `docs/COMMUNITY-MODULES.md`
 - `pilot-node/README.md`
 - `TEST-GUIDE.md`
 - `docs/MODULE-EXECUTION-CONTRACT.md`
@@ -87,3 +88,50 @@ Bad contributions usually do one of these:
 - widen the public claim without implementing the boundary
 - turn `v0.2` design material into silent `v0.1` requirements
 - make the runtime more magical instead of more inspectable
+
+## Module Contributions
+
+P4P should encourage modules without pretending every module is official, trusted, or production-ready.
+
+Before proposing a module, read:
+
+- `docs/COMMUNITY-MODULES.md`
+- `docs/MODULE-RULES.md`
+- `docs/MODULE-PROVIDERS.md`
+- `docs/MODULE-EXECUTION-CONTRACT.md`
+- `docs/PAYMENT-ADAPTER-STANDARD.md` for payment modules
+
+Every module contribution must make these visible:
+
+- module id and provider id
+- public status label, such as `reference`, `internal-mock`, `community`, `experimental`, or `operator-local`
+- whether it is executable, planned, manifest-only, or local-only
+- data access
+- required configuration
+- failure modes
+- test instructions or a short test report
+- whether it is public-facing, operator-only, trust-only, or observability-only
+
+Community modules should not use the `p4p.*` namespace.
+
+Use `local.*` for local operator experiments.
+
+Use a publisher-owned namespace for public community modules.
+
+## Payment Module Contributions
+
+P4P is not a payment provider.
+
+P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
+
+Payment modules are adapters chosen by the restaurant/operator.
+
+Payment module contributions must not:
+
+- market themselves as `P4P Pay`
+- imply that P4P handles settlement, refunds, chargebacks, or merchant-of-record duties
+- describe a mock ledger, test wallet, or fake balance as real money
+- describe an internal debug module as a real provider
+- present test modules as production payment systems
+
+If a module talks to a real payment provider, the module must say who owns the merchant relationship and which external provider handles payment, confirmation, settlement, refunds, and disputes.

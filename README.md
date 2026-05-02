@@ -1,10 +1,14 @@
 # P4P
 
-An open protocol for direct restaurant-customer discovery and ordering without a platform middleman.
+An open protocol for direct restaurant-customer discovery and ordering, with replaceable modules for payments, printing, delivery, POS, booking, and other operator-owned workflows.
 
 P4P is a phone book, not a marketplace.
 
 P4P is the socket, not the appliances.
+
+P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
+
+Payment modules are adapters chosen by the restaurant/operator.
 
 The core idea is simple:
 
@@ -22,13 +26,15 @@ If you only have a few minutes, read in this order:
 2. `PROOF.md`
 3. `SPEC.md`
 4. `docs/GITHUB-READER-GUIDE.md`
-5. `docs/RELEASE-NOTES.md`
+5. `docs/COMMUNITY-MODULES.md`
+6. `docs/RELEASE-NOTES.md`
 
 That path should tell you:
 
 - what P4P is trying to prove
 - what is real in the code now
 - what is still only design material
+- how to start reading or building modules
 - how the public and private GitHub repos are split
 
 ## What v0.1 is
@@ -111,9 +117,18 @@ If you want to understand the wire contract:
 If you want to understand the module/runtime direction:
 
 - `ARCHITECTURE.md`
+- `docs/COMMUNITY-MODULES.md`
 - `docs/MODULE-EXECUTION-CONTRACT.md`
 - `docs/FIRST-FLOWS.md`
 - `modules/`
+
+If you want to build or publish a module:
+
+- `docs/COMMUNITY-MODULES.md`
+- `docs/MODULE-RULES.md`
+- `docs/MODULE-PROVIDERS.md`
+- `docs/MODULE-EXECUTION-CONTRACT.md`
+- `modules/README.md`
 
 If you want to understand the current live-pilot boundary:
 
@@ -205,6 +220,25 @@ Modules should carry everything else:
 - supplier integrations
 
 That same module economy may also reach backward into production and supply chains, not only forward into customer checkout.
+
+## Build A Module
+
+P4P should make it possible for restaurants, vendors, and open-source maintainers to build modules without asking one central platform for permission.
+
+The public GitHub path is:
+
+1. fork this repo or publish a separate module repo
+2. read `docs/COMMUNITY-MODULES.md`
+3. choose a non-core module id namespace
+4. create a provider manifest and module manifest
+5. test the module locally against `pilot-node`
+6. open a pull request or link the external repo from discussion/docs
+
+Every module must declare its status, data access, operator boundary, readiness, and failure modes.
+
+Community modules are not automatically certified, verified, or approved by P4P.
+
+Payment modules are adapter boundaries only. They must not be marketed as `P4P Pay` or as P4P holding money.
 
 ## Reference implementation
 

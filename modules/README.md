@@ -1,0 +1,57 @@
+# P4P Reference Modules
+
+This folder contains reference manifests and internal test modules for the planned P4P module model.
+
+It is not a production module marketplace.
+
+It is not a certification list.
+
+It is not a claim that every listed module is live, trusted, or customer-facing.
+
+For the public community-module guide, read:
+
+- `../docs/COMMUNITY-MODULES.md`
+- `../docs/MODULE-RULES.md`
+- `../docs/MODULE-PROVIDERS.md`
+- `../docs/MODULE-EXECUTION-CONTRACT.md`
+
+## Current Reading
+
+The current module manifests show how P4P expects optional capabilities to declare:
+
+- provider identity
+- module id
+- lane
+- visibility
+- capabilities
+- input and output events
+- permissions
+- blocking policy
+- data access
+- readiness
+- operator status
+
+In active `v0.1` node announcements, module ids are still opaque strings.
+
+The richer manifest shape is the planned module/provider direction.
+
+## Status Families
+
+Public readers should treat module status as a label, not as certification.
+
+- `reference` or `reference-example`: P4P reference material
+- `internal-mock`: internal debug/test module
+- `community`: third-party/community material
+- `experimental`: early module work
+- `operator-local`: local restaurant or node-operator module
+- `planned`: manifest or design material that is not executable yet
+
+## Payment Boundary
+
+P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
+
+Payment modules are adapters chosen by the restaurant/operator.
+
+`p4p.payment.cash` is a reference adapter for payment outside the protocol.
+
+`p4p.payment.godpay-mock` and `p4p.payment.chaospay-mock` are internal mock/test modules only.
