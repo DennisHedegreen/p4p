@@ -4,7 +4,7 @@ This file is for people who land on the GitHub repo and need the project to expl
 
 ## In One Sentence
 
-P4P is an open protocol proof and reference runtime for direct restaurant-customer discovery and ordering without a platform owning the first-contact layer.
+P4P is an open protocol for direct restaurant discovery and ordering, with replaceable modules for payments, printing, delivery, POS, booking, and other operator-owned workflows.
 
 ## What To Believe Right Now
 
@@ -19,6 +19,8 @@ Do not believe this:
 
 - broad production rollout
 - finished payment stack
+- P4P as a payment provider
+- verified community module marketplace
 - delivery network
 - complete trust ecosystem
 - full federation finished as stable product
@@ -48,18 +50,45 @@ If you want the runtime architecture:
 
 If you want the module direction:
 
-1. `docs/MODULE-PROVIDERS.md`
-2. `docs/MODULE-EXECUTION-CONTRACT.md`
-3. `docs/FIRST-FLOWS.md`
-4. `modules/`
+1. `docs/COMMUNITY-MODULES.md`
+2. `docs/MODULE-PROVIDERS.md`
+3. `docs/MODULE-EXECUTION-CONTRACT.md`
+4. `docs/FIRST-FLOWS.md`
+5. `docs/MODULE-RULES.md`
+6. `modules/README.md`
+
+If you want to build a module:
+
+1. `docs/COMMUNITY-MODULES.md`
+2. `docs/MODULE-RULES.md`
+3. `docs/MODULE-PROVIDERS.md`
+4. `docs/MODULE-EXECUTION-CONTRACT.md`
+5. `modules/README.md`
 
 ## Repo Shape
 
-The repo has three important layers:
+The repo has four important layers:
 
 - core protocol and runtime: `registry/`, `demo-node/`, `pilot-node/`, `client/`, `p4p_core/`
 - contract and explanation layer: `SPEC.md`, `ARCHITECTURE.md`, `docs/`
+- module reference layer: `modules/`, provider manifests, module manifests, and module execution docs
 - proof and release discipline: `PROOF.md`, `PILOT-LIVE.md`, `TEST-GUIDE.md`, `docs/RELEASE-NOTES.md`
+
+## Module Builder Map
+
+Core protocol is the small direct loop: registry discovery, node identity, node menu, node order, and order-consent state.
+
+`pilot-node/` is the controlled live-pilot foundation and the current place where operator-owned module execution is tested.
+
+`registry/` lists what nodes announce. It does not certify which modules are trusted.
+
+Provider manifests identify who publishes a module.
+
+Module manifests describe what a capability does, what data it needs, and how it reports results.
+
+External modules may live in their own repositories, but they should still follow the same manifest and status-label rules.
+
+Payment modules are adapters only. P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
 
 ## Branch And Repo Reality
 
@@ -81,5 +110,7 @@ The main questions are:
 - is the core still small?
 - is the public claim still narrower than the implementation horizon?
 - are modules staying optional instead of becoming hidden requirements?
+- are community modules clearly labeled instead of silently treated as official?
+- are payment modules kept as adapters instead of becoming P4P as payment provider?
 - is local or node-owned state staying primary?
 - does the runtime become more inspectable rather than more magical?

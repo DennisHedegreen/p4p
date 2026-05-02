@@ -20,12 +20,16 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Canonical example payloads for requests and responses.
 - `MODULE-PROVIDERS.md`
   Planned `v0.2` model for module providers, module manifests, data access, signatures, and trust claims.
+- `COMMUNITY-MODULES.md`
+  GitHub-first guide for building, labeling, testing, and publishing P4P-compatible modules without treating every module as official or production-ready.
 - `MODULE-RULES.md`
   Practical boundary rules for deciding what is core, what is a module, and what registries must not control.
 - `EVENT-CATALOG.md`
   Planned `v0.2` canonical event-name list shared by module manifests, flows, and typed runtime events.
 - `MODULE-EXECUTION-CONTRACT.md`
   Planned `v0.2` execution contract for module lanes, event/result shape, permissions, fallback policy, and idempotency.
+- `PAYMENT-ADAPTER-STANDARD.md`
+  Public guardrail for payment modules: P4P routes payment requests to adapters but does not become a payment provider.
 - `FIRST-FLOWS.md`
   First concrete module-flow sketches for printer, payment, AI-menu fallback, and duplicate-protection behavior.
 - `ORDER-CONSENT.md`
