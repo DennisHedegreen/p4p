@@ -30,6 +30,8 @@ This is how P4P avoids hidden event drift between:
 - `ORDER_ITEM_CREATED`
 - `OPTIONS_REQUIRED`
 - `ITEM_NOT_POSSIBLE`
+- `CATALOG_UPDATED`
+- `CATALOG_UPDATE_FAILED`
 
 ## Order Lifecycle Events
 
@@ -39,6 +41,10 @@ This is how P4P avoids hidden event drift between:
 - `ORDER_ACCEPTED`
 - `ORDER_REJECTED`
 - `ORDER_ALREADY_ACCEPTED`
+- `ORDER_STATUS_VIEWED`
+- `ORDER_STATUS_LOOKUP_FAILED`
+- `ORDER_STATUS_UPDATED`
+- `ORDER_STATUS_UPDATE_FAILED`
 - `ORDER_NEEDS_HUMAN`
 
 ## Payment Events

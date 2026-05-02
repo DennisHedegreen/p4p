@@ -1,0 +1,55 @@
+{
+  "module_id": "p4p.catalog.editor",
+  "module_class": "operator_surface",
+  "lane": "operator",
+  "type": "catalog-editor",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "reference-example",
+  "description": "Operator-owned catalog editor for item ids, names, prices, categories, and active availability.",
+  "visibility": "operator_only",
+  "capabilities": [
+    "view_catalog",
+    "edit_item_name",
+    "edit_item_price",
+    "edit_item_category",
+    "toggle_item_active"
+  ],
+  "input_events": [
+    "ORDER_ITEM_CREATED",
+    "ITEM_NOT_POSSIBLE"
+  ],
+  "output_events": [
+    "CATALOG_UPDATED"
+  ],
+  "permissions": [
+    "read.catalog.items",
+    "write.catalog.items",
+    "write.catalog.prices",
+    "write.catalog.availability"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {},
+  "idempotency_scope": "operator_catalog_update",
+  "failure_modes": [
+    "CATALOG_UPDATE_FAILED"
+  ],
+  "requires": [],
+  "data_access": [
+    "catalog_item_id",
+    "catalog_item_name",
+    "catalog_item_description",
+    "catalog_item_price",
+    "catalog_item_category",
+    "catalog_item_active"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Lets a restaurant operator maintain the structured item catalog used by all menu and order surfaces.",
+    "data_access_summary": "Item ids, names, descriptions, prices, categories, and active/inactive availability. Operator-only; not a customer presentation module.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "test",
+    "operator_status": "available in the pilot-node operator dashboard when enabled"
+  }
+}

@@ -257,6 +257,23 @@ class StoredOrder(BaseModel):
     estimated_ready: datetime | None = None
 
 
+class PublicOrderStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    order_id: str
+    status: OrderStatus
+    status_message: str | None = None
+    fulfillment: str
+    payment_method: str
+    requested_at: datetime
+    updated_at: datetime
+    estimated_ready: datetime | None = None
+    customer_notice: str = (
+        "Keep your order id private. This prototype status lookup does not expose "
+        "customer contact data or operator-only order notes."
+    )
+
+
 class OrderStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

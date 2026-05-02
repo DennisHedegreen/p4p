@@ -1,0 +1,56 @@
+{
+  "module_id": "p4p.kitchen.screen",
+  "module_class": "operator_surface",
+  "lane": "operator",
+  "type": "kitchen-screen",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "reference-example",
+  "description": "Operator-owned kitchen screen for viewing and updating incoming pickup orders.",
+  "visibility": "operator_only",
+  "capabilities": [
+    "view_order_queue",
+    "update_order_status",
+    "inspect_order_events"
+  ],
+  "input_events": [
+    "ORDER_ACCEPTED",
+    "ORDER_NEEDS_HUMAN",
+    "PRINT_SUCCESS_CONFIRMED",
+    "PRINT_UNCERTAIN",
+    "PAYMENT_FAILED"
+  ],
+  "output_events": [
+    "ORDER_STATUS_UPDATED"
+  ],
+  "permissions": [
+    "read.order.summary",
+    "read.order.items",
+    "read.order.note",
+    "read.order.customer_contact",
+    "write.order.status"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {},
+  "idempotency_scope": "operator_status_update",
+  "failure_modes": [
+    "ORDER_STATUS_UPDATE_FAILED"
+  ],
+  "requires": [],
+  "data_access": [
+    "order_items",
+    "note",
+    "customer_contact",
+    "fulfillment_type",
+    "order_status"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Shows incoming orders to the restaurant operator and lets the operator move them through kitchen states.",
+    "data_access_summary": "Order items, note, customer contact, fulfillment type, and local order status. Operator-only; not exposed in public discovery.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "test",
+    "operator_status": "available in the pilot-node operator dashboard when enabled"
+  }
+}

@@ -38,6 +38,12 @@ class OperatorStateUpdate(BaseModel):
     order_mode: OrderMode | None = None
 
 
+class OperatorPaymentModuleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    module_id: str
+
+
 @dataclass(frozen=True)
 class PilotConfig:
     heartbeat_interval_seconds: int
@@ -136,10 +142,13 @@ def _choose_payment_module_id(
     configured_module_id: str,
 ) -> str:
     if configured_module_id:
-        known_module_ids = {manifest.module_id for manifest in manifests}
-        if configured_module_id not in known_module_ids:
+        configured_manifest = next(
+            (manifest for manifest in manifests if manifest.module_id == configured_module_id),
+            None,
+        )
+        if configured_manifest is None or not _is_payment_manifest(configured_manifest):
             raise ValueError(
-                "P4P_PAYMENT_MODULE_ID must name an enabled reference or imported external module"
+                "P4P_PAYMENT_MODULE_ID must name an enabled reference or imported payment module"
             )
         return configured_module_id
     for manifest in manifests:

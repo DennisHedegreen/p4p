@@ -295,6 +295,100 @@
         gap: 10px;
       }
 
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .order-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .catalog-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .catalog-row {
+        display: grid;
+        gap: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px;
+        background: #fff;
+      }
+
+      .catalog-fields {
+        display: grid;
+        gap: 10px;
+      }
+
+      @media (min-width: 860px) {
+        .catalog-fields {
+          grid-template-columns: minmax(120px, 0.8fr) minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(110px, 0.7fr) 100px 96px;
+        }
+      }
+
+      .field {
+        display: grid;
+        gap: 5px;
+      }
+
+      .field label,
+      .check-field span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 650;
+      }
+
+      .check-field {
+        display: flex;
+        gap: 8px;
+        align-items: end;
+        min-height: 67px;
+      }
+
+      .check-field input {
+        width: 18px;
+        min-height: 18px;
+      }
+
+      .order-row {
+        display: grid;
+        gap: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px;
+        background: #fff;
+      }
+
+      @media (min-width: 760px) {
+        .order-row {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: start;
+        }
+      }
+
+      .order-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .order-id {
+        font-weight: 750;
+        word-break: break-word;
+      }
+
+      .order-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-start;
+      }
+
       dl {
         display: grid;
         grid-template-columns: minmax(100px, 0.45fr) minmax(0, 1fr);
@@ -374,28 +468,53 @@
       </section>
 
       <div class="layout">
-        <section class="panel">
-          <div class="panel-head">
-            <h2>Modules</h2>
-            <div class="filters">
-              <input id="search" type="search" placeholder="Search module id, provider, lane">
-              <select id="lane-filter">
-                <option value="">All lanes</option>
-              </select>
-              <select id="health-filter">
-                <option value="">All health</option>
-                <option value="up">up</option>
-                <option value="available">available</option>
-                <option value="down">down</option>
-                <option value="not_configured">not_configured</option>
-                <option value="undeclared">undeclared</option>
-              </select>
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Kitchen</h2>
+              <p class="muted">Incoming and active pickup orders.</p>
             </div>
-          </div>
-          <div class="panel-body">
-            <div id="modules" class="module-list"></div>
-          </div>
-        </section>
+            <div class="panel-body">
+              <div id="orders" class="order-list"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Catalog</h2>
+              <div class="actions">
+                <button id="add-catalog-item" class="secondary" type="button">Add item</button>
+                <button id="save-catalog" type="button">Save catalog</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div id="catalog" class="catalog-list"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Modules</h2>
+              <div class="filters">
+                <input id="search" type="search" placeholder="Search module id, provider, lane">
+                <select id="lane-filter">
+                  <option value="">All lanes</option>
+                </select>
+                <select id="health-filter">
+                  <option value="">All health</option>
+                  <option value="up">up</option>
+                  <option value="available">available</option>
+                  <option value="down">down</option>
+                  <option value="not_configured">not_configured</option>
+                  <option value="undeclared">undeclared</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div id="modules" class="module-list"></div>
+            </div>
+          </section>
+        </div>
 
         <aside class="side">
           <section class="panel">
@@ -423,6 +542,8 @@
       const tokenInput = document.getElementById("token");
       const statusLine = document.getElementById("status-line");
       const modulesEl = document.getElementById("modules");
+      const ordersEl = document.getElementById("orders");
+      const catalogEl = document.getElementById("catalog");
       const rawEl = document.getElementById("raw");
       const searchInput = document.getElementById("search");
       const laneFilter = document.getElementById("lane-filter");
@@ -436,7 +557,9 @@
 
       const state = {
         modules: null,
-        node: null
+        node: null,
+        orders: [],
+        menu: null
       };
 
       tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
@@ -457,8 +580,12 @@
         };
       }
 
-      async function request(path) {
-        const response = await fetch(path, { headers: headers() });
+      async function request(path, options = {}) {
+        const response = await fetch(path, {
+          method: options.method || "GET",
+          headers: headers(),
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
         if (!response.ok) {
           const detail = await response.text().catch(() => "");
           throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
@@ -482,6 +609,13 @@
 
       function boolTone(value) {
         return value ? "ok" : "warn";
+      }
+
+      function statusTone(value) {
+        if (value === "ready" || value === "completed") return "ok";
+        if (value === "rejected" || value === "cancelled") return "bad";
+        if (value === "accepted") return "dark";
+        return "warn";
       }
 
       function visibleModules() {
@@ -559,6 +693,17 @@
         side.appendChild(badge(entry.configured ? "configured" : "missing", boolTone(entry.configured)));
         side.appendChild(badge(entry.executable ? "executable" : "not executable", boolTone(entry.executable)));
         side.appendChild(badge(entry.readiness || "unknown"));
+        if (entry.lane === "payment" && entry.declared) {
+          const action = document.createElement("button");
+          action.type = "button";
+          action.className = entry.active ? "" : "secondary";
+          action.textContent = entry.active ? "Active" : "Set active";
+          action.disabled = entry.active;
+          action.addEventListener("click", () => {
+            setActivePayment(entry.module_id).catch((error) => setStatus(error.message, "bad"));
+          });
+          side.appendChild(action);
+        }
         row.appendChild(main);
         row.appendChild(side);
 
@@ -573,6 +718,179 @@
         }
 
         return row;
+      }
+
+      function orderItemsText(order) {
+        return (order.items || [])
+          .map((item) => `${item.quantity} x ${item.id}`)
+          .join(", ");
+      }
+
+      function catalogInput(labelText, name, value, type = "text") {
+        const field = document.createElement("div");
+        field.className = "field";
+        const label = document.createElement("label");
+        label.textContent = labelText;
+        const input = document.createElement("input");
+        input.name = name;
+        input.type = type;
+        input.value = value ?? "";
+        if (name === "price") {
+          input.min = "0";
+          input.step = "1";
+        }
+        field.appendChild(label);
+        field.appendChild(input);
+        return field;
+      }
+
+      function renderCatalog() {
+        catalogEl.innerHTML = "";
+        const items = state.menu?.items || [];
+        if (!items.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No catalog items";
+          catalogEl.appendChild(empty);
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("article");
+          row.className = "catalog-row";
+          const fields = document.createElement("div");
+          fields.className = "catalog-fields";
+          fields.appendChild(catalogInput("ID", "id", item.id));
+          fields.appendChild(catalogInput("Name", "name", item.name));
+          fields.appendChild(catalogInput("Description", "description", item.description));
+          fields.appendChild(catalogInput("Category", "category", item.category));
+          fields.appendChild(catalogInput("Price", "price", item.price, "number"));
+
+          const activeField = document.createElement("label");
+          activeField.className = "check-field";
+          const active = document.createElement("input");
+          active.name = "active";
+          active.type = "checkbox";
+          active.checked = item.active !== false;
+          const activeText = document.createElement("span");
+          activeText.textContent = "Active";
+          activeField.appendChild(active);
+          activeField.appendChild(activeText);
+          fields.appendChild(activeField);
+          row.appendChild(fields);
+
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "secondary";
+          remove.textContent = "Remove";
+          remove.addEventListener("click", () => {
+            row.remove();
+          });
+          actions.appendChild(remove);
+          row.appendChild(actions);
+          catalogEl.appendChild(row);
+        }
+      }
+
+      function addCatalogItem() {
+        const items = state.menu?.items ? [...state.menu.items] : [];
+        items.push({
+          id: `item-${Date.now().toString(36)}`,
+          name: "New item",
+          description: "",
+          price: 0,
+          category: "pizza",
+          active: true
+        });
+        state.menu = {
+          currency: state.menu?.currency || "DKK",
+          updated_at: state.menu?.updated_at || new Date().toISOString(),
+          items
+        };
+        renderCatalog();
+      }
+
+      function readCatalogItems() {
+        const rows = Array.from(catalogEl.querySelectorAll(".catalog-row"));
+        return rows.map((row) => {
+          const value = (name) => row.querySelector(`[name="${name}"]`)?.value.trim() || "";
+          return {
+            id: value("id"),
+            name: value("name"),
+            description: value("description"),
+            price: Number.parseInt(value("price") || "0", 10),
+            category: value("category"),
+            active: Boolean(row.querySelector('[name="active"]')?.checked)
+          };
+        });
+      }
+
+      function orderAction(order, label, nextStatus, message) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = ["accepted", "ready", "completed"].includes(nextStatus) ? "" : "secondary";
+        button.textContent = label;
+        button.disabled = order.status === nextStatus || order.status === "completed" || order.status === "cancelled";
+        button.addEventListener("click", () => {
+          updateOrder(order.order_id, nextStatus, message).catch((error) => setStatus(error.message, "bad"));
+        });
+        return button;
+      }
+
+      function renderKitchen() {
+        ordersEl.innerHTML = "";
+        const orders = state.orders || [];
+        if (!orders.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No orders";
+          ordersEl.appendChild(empty);
+          return;
+        }
+
+        for (const order of orders) {
+          const row = document.createElement("article");
+          row.className = "order-row";
+
+          const main = document.createElement("div");
+          const title = document.createElement("div");
+          title.className = "order-title";
+          const id = document.createElement("span");
+          id.className = "order-id";
+          id.textContent = order.order_id;
+          title.appendChild(id);
+          title.appendChild(badge(order.status, statusTone(order.status)));
+          title.appendChild(badge(order.payment_method || "payment unknown"));
+          main.appendChild(title);
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.appendChild(document.createTextNode(`${order.customer_name} / ${order.customer_contact}`));
+          meta.appendChild(document.createTextNode(orderItemsText(order)));
+          meta.appendChild(document.createTextNode(order.note || ""));
+          main.appendChild(meta);
+
+          if (order.status_message) {
+            const message = document.createElement("div");
+            message.className = "meta";
+            message.textContent = order.status_message;
+            main.appendChild(message);
+          }
+
+          const actions = document.createElement("div");
+          actions.className = "order-actions";
+          actions.appendChild(orderAction(order, "Accept", "accepted", "Accepted in kitchen."));
+          actions.appendChild(orderAction(order, "Ready", "ready", "Ready for pickup."));
+          actions.appendChild(orderAction(order, "Complete", "completed", "Completed."));
+          actions.appendChild(orderAction(order, "Reject", "rejected", "Rejected by kitchen."));
+          actions.appendChild(orderAction(order, "Cancel", "cancelled", "Cancelled by kitchen."));
+
+          row.appendChild(main);
+          row.appendChild(actions);
+          ordersEl.appendChild(row);
+        }
       }
 
       function renderModules() {
@@ -604,6 +922,8 @@
           ["Open", node?.node?.open],
           ["Order mode", node?.node?.order_mode],
           ["Accepts orders", node?.accepts_orders],
+          ["Orders", state.orders?.length || 0],
+          ["Catalog items", state.menu?.items?.length || 0],
           ["Public modules", node?.public_modules],
           ["Undeclared", modules?.undeclared_modules?.map((entry) => entry.module_id) || []],
           ["Checked", modules?.checked_at]
@@ -611,12 +931,57 @@
       }
 
       function render() {
+        renderKitchen();
+        renderCatalog();
         if (state.modules) {
           renderLaneOptions(state.modules);
           renderModules();
-          rawEl.textContent = JSON.stringify({ modules: state.modules, state: state.node }, null, 2);
+          rawEl.textContent = JSON.stringify({ modules: state.modules, state: state.node, orders: state.orders, menu: state.menu }, null, 2);
         }
         renderSummary();
+      }
+
+      async function saveCatalog() {
+        const items = readCatalogItems();
+        if (!items.length) {
+          setStatus("Catalog needs at least one item.", "bad");
+          return;
+        }
+        setStatus("Saving catalog.");
+        state.menu = await request("/operator/menu", {
+          method: "PUT",
+          body: { items }
+        });
+        await refresh();
+        setStatus("Catalog saved.", "ok");
+      }
+
+      async function setActivePayment(moduleId) {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus(`Setting ${moduleId} active.`);
+        const modules = await request("/operator/modules/payment", {
+          method: "PATCH",
+          body: { module_id: moduleId }
+        });
+        state.modules = modules;
+        render();
+        setStatus("Payment module updated.", "ok");
+      }
+
+      async function updateOrder(orderId, nextStatus, message) {
+        setStatus(`Updating ${orderId}.`);
+        await request(`/operator/orders/${encodeURIComponent(orderId)}`, {
+          method: "PATCH",
+          body: {
+            status: nextStatus,
+            status_message: message
+          }
+        });
+        await refresh();
+        setStatus("Order updated.", "ok");
       }
 
       async function refresh() {
@@ -625,12 +990,16 @@
           return;
         }
         setStatus("Loading.");
-        const [modules, node] = await Promise.all([
+        const [modules, node, orders, menu] = await Promise.all([
           request("/operator/modules"),
-          request("/operator/state")
+          request("/operator/state"),
+          request("/operator/orders"),
+          request("/operator/menu")
         ]);
         state.modules = modules;
         state.node = node;
+        state.orders = orders;
+        state.menu = menu;
         render();
         setStatus("Updated.", "ok");
       }
@@ -648,6 +1017,12 @@
 
       document.getElementById("refresh").addEventListener("click", () => {
         refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("add-catalog-item").addEventListener("click", addCatalogItem);
+
+      document.getElementById("save-catalog").addEventListener("click", () => {
+        saveCatalog().catch((error) => setStatus(error.message, "bad"));
       });
 
       document.getElementById("copy-json").addEventListener("click", () => {

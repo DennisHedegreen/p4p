@@ -1,0 +1,54 @@
+{
+  "module_id": "p4p.customer.status",
+  "module_class": "customer_surface",
+  "lane": "public_capability",
+  "type": "order-status",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "reference-example",
+  "description": "Customer-facing read-only status lookup for a submitted order.",
+  "visibility": "public",
+  "capabilities": [
+    "view_order_status",
+    "view_estimated_ready",
+    "view_payment_mode"
+  ],
+  "input_events": [
+    "ORDER_ACCEPTED",
+    "ORDER_STATUS_UPDATED",
+    "ORDER_REJECTED",
+    "ORDER_NEEDS_HUMAN"
+  ],
+  "output_events": [
+    "ORDER_STATUS_VIEWED"
+  ],
+  "permissions": [
+    "read.order.status",
+    "read.order.estimated_ready",
+    "read.order.payment_method",
+    "emit.order.status_view"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {},
+  "idempotency_scope": "customer_status_lookup",
+  "failure_modes": [
+    "ORDER_STATUS_LOOKUP_FAILED"
+  ],
+  "requires": [],
+  "data_access": [
+    "order_id",
+    "order_status",
+    "estimated_ready",
+    "fulfillment_type",
+    "payment_method"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Lets a customer check whether an order is accepted, ready, completed, cancelled, or rejected.",
+    "data_access_summary": "Order id, public order status, estimated ready time, fulfillment type, and payment method. No customer contact data, customer name, operator notes, or full event log.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "test",
+    "operator_status": "available in the pilot-node public order-status route when enabled"
+  }
+}

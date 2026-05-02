@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import secrets
 from contextlib import asynccontextmanager, suppress
 from datetime import timedelta
@@ -21,30 +22,38 @@ from p4p_core import (
     OrderRejected,
     OrderRequest,
     OrderStatusUpdate,
+    PublicOrderStatus,
     StoredOrder,
     build_cors_middleware_options,
     utc_now,
 )
 from p4p_core.constants import PROTOCOL_VERSION
 
-from pilot_node.config import OperatorStateUpdate
+from pilot_node.config import OperatorPaymentModuleUpdate, OperatorStateUpdate
 from pilot_node.execution import (
     CHAOSPAY_MOCK_MODULE_ID,
+    CATALOG_EDITOR_MODULE_ID,
+    CUSTOMER_STATUS_MODULE_ID,
     GODPAY_MOCK_MODULE_ID,
+    KITCHEN_SCREEN_MODULE_ID,
     NOTIFY_EMAIL_MODULE_ID,
     PAYMENT_CASH_MODULE_ID,
     PRINT_MODULE_ID,
     STOCK_BASIC_MODULE_ID,
+    build_result_event,
     process_accepted_order,
 )
 from pilot_node.runtime import (
     PilotRuntime,
+    effective_flow_module_ids,
+    effective_payment_module_id,
     enabled_module_declarations,
     node_accepts_orders,
     node_state,
     public_module_projection,
     public_module_declarations,
     registration_payload,
+    set_effective_payment_module_id,
     sign_node_announcement,
     signed_heartbeat_payload,
 )
@@ -161,9 +170,12 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
             "info": "GET /p4p/info",
             "menu": "GET /p4p/menu",
             "order": "POST /p4p/order",
+            "order_status_page": "GET /p4p/orders/{order_id}",
+            "order_status_json": "GET /p4p/orders/{order_id}/status",
             "operator_gui": "GET /operator",
             "operator_state": "GET /operator/state",
             "operator_modules": "GET /operator/modules",
+            "operator_payment_module": "PATCH /operator/modules/payment",
             "operator_orders": "GET /operator/orders",
             "operator_reannounce": "POST /operator/reannounce",
         },
@@ -171,11 +183,12 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
 
 
 def public_payment_methods(runtime: PilotRuntime) -> list[str]:
-    if runtime.config.payment_module_id == GODPAY_MOCK_MODULE_ID:
+    payment_module_id = effective_payment_module_id(runtime)
+    if payment_module_id == GODPAY_MOCK_MODULE_ID:
         return ["internal_godpay_mock"]
-    if runtime.config.payment_module_id == CHAOSPAY_MOCK_MODULE_ID:
+    if payment_module_id == CHAOSPAY_MOCK_MODULE_ID:
         return ["internal_chaospay_mock"]
-    if runtime.config.payment_module_id and runtime.config.payment_module_id != PAYMENT_CASH_MODULE_ID:
+    if payment_module_id and payment_module_id != PAYMENT_CASH_MODULE_ID:
         return ["external_test_payment"]
     return ["pay_at_pickup"]
 
@@ -195,6 +208,167 @@ def public_order(runtime: PilotRuntime, payload: OrderRequest) -> OrderAccepted 
     )
 
 
+def customer_status_module_enabled(runtime: PilotRuntime) -> bool:
+    return CUSTOMER_STATUS_MODULE_ID in effective_flow_module_ids(runtime)
+
+
+def public_order_status(runtime: PilotRuntime, order_id: str) -> PublicOrderStatus:
+    if not customer_status_module_enabled(runtime):
+        raise HTTPException(status_code=404, detail="Customer status module is not enabled")
+    order = runtime.store.get_order(order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail=f"Unknown order_id: {order_id}")
+    status_payload = PublicOrderStatus(
+        order_id=order.order_id,
+        status=order.status,
+        status_message=order.status_message,
+        fulfillment=order.fulfillment,
+        payment_method=order.payment_method,
+        requested_at=order.requested_at,
+        updated_at=order.updated_at,
+        estimated_ready=order.estimated_ready,
+    )
+    checked_at = utc_now()
+    action_id = f"order:{order.order_id}:customer-status:{checked_at.isoformat()}"
+    runtime.store.record_order_event(
+        build_result_event(
+            runtime=runtime,
+            event="ORDER_STATUS_VIEWED",
+            source_module=CUSTOMER_STATUS_MODULE_ID,
+            order=order,
+            action_id=action_id,
+            idempotency_key=action_id,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="none",
+            metadata={
+                "status": order.status,
+                "public_surface": CUSTOMER_STATUS_MODULE_ID,
+                "exposes_customer_contact": False,
+                "exposes_customer_name": False,
+                "exposes_order_note": False,
+                "exposes_operator_events": False,
+            },
+        )
+    )
+    return status_payload
+
+
+def public_order_status_page(runtime: PilotRuntime, order_id: str) -> str:
+    status_payload = public_order_status(runtime, order_id)
+    status_label = status_payload.status.replace("_", " ").title()
+    message = status_payload.status_message or "No status message yet."
+    estimated_ready = (
+        status_payload.estimated_ready.isoformat()
+        if status_payload.estimated_ready is not None
+        else "Not set"
+    )
+    escaped_order_id = html.escape(status_payload.order_id, quote=True)
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P4P Order Status</title>
+    <style>
+      body {{
+        margin: 0;
+        background: #f4f6f5;
+        color: #10201d;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }}
+      main {{
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px 14px;
+      }}
+      section {{
+        background: #fff;
+        border: 1px solid #cfd8d5;
+        border-radius: 8px;
+        padding: 18px;
+      }}
+      h1, p {{
+        margin: 0;
+      }}
+      .status {{
+        margin: 14px 0;
+        font-size: 2rem;
+        font-weight: 750;
+      }}
+      dl {{
+        display: grid;
+        grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);
+        gap: 8px 12px;
+      }}
+      dt {{
+        color: #51615d;
+      }}
+      dd {{
+        margin: 0;
+        word-break: break-word;
+      }}
+      a, button {{
+        color: #00594f;
+        font: inherit;
+        font-weight: 650;
+      }}
+      button {{
+        min-height: 42px;
+        border: 1px solid #00796b;
+        border-radius: 7px;
+        background: #00796b;
+        color: #fff;
+        padding: 0 14px;
+        cursor: pointer;
+      }}
+      .actions {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+        align-items: center;
+      }}
+      .notice {{
+        margin-top: 14px;
+        color: #51615d;
+        font-size: 0.92rem;
+      }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>Order status</h1>
+        <p class="status">{html.escape(status_label)}</p>
+        <dl>
+          <dt>Order</dt>
+          <dd>{escaped_order_id}</dd>
+          <dt>Message</dt>
+          <dd>{html.escape(message)}</dd>
+          <dt>Estimated ready</dt>
+          <dd>{html.escape(estimated_ready)}</dd>
+          <dt>Fulfillment</dt>
+          <dd>{html.escape(status_payload.fulfillment)}</dd>
+          <dt>Payment</dt>
+          <dd>{html.escape(status_payload.payment_method)}</dd>
+          <dt>Updated</dt>
+          <dd>{html.escape(status_payload.updated_at.isoformat())}</dd>
+        </dl>
+        <div class="actions">
+          <form method="get" action="/p4p/orders/{escaped_order_id}">
+            <button type="submit">Refresh status</button>
+          </form>
+          <a href="/p4p/orders/{escaped_order_id}/status">JSON status</a>
+        </div>
+        <p class="notice">{html.escape(status_payload.customer_notice)}</p>
+      </section>
+    </main>
+  </body>
+</html>"""
+
+
 def public_info(runtime: PilotRuntime) -> dict[str, Any]:
     node = node_state(runtime)
     return {
@@ -211,6 +385,7 @@ def public_info(runtime: PilotRuntime) -> dict[str, Any]:
 
 def operator_state(runtime: PilotRuntime) -> dict[str, Any]:
     node = node_state(runtime)
+    active_payment_module_id = effective_payment_module_id(runtime)
     return {
         "node": node.model_dump(mode="json", exclude_none=True),
         "accepts_orders": node_accepts_orders(runtime, node),
@@ -219,6 +394,9 @@ def operator_state(runtime: PilotRuntime) -> dict[str, Any]:
         "module_declarations": enabled_module_declarations(runtime),
         "public_module_declarations": public_module_declarations(runtime),
         "undeclared_modules": runtime.config.undeclared_node_modules,
+        "active_by_lane": {
+            "payment": active_payment_module_id or None,
+        },
         "registry": registration_payload(runtime),
     }
 
@@ -257,7 +435,7 @@ def module_configuration(runtime: PilotRuntime, manifest) -> tuple[bool, list[st
 
     missing: list[str] = []
     entrypoint = module_entrypoint(manifest)
-    if manifest.module_id == runtime.config.payment_module_id:
+    if manifest.module_id == effective_payment_module_id(runtime):
         if not runtime.config.payment_external_url:
             missing.append("payment_external_url")
         if not runtime.config.payment_external_customer_user_id:
@@ -270,8 +448,8 @@ def module_configuration(runtime: PilotRuntime, manifest) -> tuple[bool, list[st
 
 def module_active(runtime: PilotRuntime, manifest) -> bool:
     if module_execution_lane(manifest) == "payment":
-        return manifest.module_id == runtime.config.payment_module_id
-    return manifest.module_id in runtime.config.flow_module_ids
+        return manifest.module_id == effective_payment_module_id(runtime)
+    return manifest.module_id in effective_flow_module_ids(runtime)
 
 
 def module_health(runtime: PilotRuntime, manifest, *, active: bool, configured: bool) -> dict[str, Any]:
@@ -366,6 +544,8 @@ BUILTIN_EXECUTOR_MODULE_IDS = frozenset(
         NOTIFY_EMAIL_MODULE_ID,
     }
 )
+BUILTIN_OPERATOR_SURFACE_MODULE_IDS = frozenset({CATALOG_EDITOR_MODULE_ID, KITCHEN_SCREEN_MODULE_ID})
+BUILTIN_CUSTOMER_SURFACE_MODULE_IDS = frozenset({CUSTOMER_STATUS_MODULE_ID})
 
 
 def operator_module_entry(runtime: PilotRuntime, manifest) -> dict[str, Any]:
@@ -373,11 +553,21 @@ def operator_module_entry(runtime: PilotRuntime, manifest) -> dict[str, Any]:
     active = module_active(runtime, manifest)
     configured, missing_configuration = module_configuration(runtime, manifest)
     implementation = "builtin_reference" if manifest.module_id in BUILTIN_EXECUTOR_MODULE_IDS else "external_http"
+    if manifest.module_id in BUILTIN_OPERATOR_SURFACE_MODULE_IDS:
+        implementation = "builtin_operator_surface"
+    if manifest.module_id in BUILTIN_CUSTOMER_SURFACE_MODULE_IDS:
+        implementation = "builtin_customer_surface"
     if manifest.module_id == GODPAY_MOCK_MODULE_ID:
         implementation = "internal_mock"
     if manifest.module_id == CHAOSPAY_MOCK_MODULE_ID:
         implementation = "internal_mock_planned"
-    if manifest.module_id not in BUILTIN_EXECUTOR_MODULE_IDS and lane != "payment" and not module_entrypoint(manifest):
+    if (
+        manifest.module_id not in BUILTIN_EXECUTOR_MODULE_IDS
+        and manifest.module_id not in BUILTIN_OPERATOR_SURFACE_MODULE_IDS
+        and manifest.module_id not in BUILTIN_CUSTOMER_SURFACE_MODULE_IDS
+        and lane != "payment"
+        and not module_entrypoint(manifest)
+    ):
         implementation = "manifest_only"
     executable = active and configured and implementation != "manifest_only"
     health = module_health(runtime, manifest, active=active, configured=configured)
@@ -460,6 +650,7 @@ def undeclared_module_entry(runtime: PilotRuntime, module_id: str) -> dict[str, 
 
 
 def operator_modules(runtime: PilotRuntime) -> dict[str, Any]:
+    active_payment_module_id = effective_payment_module_id(runtime)
     declared = [
         operator_module_entry(runtime, manifest)
         for manifest in runtime.config.resolved_modules.manifests
@@ -475,7 +666,7 @@ def operator_modules(runtime: PilotRuntime) -> dict[str, Any]:
         lane_payload = lanes.setdefault(
             lane,
             {
-                "active_module_id": runtime.config.payment_module_id if lane == "payment" else None,
+                "active_module_id": active_payment_module_id if lane == "payment" else None,
                 "modules": [],
             },
         )
@@ -485,7 +676,7 @@ def operator_modules(runtime: PilotRuntime) -> dict[str, Any]:
         "node_id": runtime.config.node_id,
         "checked_at": utc_now().isoformat(),
         "active_by_lane": {
-            "payment": runtime.config.payment_module_id or None,
+            "payment": active_payment_module_id or None,
         },
         "modules": modules,
         "lanes": lanes,
@@ -502,12 +693,44 @@ async def operator_update_state(runtime: PilotRuntime, payload: OperatorStateUpd
     return operator_state(runtime)
 
 
+def operator_update_payment_module(
+    runtime: PilotRuntime,
+    payload: OperatorPaymentModuleUpdate,
+) -> dict[str, Any]:
+    set_effective_payment_module_id(runtime, payload.module_id)
+    return operator_modules(runtime)
+
+
 def operator_menu(runtime: PilotRuntime) -> Menu:
     return runtime.store.menu(include_inactive=True)
 
 
 def operator_replace_menu(runtime: PilotRuntime, payload: MenuUpdate) -> Menu:
-    return runtime.store.replace_menu(payload.items)
+    updated_menu = runtime.store.replace_menu(payload.items)
+    if CATALOG_EDITOR_MODULE_ID in effective_flow_module_ids(runtime):
+        checked_at = utc_now()
+        action_id = f"catalog:{checked_at.isoformat()}:replace"
+        runtime.store.record_order_event(
+            ModuleResultEvent(
+                event="CATALOG_UPDATED",
+                source_module=CATALOG_EDITOR_MODULE_ID,
+                order_id=None,
+                action_id=action_id,
+                idempotency_key=action_id,
+                outcome="SUCCESS",
+                severity="low",
+                retryable=False,
+                side_effect_state="confirmed",
+                timestamp=checked_at,
+                metadata={
+                    "item_count": len(updated_menu.items),
+                    "active_item_count": sum(1 for item in updated_menu.items if item.active),
+                    "operator_surface": CATALOG_EDITOR_MODULE_ID,
+                    "contract_phase": "result",
+                },
+            )
+        )
+    return updated_menu
 
 
 def operator_orders(runtime: PilotRuntime) -> list[StoredOrder]:
@@ -525,7 +748,42 @@ def operator_update_order(
     order_id: str,
     payload: OrderStatusUpdate,
 ) -> StoredOrder:
-    return runtime.store.update_order_status(order_id, payload)
+    previous_order = runtime.store.get_order(order_id)
+    if previous_order is None:
+        raise HTTPException(status_code=404, detail=f"Unknown order_id: {order_id}")
+    updated_order = runtime.store.update_order_status(order_id, payload)
+    if KITCHEN_SCREEN_MODULE_ID not in effective_flow_module_ids(runtime):
+        return updated_order
+    action_id = (
+        f"order:{updated_order.order_id}:kitchen-status:"
+        f"{updated_order.status}:{updated_order.updated_at.isoformat()}"
+    )
+    runtime.store.record_order_event(
+        build_result_event(
+            runtime=runtime,
+            event="ORDER_STATUS_UPDATED",
+            source_module=KITCHEN_SCREEN_MODULE_ID,
+            order=updated_order,
+            action_id=action_id,
+            idempotency_key=action_id,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="confirmed",
+            metadata={
+                "previous_status": previous_order.status,
+                "next_status": updated_order.status,
+                "status_message": updated_order.status_message,
+                "estimated_ready": (
+                    updated_order.estimated_ready.isoformat()
+                    if updated_order.estimated_ready is not None
+                    else None
+                ),
+                "operator_surface": KITCHEN_SCREEN_MODULE_ID,
+            },
+        )
+    )
+    return updated_order
 
 
 async def operator_reannounce(runtime: PilotRuntime) -> dict[str, Any]:
@@ -582,6 +840,14 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
     def public_order_route(payload: OrderRequest) -> OrderAccepted | OrderRejected:
         return public_order(runtime, payload)
 
+    @app.get("/p4p/orders/{order_id}", response_class=HTMLResponse)
+    def public_order_status_page_route(order_id: str) -> str:
+        return public_order_status_page(runtime, order_id)
+
+    @app.get("/p4p/orders/{order_id}/status", response_model=PublicOrderStatus)
+    def public_order_status_route(order_id: str) -> PublicOrderStatus:
+        return public_order_status(runtime, order_id)
+
     @app.get("/p4p/info")
     def public_info_route() -> dict[str, Any]:
         return public_info(runtime)
@@ -605,6 +871,15 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
         return operator_modules(runtime)
+
+    @app.patch("/operator/modules/payment")
+    def operator_update_payment_module_route(
+        payload: OperatorPaymentModuleUpdate,
+        authorization: str | None = Header(default=None),
+        x_p4p_operator_token: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
+        return operator_update_payment_module(runtime, payload)
 
     @app.patch("/operator/state")
     async def operator_update_state_route(
@@ -680,11 +955,14 @@ __all__ = [
     "operator_orders",
     "operator_reannounce",
     "operator_state",
+    "operator_update_payment_module",
     "operator_update_order",
     "operator_update_state",
     "public_info",
     "public_menu",
     "public_order",
+    "public_order_status",
+    "public_order_status_page",
     "require_operator_token",
     "root_index",
     "run_registry_cycle",

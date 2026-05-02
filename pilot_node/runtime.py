@@ -14,6 +14,7 @@ from p4p_core import (
     Location,
     Menu,
     MenuItem,
+    ModuleManifest,
     ModuleResultEvent,
     NodeDescriptor,
     OrderItem,
@@ -28,6 +29,9 @@ from p4p_core import (
 from p4p_identity import sign_payload
 
 from pilot_node.config import PilotConfig, build_pilot_config
+
+
+ACTIVE_PAYMENT_MODULE_STATE_KEY = "payment_module_id"
 
 
 class PilotStore:
@@ -357,6 +361,58 @@ class PilotRuntime:
     heartbeat_task: asyncio.Task[None] | None = None
 
 
+def module_is_payment(manifest: ModuleManifest) -> bool:
+    module_class = str(manifest.raw.get("module_class") or manifest.raw.get("type") or "").strip()
+    return module_class == "payment"
+
+
+def _payment_module_manifest(runtime: PilotRuntime, module_id: str) -> ModuleManifest | None:
+    normalized_module_id = module_id.strip()
+    if not normalized_module_id:
+        return None
+    manifest = runtime.config.resolved_modules.get(normalized_module_id)
+    if manifest is None or not module_is_payment(manifest):
+        return None
+    return manifest
+
+
+def effective_payment_module_id(runtime: PilotRuntime) -> str:
+    persisted_module_id = runtime.store.get_state(ACTIVE_PAYMENT_MODULE_STATE_KEY, "").strip()
+    if _payment_module_manifest(runtime, persisted_module_id) is not None:
+        return persisted_module_id
+    configured_module_id = runtime.config.payment_module_id.strip()
+    if _payment_module_manifest(runtime, configured_module_id) is not None:
+        return configured_module_id
+    return ""
+
+
+def effective_flow_module_ids(runtime: PilotRuntime) -> tuple[str, ...]:
+    active_payment_module_id = effective_payment_module_id(runtime)
+    module_ids: list[str] = []
+    for manifest in runtime.config.resolved_modules.manifests:
+        if module_is_payment(manifest):
+            if not active_payment_module_id or manifest.module_id != active_payment_module_id:
+                continue
+        module_ids.append(manifest.module_id)
+    return tuple(module_ids)
+
+
+def set_effective_payment_module_id(runtime: PilotRuntime, module_id: str) -> str:
+    normalized_module_id = module_id.strip()
+    if not normalized_module_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="module_id must not be blank")
+    manifest = runtime.config.resolved_modules.get(normalized_module_id)
+    if manifest is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown module_id: {normalized_module_id}")
+    if not module_is_payment(manifest):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Module is not a payment module: {normalized_module_id}",
+        )
+    runtime.store.set_state(ACTIVE_PAYMENT_MODULE_STATE_KEY, normalized_module_id)
+    return normalized_module_id
+
+
 def node_state(runtime: PilotRuntime) -> NodeDescriptor:
     return NodeDescriptor(
         node_id=runtime.config.node_id,
@@ -444,12 +500,16 @@ __all__ = [
     "PilotRuntime",
     "PilotStore",
     "build_pilot_runtime",
+    "effective_flow_module_ids",
+    "effective_payment_module_id",
     "enabled_module_declarations",
+    "module_is_payment",
     "node_accepts_orders",
     "node_state",
     "public_module_projection",
     "public_module_declarations",
     "registration_payload",
+    "set_effective_payment_module_id",
     "sign_node_announcement",
     "signed_heartbeat_payload",
 ]

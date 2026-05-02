@@ -55,3 +55,27 @@ Payment modules are adapters chosen by the restaurant/operator.
 `p4p.payment.cash` is a reference adapter for payment outside the protocol.
 
 `p4p.payment.godpay-mock` and `p4p.payment.chaospay-mock` are internal mock/test modules only.
+
+## Operator Surface Boundary
+
+`p4p.catalog.editor` is a reference operator-surface module for maintaining
+the structured item catalog that every customer menu surface should read from.
+
+It is not a customer menu layout. It is the restaurant-side source of truth for
+item ids, names, descriptions, categories, prices, and active/inactive
+availability.
+
+`p4p.kitchen.screen` is a reference operator-surface module for the pilot node.
+
+It is not a public customer feature. It gives the restaurant operator a local
+order queue for accepting, rejecting, marking ready, completing, or cancelling
+orders through token-protected operator endpoints.
+
+## Customer Surface Boundary
+
+`p4p.customer.status` is a reference public read-only status module for the
+pilot node.
+
+It lets a customer check whether their submitted order is accepted, ready,
+completed, cancelled, or rejected. It must not expose customer contact details,
+customer name, order notes, operator-only events, or internal restaurant data.

@@ -23,10 +23,13 @@ from p4p_core import (
 from pilot_node.print_adapters import build_print_adapter
 from pilot_node.print_drivers import build_print_driver
 from pilot_node.print_sensors import build_print_sensor
-from pilot_node.runtime import PilotRuntime
+from pilot_node.runtime import PilotRuntime, effective_flow_module_ids, effective_payment_module_id
 
 
 ORDER_RECEIVER_MODULE_ID = "p4p.order.receiver"
+CATALOG_EDITOR_MODULE_ID = "p4p.catalog.editor"
+CUSTOMER_STATUS_MODULE_ID = "p4p.customer.status"
+KITCHEN_SCREEN_MODULE_ID = "p4p.kitchen.screen"
 PRINT_MODULE_ID = "p4p.order.print"
 NOTIFY_EMAIL_MODULE_ID = "p4p.notify.email"
 STOCK_BASIC_MODULE_ID = "p4p.stock.basic"
@@ -180,7 +183,7 @@ def record_order_flow_event(runtime: PilotRuntime, event: ModuleResultEvent) -> 
     validate_pilot_order_event_flow(
         existing_events,
         event,
-        enabled_module_ids=runtime.config.flow_module_ids,
+        enabled_module_ids=effective_flow_module_ids(runtime),
         module_manifests=runtime.config.resolved_modules.manifests,
     )
     return runtime.store.record_order_event(event)
@@ -655,7 +658,7 @@ def _record_external_payment_failure(
 
 
 def execute_unavailable_payment_module(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
-    module_id = runtime.config.payment_module_id
+    module_id = effective_payment_module_id(runtime)
     if not module_id or not runtime.config.resolved_modules.contains(module_id):
         return order, True
 
@@ -957,18 +960,19 @@ def _external_payment_executors(runtime: PilotRuntime) -> tuple[ModuleExecutor, 
 
 def enabled_module_executors(runtime: PilotRuntime, *, lane: str) -> tuple[ModuleExecutor, ...]:
     available_executors = MODULE_EXECUTORS + _external_payment_executors(runtime)
+    active_payment_module_id = effective_payment_module_id(runtime)
     return tuple(
         executor
         for executor in available_executors
         if executor.lane == lane and module_enabled(runtime, executor.module_id)
-        if lane != "payment" or not runtime.config.payment_module_id or executor.module_id == runtime.config.payment_module_id
+        if lane != "payment" or not active_payment_module_id or executor.module_id == active_payment_module_id
     )
 
 
 def execute_module_lane(runtime: PilotRuntime, order: StoredOrder, *, lane: str) -> tuple[StoredOrder, bool]:
     current_order = order
     executors = enabled_module_executors(runtime, lane=lane)
-    if lane == "payment" and runtime.config.payment_module_id and not executors:
+    if lane == "payment" and effective_payment_module_id(runtime) and not executors:
         return execute_unavailable_payment_module(runtime, current_order)
     for executor in executors:
         current_order, allows_next_step = executor.execute(runtime, current_order)

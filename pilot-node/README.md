@@ -11,12 +11,16 @@ It is the smallest real node shape for one restaurant:
 - persistent menu
 - persistent orders
 - operator-token protected controls
+- operator catalog editor
 - signed announce
 - signed heartbeat
 - pickup orders
 - pay at pickup
 - optional stock validation lane
+- optional catalog editor operator surface
 - optional pay-at-pickup payment-mode lane
+- optional kitchen-screen operator surface
+- optional customer order-status surface
 
 Start it in `menu_only`.
 
@@ -35,11 +39,15 @@ P4P_NODE_ORDER_MODE=menu_only \
 ./.venv/bin/uvicorn pilot_node:app --port 8201
 ```
 
-The SQLite path is the pilot node's source of truth for menu, operator state, and order history.
+The SQLite path is the pilot node's source of truth for menu, operator state,
+active payment-module selection, and order history.
 
 Enable the small reference runtime lanes with `P4P_NODE_MODULES`:
 
+- `p4p.catalog.editor` exposes the built-in operator catalog editor for item ids, prices, categories, and active availability.
 - `p4p.stock.basic` emits `ORDER_VALIDATED`, or `ITEM_NOT_POSSIBLE` when a configured item is unavailable.
+- `p4p.customer.status` exposes read-only public order status without customer contact details, notes, or operator event logs.
+- `p4p.kitchen.screen` exposes the built-in operator order queue for kitchen status updates.
 - `p4p.payment.cash` emits `PAYMENT_REQUIRED -> PAYMENT_MODE_CHANGED` for pay-at-pickup, or `PAYMENT_FAILED` when `P4P_PAYMENT_CASH_MODE=failed`.
 - `p4p.payment.godpay-mock` emits a random internal test payment success/failure based on `P4P_GODPAY_SUCCESS_THRESHOLD`.
 - `p4p.payment.chaospay-mock` is declared as a planned internal chaos-payment mock, but its scenario executor is intentionally not enabled yet.
@@ -54,7 +62,7 @@ in operator state and does not execute or publish it as a P4P reference module.
 External modules become declared only when the operator imports a local module manifest.
 The first test path is `local.pizzacoin.wallet`, which remains outside `P4P/`.
 
-Example local Pizzacoin payment selection:
+Example local Pizzacoin payment startup default:
 
 ```bash
 P4P_NODE_MODULES=p4p.payment.cash,local.pizzacoin.wallet,p4p.order.print \
@@ -64,6 +72,10 @@ P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID=usr_from_pizzacoin_gui \
 ./.venv/bin/uvicorn pilot_node:app --port 8201
 ```
 
+`P4P_PAYMENT_MODULE_ID` is only the startup default. The operator dashboard can
+switch the active payment module later with `PATCH /operator/modules/payment`,
+and that choice persists in the node SQLite database.
+
 In that mode the payment lane posts to the manifest `entrypoint`, auto-confirms
 the fake payment by default, and emits `PAYMENT_REQUIRED -> PAYMENT_MODE_CHANGED`
 or `PAYMENT_FAILED -> ORDER_NEEDS_HUMAN`.
@@ -72,11 +84,11 @@ The external HTTP payment executor is guarded:
 
 - the selected module must be enabled in `P4P_NODE_MODULES`
 - the module manifest must be imported with `P4P_EXTERNAL_MODULE_MANIFESTS`
-- `P4P_PAYMENT_MODULE_ID` must name that imported module
+- the startup default or operator-selected active payment module must name that imported module
 - plain `http` entrypoints are accepted only on loopback hosts
 - `P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID` must be set for the fake wallet test
 
-Example internal GodPay mock selection:
+Example internal GodPay mock startup default:
 
 ```bash
 P4P_NODE_MODULES=p4p.payment.godpay-mock,p4p.order.print \
@@ -105,6 +117,8 @@ The first pilot order-state set is:
 - `GET /health`
 - `GET /p4p/menu`
 - `POST /p4p/order`
+- `GET /p4p/orders/{order_id}`
+- `GET /p4p/orders/{order_id}/status`
 - `GET /p4p/info`
 
 ## Operator Endpoints
@@ -120,6 +134,7 @@ Endpoints:
 - `GET /operator/state`
 - `PATCH /operator/state`
 - `GET /operator/modules`
+- `PATCH /operator/modules/payment`
 - `GET /operator/menu`
 - `PUT /operator/menu`
 - `GET /operator/orders`
