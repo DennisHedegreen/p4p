@@ -3582,6 +3582,28 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(wrong_token.exception.status_code, 401)
             pilot.store.close()
 
+    def test_pilot_node_root_index_points_browser_to_public_endpoints(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            index = pilot.root_index()
+
+            self.assertEqual(index["service"], "p4p-pilot-node")
+            self.assertEqual(index["node_id"], "dk-brondby-kebab-001")
+            self.assertTrue(index["accepts_orders"])
+            self.assertEqual(index["endpoints"]["info"], "GET /p4p/info")
+            self.assertEqual(index["endpoints"]["order"], "POST /p4p/order")
+            pilot.store.close()
+
     def test_pilot_node_dual_registers_to_primary_and_backup(self) -> None:
         primary = load_module("registry/main.py")
         backup = load_module("registry/main.py")

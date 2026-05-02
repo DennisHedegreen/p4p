@@ -25,6 +25,7 @@ from pilot_node.routes import (
     public_menu as _public_menu,
     public_order as _public_order,
     require_operator_token as _require_operator_token,
+    root_index as _root_index,
     run_registry_cycle as _run_registry_cycle,
 )
 from pilot_node.runtime import build_pilot_runtime, node_state as _node_state
@@ -40,6 +41,10 @@ app = build_app(RUNTIME)
 
 def node_state():
     return _node_state(RUNTIME)
+
+
+def root_index():
+    return _root_index(RUNTIME)
 
 
 async def run_registry_cycle(*, force_announce: bool):
@@ -134,6 +139,7 @@ __all__ = [
     "public_info",
     "public_menu",
     "public_order",
+    "root_index",
     "run_registry_cycle",
     "sqlite3",
     "store",

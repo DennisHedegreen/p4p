@@ -87,6 +87,7 @@ The first pilot order-state set is:
 
 ## Public Endpoints
 
+- `GET /`
 - `GET /health`
 - `GET /p4p/menu`
 - `POST /p4p/order`

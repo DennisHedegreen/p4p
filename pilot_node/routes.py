@@ -134,6 +134,26 @@ def public_menu(runtime: PilotRuntime) -> Menu:
     return runtime.store.menu()
 
 
+def root_index(runtime: PilotRuntime) -> dict[str, Any]:
+    node = node_state(runtime)
+    return {
+        "service": "p4p-pilot-node",
+        "node_id": node.node_id,
+        "open": node.open,
+        "order_mode": node.order_mode,
+        "accepts_orders": node_accepts_orders(runtime, node),
+        "endpoints": {
+            "health": "GET /health",
+            "info": "GET /p4p/info",
+            "menu": "GET /p4p/menu",
+            "order": "POST /p4p/order",
+            "operator_state": "GET /operator/state",
+            "operator_orders": "GET /operator/orders",
+            "operator_reannounce": "POST /operator/reannounce",
+        },
+    }
+
+
 def public_payment_methods(runtime: PilotRuntime) -> list[str]:
     if runtime.config.payment_module_id and runtime.config.payment_module_id != PAYMENT_CASH_MODULE_ID:
         return ["external_test_payment"]
@@ -241,6 +261,10 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
             authorization=authorization,
             x_p4p_operator_token=x_p4p_operator_token,
         )
+
+    @app.get("/")
+    def root_index_route() -> dict[str, Any]:
+        return root_index(runtime)
 
     @app.get("/health")
     def health(response: Response) -> dict[str, Any]:
@@ -358,5 +382,6 @@ __all__ = [
     "public_menu",
     "public_order",
     "require_operator_token",
+    "root_index",
     "run_registry_cycle",
 ]
