@@ -1,0 +1,256 @@
+{
+  "version": "0.1",
+  "services": {
+    "primary-registry": {
+      "name": "primary-registry",
+      "kind": "registry",
+      "description": "Primary local registry on port 8000. Demo nodes announce here first.",
+      "cwd": "{registry_root}",
+      "command": [
+        "{registry_python}",
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
+      "env": {
+        "P4P_REGISTRY_URL": "http://127.0.0.1:8000",
+        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8000\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8002\"}]"
+      },
+      "port": 8000,
+      "health_url": "http://127.0.0.1:8000/registry-info",
+      "links": [
+        {
+          "label": "Registry info",
+          "url": "http://127.0.0.1:8000/registry-info",
+          "description": "Shows primary registry identity and backup configuration."
+        },
+        {
+          "label": "Discover pizza nodes",
+          "url": "http://127.0.0.1:8000/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
+          "description": "Checks whether announced local nodes are discoverable through the primary registry."
+        }
+      ]
+    },
+    "backup-registry": {
+      "name": "backup-registry",
+      "kind": "registry",
+      "description": "Backup local registry on port 8002. Used for failover tests.",
+      "cwd": "{registry_root}",
+      "command": [
+        "{registry_python}",
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8002"
+      ],
+      "env": {
+        "P4P_REGISTRY_URL": "http://127.0.0.1:8002",
+        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8002\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8000\"}]"
+      },
+      "port": 8002,
+      "health_url": "http://127.0.0.1:8002/registry-info",
+      "links": [
+        {
+          "label": "Registry info",
+          "url": "http://127.0.0.1:8002/registry-info",
+          "description": "Shows backup registry identity and backup configuration."
+        },
+        {
+          "label": "Discover pizza nodes",
+          "url": "http://127.0.0.1:8002/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
+          "description": "Checks whether announced local nodes are discoverable through the backup registry."
+        }
+      ]
+    },
+    "client-server": {
+      "name": "client-server",
+      "kind": "client",
+      "description": "Static reference customer client on port 8765.",
+      "cwd": "{client_root}",
+      "command": [
+        "{python}",
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "{client_root}"
+      ],
+      "env": {},
+      "port": 8765,
+      "health_url": "http://127.0.0.1:8765/",
+      "ready_text": "P4P Client",
+      "links": [
+        {
+          "label": "Open client",
+          "url": "http://127.0.0.1:8765/",
+          "description": "Browser client for registry discovery and direct order tests."
+        }
+      ]
+    },
+    "demo-node-1": {
+      "name": "demo-node-1",
+      "kind": "node",
+      "description": "First demo restaurant node on port 8101.",
+      "cwd": "{demo_node_root}",
+      "command": [
+        "{demo_node_python}",
+        "-m",
+        "uvicorn",
+        "demo_node:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8101"
+      ],
+      "env": {
+        "P4P_REGISTRY_URL": "http://127.0.0.1:8000",
+        "P4P_REGISTRY_URLS": "http://127.0.0.1:8000,http://127.0.0.1:8002",
+        "P4P_NODE_BASE_URL": "http://127.0.0.1:8101",
+        "P4P_NODE_KEY_FILE": "/tmp/p4p-lab-node-001-identity.json",
+        "P4P_NODE_ROOT_KEY_FILE": "/tmp/p4p-lab-node-001-root.json",
+        "P4P_NODE_ID": "dk-brondby-test-001",
+        "P4P_NODE_NAME": "P4P Test Pizzeria 1",
+        "P4P_NODE_CITY": "Brondby",
+        "P4P_NODE_COUNTRY": "DK",
+        "P4P_NODE_CATEGORIES": "pizza,kebab",
+        "P4P_NODE_ORDER_MODE": "test",
+        "P4P_NODE_DELEGATION_ROLE": "primary",
+        "P4P_NODE_MODULES": "p4p.payment.cash",
+        "P4P_NODE_LAT": "55.6542",
+        "P4P_NODE_LNG": "12.4156",
+        "P4P_MENU_ITEM_1_PRICE": "71",
+        "P4P_MENU_ITEM_2_PRICE": "81"
+      },
+      "port": 8101,
+      "health_url": "http://127.0.0.1:8101/health",
+      "links": [
+        {
+          "label": "Node info",
+          "url": "http://127.0.0.1:8101/p4p/info",
+          "description": "Public node metadata, order mode, and modules."
+        },
+        {
+          "label": "Menu JSON",
+          "url": "http://127.0.0.1:8101/p4p/menu",
+          "description": "Direct menu endpoint for this demo node."
+        }
+      ]
+    },
+    "pilot-photo-map": {
+      "name": "pilot-photo-map",
+      "kind": "pilot-node",
+      "description": "Pilot node with catalog editor, photo-map menu, list menu, customer status, and cash payment adapter.",
+      "cwd": "{pilot_node_root}",
+      "command": [
+        "{pilot_node_venv}/bin/uvicorn",
+        "pilot_node:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8595"
+      ],
+      "env": {
+        "P4P_PILOT_NODE_DB_PATH": "/tmp/p4p-lab-pilot-photo-map.sqlite3",
+        "P4P_OPERATOR_TOKEN": "change-this",
+        "P4P_NODE_BASE_URL": "http://127.0.0.1:8595",
+        "P4P_NODE_OPEN": "true",
+        "P4P_NODE_ORDER_MODE": "live",
+        "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.photo-map,p4p.menu.list,p4p.customer.status,p4p.payment.cash"
+      },
+      "port": 8595,
+      "health_url": "http://127.0.0.1:8595/",
+      "links": [
+        {
+          "label": "Pilot index",
+          "url": "http://127.0.0.1:8595/",
+          "description": "Endpoint map for the running pilot node."
+        },
+        {
+          "label": "Photo-map menu",
+          "url": "http://127.0.0.1:8595/p4p/menu/photo-map",
+          "description": "Clickable paper-menu style customer surface."
+        },
+        {
+          "label": "List menu",
+          "url": "http://127.0.0.1:8595/p4p/menu/list",
+          "description": "Classic list-menu customer surface for comparison."
+        },
+        {
+          "label": "Operator GUI",
+          "url": "http://127.0.0.1:8595/operator",
+          "description": "Operator dashboard. Token: change-this."
+        },
+        {
+          "label": "Module status JSON",
+          "url": "http://127.0.0.1:8595/operator/modules",
+          "description": "Requires X-P4P-Operator-Token: change-this when fetched outside the GUI."
+        }
+      ]
+    }
+  },
+  "scenarios": [
+    {
+      "id": "pilot-photo-map-menu",
+      "title": "Pilot Photo-Map Menu",
+      "description": "Starts one pilot node with catalog editor, photo-map menu, list menu, customer status, and pay-at-pickup payment adapter.",
+      "services": [
+        "pilot-photo-map"
+      ],
+      "links": [
+        {
+          "label": "Open photo-map menu",
+          "url": "http://127.0.0.1:8595/p4p/menu/photo-map",
+          "description": "Customer-facing paper-menu style module."
+        },
+        {
+          "label": "Open operator GUI",
+          "url": "http://127.0.0.1:8595/operator",
+          "description": "Use token change-this."
+        }
+      ],
+      "notes": [
+        "This scenario is for the new customer menu modules.",
+        "The GUI reads this scenario from lab/scenarios.json; edit that file to add another command."
+      ]
+    },
+    {
+      "id": "registry-client-demo-node",
+      "title": "Registry + Client + Demo Node",
+      "description": "Starts the classic local proof stack: primary registry, backup registry, static client, and one demo node.",
+      "services": [
+        "primary-registry",
+        "backup-registry",
+        "client-server",
+        "demo-node-1"
+      ],
+      "links": [
+        {
+          "label": "Open client",
+          "url": "http://127.0.0.1:8765/",
+          "description": "Use this for discovery and direct order flow."
+        },
+        {
+          "label": "Primary discover",
+          "url": "http://127.0.0.1:8000/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
+          "description": "Primary registry discovery result."
+        },
+        {
+          "label": "Backup discover",
+          "url": "http://127.0.0.1:8002/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
+          "description": "Backup registry discovery result."
+        }
+      ],
+      "notes": [
+        "Use this scenario for failover and classic v0.1 protocol proof tests.",
+        "Stop the primary registry and refresh the client to test backup behavior."
+      ]
+    }
+  ]
+}

@@ -189,6 +189,27 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("HTML kits are the maintained source", homepage)
         self.assertIn("Open base first. Commercial services on top.", press_kit_en)
 
+    def test_lab_gui_is_scenario_config_driven(self) -> None:
+        lab = load_module("lab/app.py")
+        config = lab.load_lab_config()
+        projection = lab.scenario_projection(config)
+        page = (REPO_ROOT / "lab/index.html").read_text(encoding="utf-8")
+
+        scenario_ids = {scenario["id"] for scenario in projection["scenarios"]}
+        service_ids = set(projection["services"])
+
+        self.assertIn("pilot-photo-map-menu", scenario_ids)
+        self.assertIn("registry-client-demo-node", scenario_ids)
+        self.assertIn("pilot-photo-map", service_ids)
+        self.assertIn("primary-registry", service_ids)
+        self.assertIn("p4p.menu.photo-map", config.services["pilot-photo-map"].env["P4P_NODE_MODULES"])
+        self.assertIn("/api/scenarios", page)
+        self.assertIn("lab/scenarios.json", page)
+        self.assertNotIn("Start Primary Registry", page)
+        for scenario in config.scenarios:
+            for service_name in scenario.services:
+                self.assertIn(service_name, config.services)
+
     def test_proof_status_and_release_notes_anchor_public_gate(self) -> None:
         proof_status = (REPO_ROOT / "docs/PROOF-STATUS.md").read_text(encoding="utf-8")
         release_notes = (REPO_ROOT / "docs/RELEASE-NOTES.md").read_text(encoding="utf-8")

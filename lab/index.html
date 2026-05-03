@@ -6,131 +6,225 @@
     <title>P4P Lab</title>
     <style>
       :root {
-        --bg: #f4efe6;
-        --panel: #fffaf2;
-        --ink: #1f1a16;
-        --muted: #6a6158;
-        --line: #decdb7;
-        --accent: #a63d28;
+        color-scheme: light;
+        --bg: #f4f6f5;
+        --panel: #ffffff;
+        --ink: #12201d;
+        --muted: #566662;
+        --line: #cfd8d5;
+        --soft: #eef4f2;
+        --accent: #00796b;
+        --accent-strong: #00594f;
+        --warn: #9b5c00;
+        --bad: #9b1c1c;
+        --terminal: #101819;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        background: var(--bg);
         color: var(--ink);
-        background:
-          radial-gradient(circle at top left, #fff5e3 0, transparent 28%),
-          radial-gradient(circle at bottom right, #f1debf 0, transparent 22%),
-          var(--bg);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
-      main { max-width: 1280px; margin: 0 auto; padding: 24px; }
-      .hero, .panel {
+      main {
+        max-width: 1360px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+      header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: end;
+        margin-bottom: 14px;
+      }
+      h1, h2, h3, p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 1.8rem;
+        line-height: 1.05;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .layout {
+        display: grid;
+        gap: 14px;
+      }
+      @media (min-width: 1080px) {
+        .layout {
+          grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+          align-items: start;
+        }
+      }
+      .panel, .scenario, .service {
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 18px;
-        box-shadow: 0 14px 34px rgba(50, 29, 10, 0.08);
-        margin-bottom: 18px;
+        border-radius: 8px;
       }
-      .grid { display: grid; gap: 18px; }
-      @media (min-width: 980px) {
-        .grid.two { grid-template-columns: 360px 1fr; }
-      }
-      button, input {
-        width: 100%;
-        border-radius: 12px;
-        border: 1px solid var(--line);
-        padding: 11px 12px;
-        font: inherit;
-      }
-      button {
-        background: var(--accent);
-        color: white;
-        border: none;
-        cursor: pointer;
-      }
-      button.secondary {
-        background: #efe4d1;
-        color: var(--ink);
-        border: 1px solid var(--line);
-      }
-      .stack { display: grid; gap: 10px; }
-      .row { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
-      .service {
-        border: 1px solid var(--line);
-        border-radius: 14px;
+      .panel {
         padding: 14px;
-        margin-bottom: 12px;
       }
-      .muted { color: var(--muted); }
-      .pill {
-        display: inline-block;
-        padding: 3px 8px;
-        border-radius: 999px;
-        background: #efe4d1;
-        color: var(--muted);
-        margin-right: 6px;
-        font-size: 0.84rem;
+      .stack {
+        display: grid;
+        gap: 10px;
       }
-      pre {
-        background: #f1e7d8;
-        border: 1px solid var(--line);
-        border-radius: 12px;
+      .scenario, .service {
         padding: 12px;
-        overflow: auto;
-        white-space: pre-wrap;
-        font-size: 0.84rem;
       }
-      a { color: var(--accent); }
+      .scenario header, .service header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 10px;
+        margin: 0 0 10px;
+      }
+      button, a.button {
+        min-height: 38px;
+        border: 1px solid var(--accent);
+        border-radius: 7px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        padding: 8px 11px;
+        text-decoration: none;
+        text-align: center;
+      }
+      button.secondary, a.button.secondary {
+        background: #fff;
+        color: var(--accent-strong);
+      }
+      button.danger {
+        border-color: var(--bad);
+        color: var(--bad);
+      }
+      .actions, .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        border-radius: 999px;
+        background: var(--soft);
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+        padding: 2px 8px;
+      }
+      .pill.ok {
+        background: #e8f6ef;
+        color: var(--accent-strong);
+      }
+      .pill.bad {
+        background: #fbeaea;
+        color: var(--bad);
+      }
+      .pill.warn {
+        background: #fff3d8;
+        color: var(--warn);
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0;
+      }
+      .command, .terminal, pre {
+        overflow: auto;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+      .command {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        padding: 9px;
+        color: #21312d;
+      }
+      .terminal {
+        min-height: 110px;
+        max-height: 260px;
+        background: var(--terminal);
+        color: #d7ebe6;
+        padding: 10px;
+      }
+      details {
+        margin-top: 10px;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .link-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .link-row {
+        display: grid;
+        gap: 2px;
+        border-left: 3px solid var(--line);
+        padding-left: 9px;
+      }
+      .link-row a {
+        color: var(--accent-strong);
+        font-weight: 750;
+      }
+      .error {
+        margin: 0 0 12px;
+        color: var(--bad);
+        font-weight: 700;
+      }
+      @media (max-width: 760px) {
+        header {
+          grid-template-columns: 1fr;
+        }
+        .actions button, .actions a.button {
+          width: 100%;
+        }
+      }
     </style>
   </head>
   <body>
     <main>
-      <section class="hero">
-        <h1>P4P Lab</h1>
-        <p class="muted">Separate local bench for process control, multi-node spawning, and protocol flow debugging.</p>
-      </section>
+      <header>
+        <div>
+          <h1>P4P Lab</h1>
+          <p class="muted">Config-driven local test panel. Scenarios, commands, links, and explanations come from <code>lab/scenarios.json</code>.</p>
+        </div>
+        <button class="secondary" id="refresh">Refresh</button>
+      </header>
 
-      <div class="grid two">
+      <p class="error" id="error" hidden></p>
+
+      <div class="layout">
         <section class="panel">
-          <h2>Controls</h2>
-          <div class="stack">
-            <button data-action="start-primary">Start Primary Registry</button>
-            <button data-action="start-backup">Start Backup Registry</button>
-            <button data-action="start-client">Start Client Server</button>
-            <div class="row">
-              <button class="secondary" data-action="stop-primary">Stop Primary</button>
-              <button class="secondary" data-action="stop-backup">Stop Backup</button>
-            </div>
-            <label for="batch-count">Spawn nodes</label>
-            <input id="batch-count" type="number" min="1" max="25" value="10">
-            <button data-action="spawn-batch">Spawn Batch</button>
-            <div class="row">
-              <button class="secondary" data-action="spawn-one">Spawn Node 1</button>
-              <button class="secondary" data-action="stop-nodes">Stop All Nodes</button>
-            </div>
-            <button class="secondary" data-action="refresh">Refresh Status</button>
-          </div>
-
-          <h3 style="margin-top:20px;">Links</h3>
-          <div class="stack">
-            <a href="http://127.0.0.1:8765/" target="_blank" rel="noreferrer">Open P4P Client</a>
-            <a href="http://127.0.0.1:8000/discover?lat=55.6517&lng=12.4126&radius=50" target="_blank" rel="noreferrer">Primary Discover</a>
-            <a href="http://127.0.0.1:8002/discover?lat=55.6517&lng=12.4126&radius=50" target="_blank" rel="noreferrer">Backup Discover</a>
-            <a href="http://127.0.0.1:8000/directory?lat=55.6517&lng=12.4126&radius=50" target="_blank" rel="noreferrer">Primary Directory</a>
-            <a href="http://127.0.0.1:8002/directory?lat=55.6517&lng=12.4126&radius=50" target="_blank" rel="noreferrer">Backup Directory</a>
-          </div>
+          <h2>Scenarios</h2>
+          <p class="muted">Start a complete local stack, or use a single configured service.</p>
+          <div class="stack" id="scenarios"></div>
         </section>
 
         <section class="panel">
           <h2>Services</h2>
-          <p class="muted">For nodes, <strong>running</strong> means process alive. <strong>ready</strong> means `/health` returned `200` with current registry registration.</p>
-          <div id="services"></div>
+          <p class="muted">Each service shows command, health, links, and latest terminal output.</p>
+          <div class="stack" id="services"></div>
         </section>
       </div>
     </main>
+
     <script>
-      async function call(url, options = {}) {
+      let scenarioData = { scenarios: [], services: {} };
+
+      async function api(url, options = {}) {
         const response = await fetch(url, {
           method: options.method || "GET",
           headers: { "Content-Type": "application/json" },
@@ -143,71 +237,153 @@
         return response.json();
       }
 
-      function serviceCard(service) {
-        const logs = (service.logs || []).slice(-20).join("\n") || "No logs yet.";
-        const health = service.health ? JSON.stringify(service.health, null, 2) : "No health data.";
-        const availabilityLabel = service.kind === "node"
-          ? (service.usable ? "ready" : "not ready")
-          : (service.usable ? "usable" : "not usable");
+      function showError(message) {
+        const target = document.getElementById("error");
+        target.hidden = !message;
+        target.textContent = message || "";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function renderLinks(links) {
+        if (!links || links.length === 0) return "";
         return `
-          <div class="service">
-            <strong>${service.name}</strong>
-            <div style="margin:8px 0;">
-              <span class="pill">${service.kind}</span>
-              <span class="pill">port ${service.port}</span>
-              <span class="pill">${service.running ? "running" : "stopped"}</span>
-              <span class="pill">${availabilityLabel}</span>
-              <span class="pill">pid ${service.pid ?? "none"}</span>
-              ${service.health_status_code ? `<span class="pill">health ${service.health_status_code}</span>` : ""}
-            </div>
-            ${service.operator_url ? `<p><a href="${service.operator_url}" target="_blank" rel="noreferrer">Open Node Operator</a></p>` : ""}
-            <button class="secondary" onclick="handleStop('${service.name}')">Stop ${service.name}</button>
-            ${service.kind === "node" ? `<pre>${health}</pre>` : ""}
-            <pre>${logs}</pre>
+          <div class="link-list">
+            ${links.map((link) => `
+              <div class="link-row">
+                <a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label || link.url)}</a>
+                <span class="muted">${escapeHtml(link.description || "")}</span>
+              </div>
+            `).join("")}
           </div>
         `;
       }
 
+      function renderScenario(scenario) {
+        const serviceDefs = scenario.services
+          .map((name) => scenarioData.services[name])
+          .filter(Boolean);
+        return `
+          <article class="scenario">
+            <header>
+              <div>
+                <h3>${escapeHtml(scenario.title)}</h3>
+                <p class="muted">${escapeHtml(scenario.description)}</p>
+              </div>
+              <span class="pill">${scenario.services.length} service${scenario.services.length === 1 ? "" : "s"}</span>
+            </header>
+            <div class="meta">
+              ${scenario.services.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")}
+            </div>
+            ${scenario.notes && scenario.notes.length ? `<ul class="muted">${scenario.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
+            ${renderLinks(scenario.links)}
+            <details>
+              <summary>Commands</summary>
+              ${serviceDefs.map((service) => `
+                <p><strong>${escapeHtml(service.name)}</strong></p>
+                <pre class="command">${escapeHtml(service.command)}</pre>
+              `).join("")}
+            </details>
+            <div class="actions">
+              <button data-start-scenario="${escapeHtml(scenario.id)}">Start scenario</button>
+              <button class="secondary danger" data-stop-scenario="${escapeHtml(scenario.id)}">Stop scenario</button>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderService(service) {
+        const logs = (service.logs || []).slice(-28).join("\n") || "No logs yet.";
+        const health = service.health ? JSON.stringify(service.health, null, 2) : "No health data.";
+        const runningClass = service.running ? "ok" : "bad";
+        const usableClass = service.usable ? "ok" : "warn";
+        const serviceLinks = [
+          ...(service.url ? [{ label: "Root", url: service.url, description: "Open service root." }] : []),
+          ...(service.operator_url ? [{ label: "Operator", url: service.operator_url, description: "Open operator surface." }] : []),
+          ...(service.links || [])
+        ];
+        return `
+          <article class="service">
+            <header>
+              <div>
+                <h3>${escapeHtml(service.name)}</h3>
+                <p class="muted">${escapeHtml(service.description || "")}</p>
+              </div>
+              <button class="secondary danger" data-stop-service="${escapeHtml(service.name)}">Stop</button>
+            </header>
+            <div class="meta">
+              <span class="pill">${escapeHtml(service.kind)}</span>
+              <span class="pill">port ${service.port ?? "none"}</span>
+              <span class="pill ${runningClass}">${service.running ? "running" : "stopped"}</span>
+              <span class="pill ${usableClass}">${service.usable ? "ready" : "not ready"}</span>
+              <span class="pill">pid ${service.pid ?? "none"}</span>
+              ${service.health_status_code ? `<span class="pill">health ${service.health_status_code}</span>` : ""}
+            </div>
+            ${renderLinks(serviceLinks)}
+            <details>
+              <summary>Command</summary>
+              <pre class="command">${escapeHtml(service.command || "")}</pre>
+              <p class="muted">${escapeHtml(service.cwd || "")}</p>
+            </details>
+            <details>
+              <summary>Health</summary>
+              <pre class="command">${escapeHtml(health)}</pre>
+            </details>
+            <p class="muted" style="margin-top:10px;">Terminal</p>
+            <pre class="terminal">${escapeHtml(logs)}</pre>
+          </article>
+        `;
+      }
+
+      async function startScenario(id) {
+        await api(`/api/scenarios/${encodeURIComponent(id)}/start`, { method: "POST" });
+        await refresh();
+      }
+
+      async function stopScenario(id) {
+        await api(`/api/scenarios/${encodeURIComponent(id)}/stop`, { method: "POST" });
+        await refresh();
+      }
+
+      async function stopService(name) {
+        await api(`/api/stop/${encodeURIComponent(name)}`, { method: "POST" });
+        await refresh();
+      }
+
       async function refresh() {
-        const data = await call("/api/status");
-        const services = data.services || [];
-        document.getElementById("services").innerHTML = services.length
-          ? services.map(serviceCard).join("")
-          : "<p class='muted'>No services started from the lab yet.</p>";
+        showError("");
+        scenarioData = await api("/api/scenarios");
+        const status = await api("/api/status");
+        document.getElementById("scenarios").innerHTML = scenarioData.scenarios.map(renderScenario).join("");
+        document.getElementById("services").innerHTML = status.services.length
+          ? status.services.map(renderService).join("")
+          : "<p class='muted'>No services started yet.</p>";
       }
 
-      async function handleStop(name) {
-        await call(`/api/stop/${name}`, { method: "POST" });
-        await refresh();
-      }
-
-      async function handleAction(action) {
-        if (action === "start-primary") await call("/api/start/primary", { method: "POST" });
-        if (action === "start-backup") await call("/api/start/backup", { method: "POST" });
-        if (action === "start-client") await call("/api/start/client", { method: "POST" });
-        if (action === "stop-primary") await call("/api/stop/primary-registry", { method: "POST" });
-        if (action === "stop-backup") await call("/api/stop/backup-registry", { method: "POST" });
-        if (action === "spawn-one") await call("/api/start/node/1", { method: "POST" });
-        if (action === "spawn-batch") {
-          const count = Number(document.getElementById("batch-count").value);
-          await call("/api/start/nodes", { method: "POST", body: { count } });
+      document.addEventListener("click", async (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        if (!target) return;
+        try {
+          if (target.dataset.startScenario) await startScenario(target.dataset.startScenario);
+          if (target.dataset.stopScenario) await stopScenario(target.dataset.stopScenario);
+          if (target.dataset.stopService) await stopService(target.dataset.stopService);
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Action failed.");
         }
-        if (action === "stop-nodes") await call("/api/stop-kind/node", { method: "POST" });
-        await refresh();
-      }
-
-      document.querySelectorAll("[data-action]").forEach((button) => {
-        button.addEventListener("click", async () => {
-          try {
-            await handleAction(button.dataset.action);
-          } catch (error) {
-            alert(error.message);
-          }
-        });
       });
 
-      refresh();
-      setInterval(refresh, 2500);
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => showError(error.message));
+      });
+
+      refresh().catch((error) => showError(error.message));
+      setInterval(() => refresh().catch(() => {}), 2500);
     </script>
   </body>
 </html>

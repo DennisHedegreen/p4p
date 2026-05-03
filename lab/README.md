@@ -5,10 +5,12 @@ Separate local harness for testing the P4P protocol without polluting the protoc
 This is not part of the protocol.
 
 It is a browser control panel for:
+- starting and stopping configured local scenarios
 - starting and stopping local registries
-- starting and stopping many demo nodes
+- starting and stopping demo or pilot nodes
 - watching service logs
-- opening the client
+- opening links for the running services
+- reading the exact command each service was started with
 - stress-testing discovery with multiple nodes
 
 ## Why it exists
@@ -32,10 +34,37 @@ Open:
 
 `http://127.0.0.1:8899`
 
+## Scenario Config
+
+The main GUI is driven by `lab/scenarios.json`.
+
+That file declares:
+
+- service name
+- working directory
+- command argv
+- environment variables
+- health URL
+- links with short explanations
+- scenarios that group services together
+
+The GUI should not need code changes when adding a local test command. Add a
+service or scenario to `lab/scenarios.json`, restart or refresh the lab, and the
+new button/link/command appears in the browser.
+
+Current configured scenarios:
+
+- `pilot-photo-map-menu`: starts the pilot node with `p4p.catalog.editor`,
+  `p4p.menu.photo-map`, `p4p.menu.list`, `p4p.customer.status`, and
+  `p4p.payment.cash`.
+- `registry-client-demo-node`: starts primary registry, backup registry, the
+  static client, and one demo node for the classic local proof.
+
 ## Notes
 
 - `TEST-GUIDE.md` is the canonical rescue and proof sequence; `lab/README.md` is only the local harness quickstart.
 - The panel expects the existing `registry/.venv` and `demo-node/.venv` runtimes to exist in the repo root.
+- The configured pilot-node scenario expects `pilot-node/.venv` to exist.
 - It starts subprocesses locally and captures their stdout logs.
 - It can spawn many demo nodes with distinct ports and slightly shifted coordinates.
 - Spawned demo nodes dual-register to both primary and backup registries by default.
