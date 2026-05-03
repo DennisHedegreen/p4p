@@ -79,6 +79,13 @@ It reads active items from the structured catalog and lets the customer build a
 normal P4P order request. It does not own item ids, prices, inventory, payment,
 or operator state.
 
+`p4p.menu.photo-map` is a reference public customer menu surface for the pilot
+node.
+
+It presents active catalog items as clickable regions in a paper-menu style
+layout. It is a presentation module, not OCR, not the catalog source of truth,
+and not a payment or inventory owner.
+
 `p4p.customer.status` is a reference public read-only status module for the
 pilot node.
 

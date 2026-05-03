@@ -30,6 +30,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Planned `v0.2` execution contract for module lanes, event/result shape, permissions, fallback policy, and idempotency.
 - `PAYMENT-ADAPTER-STANDARD.md`
   Public guardrail for payment modules: P4P routes payment requests to adapters but does not become a payment provider.
+- `MENU-PHOTO-MAP-TEST-TARGETS.md`
+  Manual external menu targets for testing photographed/paper-menu mapping without copying third-party assets into the repo.
 - `FIRST-FLOWS.md`
   First concrete module-flow sketches for printer, payment, AI-menu fallback, and duplicate-protection behavior.
 - `ORDER-CONSENT.md`

@@ -37,6 +37,7 @@ from pilot_node.execution import (
     GODPAY_MOCK_MODULE_ID,
     KITCHEN_SCREEN_MODULE_ID,
     MENU_LIST_MODULE_ID,
+    MENU_PHOTO_MAP_MODULE_ID,
     NOTIFY_EMAIL_MODULE_ID,
     PAYMENT_CASH_MODULE_ID,
     PRINT_MODULE_ID,
@@ -171,6 +172,7 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
             "info": "GET /p4p/info",
             "menu": "GET /p4p/menu",
             "menu_list": "GET /p4p/menu/list",
+            "menu_photo_map": "GET /p4p/menu/photo-map",
             "order": "POST /p4p/order",
             "order_status_page": "GET /p4p/orders/{order_id}",
             "order_status_json": "GET /p4p/orders/{order_id}/status",
@@ -216,6 +218,10 @@ def customer_status_module_enabled(runtime: PilotRuntime) -> bool:
 
 def menu_list_module_enabled(runtime: PilotRuntime) -> bool:
     return MENU_LIST_MODULE_ID in effective_flow_module_ids(runtime)
+
+
+def menu_photo_map_module_enabled(runtime: PilotRuntime) -> bool:
+    return MENU_PHOTO_MAP_MODULE_ID in effective_flow_module_ids(runtime)
 
 
 def public_order_status(runtime: PilotRuntime, order_id: str) -> PublicOrderStatus:
@@ -746,6 +752,453 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
 </html>"""
 
 
+def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
+    if not menu_photo_map_module_enabled(runtime):
+        raise HTTPException(status_code=404, detail="Photo map menu module is not enabled")
+
+    menu = public_menu(runtime)
+    node = node_state(runtime)
+    accepts_orders = node_accepts_orders(runtime, node)
+    status_links_enabled = customer_status_module_enabled(runtime)
+    checked_at = utc_now()
+    action_id = f"menu-photo-map:{checked_at.isoformat()}:view"
+    runtime.store.record_order_event(
+        ModuleResultEvent(
+            event="CUSTOMER_MENU_VIEWED",
+            source_module=MENU_PHOTO_MAP_MODULE_ID,
+            order_id=None,
+            action_id=action_id,
+            idempotency_key=action_id,
+            outcome="SUCCESS",
+            severity="low",
+            retryable=False,
+            side_effect_state="none",
+            timestamp=checked_at,
+            metadata={
+                "active_item_count": len(menu.items),
+                "category_count": len({item.category for item in menu.items}),
+                "region_count": len(menu.items),
+                "accepts_orders": accepts_orders,
+                "public_surface": MENU_PHOTO_MAP_MODULE_ID,
+                "map_mode": "catalog-derived-regions",
+                "reads_catalog_truth": True,
+                "exposes_inactive_items": False,
+                "owns_catalog_truth": False,
+                "owns_photo_source": False,
+            },
+        )
+    )
+
+    if not menu.items:
+        map_html = '<p class="empty">No active menu items right now.</p>'
+    else:
+        regions: list[str] = []
+        for index, item in enumerate(menu.items, start=1):
+            regions.append(
+                f"""
+              <button
+                type="button"
+                class="hotspot"
+                data-photo-map-item-id="{html.escape(item.id, quote=True)}"
+                data-price="{item.price}"
+                data-region-index="{index}"
+                aria-pressed="false"
+              >
+                <span class="region-number">{index}</span>
+                <span class="region-copy">
+                  <strong>{html.escape(item.name)}</strong>
+                  <small>{html.escape(item.description)}</small>
+                  <em>{item.price} {html.escape(menu.currency)}</em>
+                </span>
+                <span class="region-qty" aria-label="Selected quantity">0</span>
+              </button>"""
+            )
+        map_html = f"""
+          <section class="photo-map" aria-label="Clickable paper menu map" data-photo-map-mode="catalog-derived-regions">
+            <div class="paper">
+              <div class="paper-head">
+                <p>Paper menu map</p>
+                <span>{len(menu.items)} active regions</span>
+              </div>
+              <div class="regions">
+                {''.join(regions)}
+              </div>
+            </div>
+          </section>"""
+
+    order_disabled = not accepts_orders or not menu.items
+    disabled_attr = " disabled" if order_disabled else ""
+    status_notice = (
+        "Tap a menu area to add it to the order."
+        if accepts_orders
+        else f"This node is currently {html.escape(node.order_mode)}; menu viewing is available but ordering is disabled."
+    )
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P4P Photo Map Menu</title>
+    <style>
+      :root {{
+        color-scheme: light;
+      }}
+      body {{
+        margin: 0;
+        background: #eef2f1;
+        color: #10201d;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }}
+      main {{
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 24px 14px 48px;
+      }}
+      header {{
+        margin-bottom: 18px;
+      }}
+      h1, h2, p {{
+        margin: 0;
+      }}
+      h1 {{
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        line-height: 1;
+        max-width: 760px;
+      }}
+      .lede {{
+        margin-top: 12px;
+        max-width: 760px;
+        color: #51615d;
+      }}
+      .layout {{
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+        gap: 18px;
+        align-items: start;
+      }}
+      .photo-map, .checkout {{
+        background: #fff;
+        border: 1px solid #cfd8d5;
+        border-radius: 8px;
+        padding: 16px;
+      }}
+      .paper {{
+        min-height: 560px;
+        background: #fffdf6;
+        border: 1px solid #d8d0bf;
+        box-shadow: 0 10px 28px rgba(16, 32, 29, 0.08);
+        padding: 18px;
+      }}
+      .paper-head {{
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 2px solid #10201d;
+        padding-bottom: 10px;
+        margin-bottom: 14px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0;
+      }}
+      .paper-head span {{
+        color: #51615d;
+        font-weight: 650;
+        text-transform: none;
+      }}
+      .regions {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+      }}
+      .hotspot {{
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr) 34px;
+        gap: 10px;
+        align-items: center;
+        min-height: 92px;
+        width: 100%;
+        border: 1px solid #d8d0bf;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.72);
+        color: inherit;
+        padding: 10px;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }}
+      .hotspot[aria-pressed="true"] {{
+        border-color: #00796b;
+        background: #ecf8f5;
+      }}
+      .region-number, .region-qty {{
+        display: grid;
+        place-items: center;
+        min-width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        font-weight: 800;
+      }}
+      .region-number {{
+        background: #10201d;
+        color: #fff;
+      }}
+      .region-qty {{
+        background: #00796b;
+        color: #fff;
+      }}
+      .region-copy {{
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }}
+      .region-copy strong, .region-copy small {{
+        overflow-wrap: anywhere;
+      }}
+      .region-copy small {{
+        color: #51615d;
+      }}
+      .region-copy em {{
+        font-style: normal;
+        font-weight: 800;
+      }}
+      .checkout {{
+        position: sticky;
+        top: 12px;
+      }}
+      label {{
+        display: block;
+        margin-top: 12px;
+        font-size: 0.9rem;
+        font-weight: 650;
+        color: #344541;
+      }}
+      input, textarea {{
+        box-sizing: border-box;
+        width: 100%;
+        margin-top: 5px;
+        border: 1px solid #cfd8d5;
+        border-radius: 7px;
+        min-height: 42px;
+        padding: 9px 10px;
+        font: inherit;
+      }}
+      textarea {{
+        min-height: 76px;
+        resize: vertical;
+      }}
+      .summary {{
+        margin-top: 12px;
+        padding: 12px;
+        background: #f5f7f6;
+        border: 1px solid #e1e8e5;
+        border-radius: 8px;
+      }}
+      .total {{
+        font-size: 1.5rem;
+        font-weight: 800;
+      }}
+      .selected-list {{
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }}
+      .selected-row {{
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+      }}
+      .selected-row button, button[type="submit"] {{
+        border: 1px solid #00796b;
+        background: #00796b;
+        color: #fff;
+        border-radius: 7px;
+        min-height: 38px;
+        font: inherit;
+        font-weight: 750;
+        cursor: pointer;
+      }}
+      .selected-row button {{
+        background: #fff;
+        color: #00796b;
+        padding: 0 10px;
+      }}
+      .notice, .result {{
+        margin-top: 10px;
+        color: #51615d;
+        font-size: 0.93rem;
+      }}
+      .result a {{
+        color: #00594f;
+        font-weight: 750;
+      }}
+      button[type="submit"] {{
+        width: 100%;
+        min-height: 42px;
+        margin-top: 14px;
+      }}
+      button:disabled {{
+        opacity: 0.45;
+        cursor: not-allowed;
+      }}
+      .empty {{
+        background: #fff;
+        border: 1px solid #cfd8d5;
+        border-radius: 8px;
+        padding: 16px;
+      }}
+      @media (max-width: 780px) {{
+        .layout {{
+          grid-template-columns: 1fr;
+        }}
+        .checkout {{
+          position: static;
+        }}
+      }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Photo Map Menu</h1>
+        <p class="lede">Clickable paper-menu style view from the restaurant-owned catalog. This reference module maps active catalog items to visual regions; it does not own the catalog, prices, inventory, or payment.</p>
+      </header>
+      <div class="layout">
+        <div>{map_html}</div>
+        <form class="checkout" id="order-form">
+          <h2>Order</h2>
+          <p class="notice">{status_notice}</p>
+          <label>
+            Name
+            <input name="customer_name" autocomplete="name" required{disabled_attr}>
+          </label>
+          <label>
+            Phone or contact
+            <input name="customer_contact" autocomplete="tel" required{disabled_attr}>
+          </label>
+          <label>
+            Note
+            <textarea name="note"{disabled_attr}></textarea>
+          </label>
+          <div class="summary" aria-live="polite">
+            <p>Total</p>
+            <p class="total" id="total">0 {html.escape(menu.currency)}</p>
+            <p id="selected-count">No areas selected</p>
+            <div class="selected-list" id="selected-list"></div>
+          </div>
+          <button id="submit-order" type="submit"{disabled_attr}>Send order</button>
+          <p class="result" id="result" role="status"></p>
+        </form>
+      </div>
+    </main>
+    <script>
+      const canOrder = {str(accepts_orders and bool(menu.items)).lower()};
+      const statusLinksEnabled = {str(status_links_enabled).lower()};
+      const currency = "{html.escape(menu.currency, quote=True)}";
+      const hotspots = Array.from(document.querySelectorAll("[data-photo-map-item-id]"));
+      const form = document.getElementById("order-form");
+      const submit = document.getElementById("submit-order");
+      const total = document.getElementById("total");
+      const selectedCount = document.getElementById("selected-count");
+      const selectedList = document.getElementById("selected-list");
+      const result = document.getElementById("result");
+
+      function quantity(button) {{
+        return Number(button.querySelector(".region-qty").textContent || "0");
+      }}
+
+      function setQuantity(button, value) {{
+        const next = Math.max(0, value);
+        button.querySelector(".region-qty").textContent = String(next);
+        button.setAttribute("aria-pressed", next > 0 ? "true" : "false");
+      }}
+
+      function selectedItems() {{
+        return hotspots
+          .map((button) => ({{
+            id: button.dataset.photoMapItemId,
+            quantity: quantity(button),
+            price: Number(button.dataset.price),
+            name: button.querySelector("strong").textContent || button.dataset.photoMapItemId
+          }}))
+          .filter((item) => item.quantity > 0);
+      }}
+
+      function updateSummary() {{
+        const items = selectedItems();
+        const amount = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+        const count = items.reduce((sum, item) => sum + item.quantity, 0);
+        total.textContent = `${{amount}} ${{currency}}`;
+        selectedCount.textContent = count === 0 ? "No areas selected" : `${{count}} item${{count === 1 ? "" : "s"}} selected`;
+        selectedList.innerHTML = items.map((item) => `
+          <div class="selected-row">
+            <span>${{item.quantity}} x ${{item.name}}</span>
+            <button type="button" data-remove-item="${{item.id}}">Remove</button>
+          </div>
+        `).join("");
+        submit.disabled = !canOrder || count === 0;
+      }}
+
+      hotspots.forEach((button) => {{
+        button.addEventListener("click", () => {{
+          setQuantity(button, quantity(button) + 1);
+          updateSummary();
+        }});
+      }});
+
+      selectedList.addEventListener("click", (event) => {{
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        const itemId = target ? target.dataset.removeItem : "";
+        if (!itemId) return;
+        const button = hotspots.find((candidate) => candidate.dataset.photoMapItemId === itemId);
+        if (!button) return;
+        setQuantity(button, quantity(button) - 1);
+        updateSummary();
+      }});
+
+      form.addEventListener("submit", async (event) => {{
+        event.preventDefault();
+        const items = selectedItems().map((item) => ({{ id: item.id, quantity: item.quantity }}));
+        if (!items.length) {{
+          result.textContent = "Choose at least one menu area first.";
+          return;
+        }}
+        submit.disabled = true;
+        result.textContent = "Sending order.";
+        const data = new FormData(form);
+        const payload = {{
+          customer_name: String(data.get("customer_name") || "").trim(),
+          customer_contact: String(data.get("customer_contact") || "").trim(),
+          fulfillment: "pickup",
+          items,
+          note: String(data.get("note") || "").trim(),
+          client_version: "p4p-menu-photo-map-0.1"
+        }};
+        try {{
+          const response = await fetch("/p4p/order", {{
+            method: "POST",
+            headers: {{ "Content-Type": "application/json" }},
+            body: JSON.stringify(payload)
+          }});
+          const body = await response.json();
+          if (!response.ok || body.accepted === false) {{
+            throw new Error(body.message || body.detail || body.reason || "Order was rejected.");
+          }}
+          const statusLink = statusLinksEnabled ? ` <a href="/p4p/orders/${{encodeURIComponent(body.order_id)}}">Check status</a>` : "";
+          result.innerHTML = `Order accepted: <strong>${{body.order_id}}</strong>.${{statusLink}}`;
+        }} catch (error) {{
+          result.textContent = error instanceof Error ? error.message : "Order failed.";
+        }} finally {{
+          updateSummary();
+        }}
+      }});
+
+      updateSummary();
+    </script>
+  </body>
+</html>"""
+
+
 def public_info(runtime: PilotRuntime) -> dict[str, Any]:
     node = node_state(runtime)
     return {
@@ -922,7 +1375,9 @@ BUILTIN_EXECUTOR_MODULE_IDS = frozenset(
     }
 )
 BUILTIN_OPERATOR_SURFACE_MODULE_IDS = frozenset({CATALOG_EDITOR_MODULE_ID, KITCHEN_SCREEN_MODULE_ID})
-BUILTIN_CUSTOMER_SURFACE_MODULE_IDS = frozenset({CUSTOMER_STATUS_MODULE_ID, MENU_LIST_MODULE_ID})
+BUILTIN_CUSTOMER_SURFACE_MODULE_IDS = frozenset(
+    {CUSTOMER_STATUS_MODULE_ID, MENU_LIST_MODULE_ID, MENU_PHOTO_MAP_MODULE_ID}
+)
 
 
 def operator_module_entry(runtime: PilotRuntime, manifest) -> dict[str, Any]:
@@ -1216,6 +1671,10 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
     @app.get("/p4p/menu/list", response_class=HTMLResponse)
     def public_menu_list_page_route() -> str:
         return public_menu_list_page(runtime)
+
+    @app.get("/p4p/menu/photo-map", response_class=HTMLResponse)
+    def public_menu_photo_map_page_route() -> str:
+        return public_menu_photo_map_page(runtime)
 
     @app.post("/p4p/order", response_model=OrderAccepted | OrderRejected)
     def public_order_route(payload: OrderRequest) -> OrderAccepted | OrderRejected:

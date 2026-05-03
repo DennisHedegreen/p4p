@@ -38,6 +38,7 @@ from pilot_node.routes import (
     public_info as _public_info,
     public_menu as _public_menu,
     public_menu_list_page as _public_menu_list_page,
+    public_menu_photo_map_page as _public_menu_photo_map_page,
     public_order as _public_order,
     public_order_status as _public_order_status,
     public_order_status_page as _public_order_status_page,
@@ -74,6 +75,10 @@ def public_menu():
 
 def public_menu_list_page() -> str:
     return _public_menu_list_page(RUNTIME)
+
+
+def public_menu_photo_map_page() -> str:
+    return _public_menu_photo_map_page(RUNTIME)
 
 
 def public_order(payload: OrderRequest):
@@ -222,6 +227,7 @@ __all__ = [
     "public_info",
     "public_menu",
     "public_menu_list_page",
+    "public_menu_photo_map_page",
     "public_order",
     "public_order_status",
     "public_order_status_page",

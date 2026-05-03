@@ -3175,6 +3175,112 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(missing_module.exception.detail, "Menu list module is not enabled")
             pilot.store.close()
 
+    def test_pilot_node_photo_map_module_exposes_catalog_as_clickable_customer_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.photo-map,p4p.customer.status,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            pilot.operator_replace_menu(
+                pilot.MenuUpdate(
+                    items=[
+                        pilot.MenuItem(
+                            id="pizza-17",
+                            name="Pizza 17",
+                            description="Tomato, cheese, chili",
+                            price=89,
+                            category="pizza",
+                            active=True,
+                        ),
+                        pilot.MenuItem(
+                            id="durum-test",
+                            name="Durum Test",
+                            description="Hidden from photo map",
+                            price=75,
+                            category="kebab",
+                            active=False,
+                        ),
+                    ]
+                ),
+                authorization="Bearer operator-secret",
+            )
+
+            modules = pilot.operator_modules(authorization="Bearer operator-secret")
+            photo_entry = {
+                entry["module_id"]: entry
+                for entry in modules["lanes"]["public_capability"]["modules"]
+            }["p4p.menu.photo-map"]
+            info = pilot.public_info()
+            page = pilot.public_menu_photo_map_page()
+            active_order = pilot.public_order(
+                pilot.OrderRequest(
+                    customer_name="Anna Hansen",
+                    customer_contact="+4512345678",
+                    fulfillment="pickup",
+                    items=[pilot.OrderItem(id="pizza-17", quantity=1)],
+                    note="Photo map test",
+                    client_version="p4p-menu-photo-map-0.1",
+                )
+            )
+            row = pilot.store._connection.execute(
+                "SELECT event_json FROM order_events WHERE source_module = ?",
+                ("p4p.menu.photo-map",),
+            ).fetchone()
+
+            self.assertTrue(photo_entry["active"])
+            self.assertTrue(photo_entry["configured"])
+            self.assertTrue(photo_entry["executable"])
+            self.assertEqual(photo_entry["implementation"], "builtin_customer_surface")
+            self.assertEqual(photo_entry["health"], "available")
+            self.assertIn("p4p.menu.photo-map", info["modules"])
+            self.assertIn("Photo Map Menu", page)
+            self.assertIn("Pizza 17", page)
+            self.assertIn("Tomato, cheese, chili", page)
+            self.assertIn('data-photo-map-item-id="pizza-17"', page)
+            self.assertIn('data-photo-map-mode="catalog-derived-regions"', page)
+            self.assertNotIn("Durum Test", page)
+            self.assertIn('fetch("/p4p/order"', page)
+            self.assertIn("p4p-menu-photo-map-0.1", page)
+            self.assertIn("/p4p/orders/${encodeURIComponent(body.order_id)}", page)
+            self.assertTrue(active_order.accepted)
+            self.assertIsNotNone(row)
+            event = json.loads(str(row["event_json"]))
+            self.assertEqual(event["event"], "CUSTOMER_MENU_VIEWED")
+            self.assertEqual(event["source_module"], "p4p.menu.photo-map")
+            self.assertEqual(event["metadata"]["active_item_count"], 1)
+            self.assertEqual(event["metadata"]["region_count"], 1)
+            self.assertEqual(event["metadata"]["map_mode"], "catalog-derived-regions")
+            self.assertFalse(event["metadata"]["exposes_inactive_items"])
+            pilot.store.close()
+
+    def test_pilot_node_photo_map_endpoint_requires_enabled_module(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            with self.assertRaises(HTTPException) as missing_module:
+                pilot.public_menu_photo_map_page()
+
+            self.assertEqual(missing_module.exception.status_code, 404)
+            self.assertEqual(missing_module.exception.detail, "Photo map menu module is not enabled")
+            pilot.store.close()
+
     def test_pilot_node_external_payment_requires_explicit_customer_user(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
@@ -4276,6 +4382,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertTrue(index["accepts_orders"])
             self.assertEqual(index["endpoints"]["info"], "GET /p4p/info")
             self.assertEqual(index["endpoints"]["menu_list"], "GET /p4p/menu/list")
+            self.assertEqual(index["endpoints"]["menu_photo_map"], "GET /p4p/menu/photo-map")
             self.assertEqual(index["endpoints"]["order"], "POST /p4p/order")
             self.assertEqual(index["endpoints"]["operator_gui"], "GET /operator")
             self.assertEqual(index["endpoints"]["operator_modules"], "GET /operator/modules")

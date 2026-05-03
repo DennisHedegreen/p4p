@@ -1,0 +1,53 @@
+{
+  "module_id": "p4p.menu.photo-map",
+  "module_class": "customer_surface",
+  "lane": "public_capability",
+  "type": "menu-photo-map",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "reference-example",
+  "description": "Customer-facing clickable paper-menu style surface built from active structured catalog items.",
+  "visibility": "public",
+  "capabilities": [
+    "view_active_menu_items",
+    "map_catalog_items_to_visual_regions",
+    "select_menu_area",
+    "build_order_draft",
+    "submit_order"
+  ],
+  "input_events": [
+    "CATALOG_UPDATED",
+    "ITEM_NOT_POSSIBLE",
+    "ORDER_REJECTED"
+  ],
+  "output_events": [
+    "CUSTOMER_MENU_VIEWED"
+  ],
+  "permissions": [
+    "read.catalog.items",
+    "emit.customer.menu_view"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {},
+  "idempotency_scope": "customer_menu_photo_map_view",
+  "requires": [
+    "p4p.catalog.editor"
+  ],
+  "data_access": [
+    "catalog_item_id",
+    "catalog_item_name",
+    "catalog_item_description",
+    "catalog_item_price",
+    "catalog_item_category",
+    "catalog_item_active"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Shows a paper-menu style customer surface with clickable regions that map to active catalog items and post ordinary order requests to the node.",
+    "data_access_summary": "Active item ids, names, descriptions, prices, and categories only. It does not own photos, OCR, prices, inventory, payment, or operator data.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "test",
+    "operator_status": "available as the pilot-node photo map menu route when enabled"
+  }
+}
