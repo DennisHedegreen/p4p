@@ -80,8 +80,14 @@ Confirmed after the 30 April 2026 upload:
 - `pizza4people.com/` now shows the `public repo is the conservative story branch` wording
 - `pizza4people.com/press-kit/` loads the current Danish press-kit HTML
 
-Prepared for the 3 May 2026 upload:
+Confirmed after the 3 May 2026 upload:
 
+- `./_local/publish.sh --upload-special-domain pizza4people --yes` uploaded the current local `public/www/pizza4people/` tree to `/pizza4people.com`
+- `gh api repos/DennisHedegreen/p4p/commits/main --jq .sha` confirmed the public `main` branch had accepted the 3 May public-surface update before this checkpoint-log edit was committed
+- plain `curl -I -L --max-redirs 2 https://pizza4people.com/` still returned Simply `455`
+- plain `curl -sS --max-time 15 https://pizza4people.com/modules.json` still returned the Simply `455` error page
+- headless browser verification loaded `pizza4people.com/` and found the updated 30 April 2026 date wording, module-layer note, integer minor-unit currency note, and payment-adapter boundary
+- headless browser verification loaded `pizza4people.com/modules.json` and found `generated_at: 2026-05-03`, `p4p.menu.photo-map`, and `p4p.payment.godpay-mock`
 - the generated homepage now mentions replaceable customer menu modules, internal mock payment modules, operator workflow modules, and integer minor-unit pricing with an explicit node currency
 - the generated module section now repeats the payment boundary: payment modules are adapters chosen by the restaurant/operator; P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record
 - the generated homepage now treats 30 April 2026 as an announced closure date, not a future event
