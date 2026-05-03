@@ -19,6 +19,38 @@ The hard problem to test later is whether a photographed or scanned menu can be
 turned into safe clickable regions without losing the operator-owned item ids,
 prices, active/inactive status, and ordering boundaries.
 
+## Synthetic Fixtures
+
+The repo now includes synthetic paper-menu images for safe local testing:
+
+```text
+docs/examples/menu-photo-map-fixtures/
+```
+
+Use those fixtures before using any third-party public menu target. They cover
+Portuguese/BRL, Japanese/JPY, English/USD, Italian/EUR, and Danish/DKK layouts
+without relying on real restaurant material.
+
+## Local Demo Prospects
+
+These are nearby Brondby/Glostrup-area restaurants that could be useful future
+conversation targets if P4P needs a local operator demo.
+
+They are not partners, not approved test users, and not permission sources yet.
+Do not copy their menu images, text, logos, or ordering data into the repo
+without explicit permission. Use the links only to understand current operator
+surfaces and prepare a realistic demo conversation.
+
+| Prospect | Public Surface | Why It Is Useful Later | Demo Angle |
+| --- | --- | --- | --- |
+| U.P. Pizza, Brondby Strand | `https://uppizza.dk/` | Local pizza/kebab shop with its own ordering surface and a public menu. | Show paper-menu photo-map plus classic structured list menu side by side. |
+| Del Rossa Pizza, Brondby | `https://delrossa.dk/` | Local restaurant site with direct branding, contact info, and menu entry point. | Show that P4P can be an operator-owned module layer, not another marketplace. |
+| Torvets Cafe & Pizzaria, Brondby | `https://torvets-cafe.dk/takeaway` | Dense numbered menu with pizza, durum, burgers, and popular items. | Good future test for large menu mapping and category boundaries. |
+| Vesterleds Pizzahus, Brondby | `https://vesterledspizzahus.dk/` | Local takeaway site with separate public ordering/menu surfaces. | Good operator demo for replacing platform dependency with direct node ownership. |
+| Gourmet Pizzeria, Glostrup | `https://gourmetpizzaria.dk/menu/` | Rich public menu with numbered pizzas and mixed categories. | Good manual target for OCR and row-to-catalog mapping tests. |
+| Toscana Pizza House, Glostrup | `https://toscanapizzahouse.dk/` | Local Meal4U-style ordering surface with delivery zones and broad menu scope. | Good future test for delivery/pricing boundaries as modules. |
+| Big Ben Pizza & Cafe, Glostrup | `https://bigben-pizza.dk/menu/` | Large menu with variants, extras, and item pages. | Good stress target for variants, extras, and item-option modeling. |
+
 ## External Manual Targets
 
 | Target | URL | Useful For | Do Not Assume |

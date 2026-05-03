@@ -15,6 +15,7 @@ from p4p_core import (
     env_path,
     env_str,
     load_registry_urls,
+    normalize_currency_code,
     normalize_module_ids,
     resolve_enabled_modules,
 )
@@ -96,6 +97,7 @@ class PilotConfig:
     godpay_force_roll: int | None
     notify_email_mode: str
     db_path: str
+    menu_currency: str
     menu_item_1_name: str
     menu_item_1_description: str
     menu_item_1_price: int
@@ -282,12 +284,13 @@ def build_pilot_config() -> PilotConfig:
         ),
         notify_email_mode=env_str("P4P_NOTIFY_EMAIL_MODE", "sent"),
         db_path=os.environ.get("P4P_PILOT_NODE_DB_PATH", ":memory:"),
+        menu_currency=normalize_currency_code(env_str("P4P_MENU_CURRENCY", "DKK")),
         menu_item_1_name=env_str("P4P_MENU_ITEM_1_NAME", "Kebab pita"),
         menu_item_1_description=env_str("P4P_MENU_ITEM_1_DESCRIPTION", "Kebab, salat, dressing"),
-        menu_item_1_price=int(env_str("P4P_MENU_ITEM_1_PRICE", "65")),
+        menu_item_1_price=int(env_str("P4P_MENU_ITEM_1_PRICE", "6500")),
         menu_item_2_name=env_str("P4P_MENU_ITEM_2_NAME", "Durum kebab"),
         menu_item_2_description=env_str("P4P_MENU_ITEM_2_DESCRIPTION", "Kebab, salat, dressing"),
-        menu_item_2_price=int(env_str("P4P_MENU_ITEM_2_PRICE", "75")),
+        menu_item_2_price=int(env_str("P4P_MENU_ITEM_2_PRICE", "7500")),
     )
 
 

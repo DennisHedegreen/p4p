@@ -1,0 +1,113 @@
+{
+  "version": "0.1",
+  "status": "synthetic-test-fixtures",
+  "created_at": "2026-05-03",
+  "policy": {
+    "source": "AI-generated fictional paper menu images supplied by the project owner.",
+    "not_real_restaurants": true,
+    "not_partner_material": true,
+    "not_production_catalog_truth": true,
+    "automation_rule": "Use these fixtures for manual and automated photo-map/OCR experiments. Do not treat generated menu text as authoritative restaurant data."
+  },
+  "fixtures": [
+    {
+      "id": "synthetic-sao-paulo-pizzeria",
+      "file": "sao-paulo-pizzeria-paper-menu.png",
+      "locale": "Sao Paulo, Brazil",
+      "language": "Portuguese",
+      "currency": "BRL",
+      "layout_notes": [
+        "dense multi-section menu",
+        "multiple pizza sizes",
+        "combo boxes",
+        "half-and-half pricing",
+        "extras and seasonal item"
+      ],
+      "test_focus": [
+        "large hotspot count",
+        "BRL minor-unit formatting",
+        "multiple price columns",
+        "combo and add-on boundaries"
+      ]
+    },
+    {
+      "id": "synthetic-tokyo-pizzeria",
+      "file": "tokyo-pizzeria-paper-menu.png",
+      "locale": "Tokyo, Japan",
+      "language": "Japanese and English",
+      "currency": "JPY",
+      "layout_notes": [
+        "photo-rich menu",
+        "pizza size side panel",
+        "set menus",
+        "seasonal recommendation",
+        "map and takeout block"
+      ],
+      "test_focus": [
+        "mixed script OCR",
+        "zero-decimal currency formatting",
+        "image-heavy item cards",
+        "set menu grouping"
+      ]
+    },
+    {
+      "id": "synthetic-nyc-pizza",
+      "file": "nyc-pizza-paper-menu.png",
+      "locale": "New York, United States",
+      "language": "English",
+      "currency": "USD",
+      "layout_notes": [
+        "slices",
+        "18-inch pies",
+        "calzones and rolls",
+        "lunch specials",
+        "toppings and drinks"
+      ],
+      "test_focus": [
+        "USD minor-unit formatting",
+        "section-based hotspot mapping",
+        "small price rows",
+        "specials versus catalog items"
+      ]
+    },
+    {
+      "id": "synthetic-naples-pizzeria",
+      "file": "naples-pizzeria-paper-menu.png",
+      "locale": "Naples, Italy",
+      "language": "Italian",
+      "currency": "EUR",
+      "layout_notes": [
+        "classic Neapolitan pizza menu",
+        "two pizza price columns",
+        "antipasti and fritti",
+        "drinks and wine",
+        "minimal illustration-heavy footer"
+      ],
+      "test_focus": [
+        "EUR minor-unit formatting",
+        "two-column item prices",
+        "accented language OCR",
+        "non-pizza category boundaries"
+      ]
+    },
+    {
+      "id": "synthetic-copenhagen-pizza-grill",
+      "file": "copenhagen-pizza-grill-paper-menu.png",
+      "locale": "Copenhagen, Denmark",
+      "language": "Danish",
+      "currency": "DKK",
+      "layout_notes": [
+        "pizza, durum, kebab and burger menu",
+        "family pizza section",
+        "delivery information",
+        "large phone/contact footer"
+      ],
+      "test_focus": [
+        "DKK minor-unit formatting",
+        "Danish letters and food terms",
+        "mixed category catalog mapping",
+        "delivery note separation from orderable items"
+      ]
+    }
+  ]
+}

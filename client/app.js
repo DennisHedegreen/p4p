@@ -9,6 +9,12 @@ let activeRegistry = null;
 let selectedNode = null;
 let selectedNodeMenuState = "idle";
 
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  "BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG", "RWF",
+  "UGX", "VND", "VUV", "XAF", "XOF", "XPF"
+]);
+const THREE_DECIMAL_CURRENCIES = new Set(["BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"]);
+
 const registryStatusEl = document.getElementById("registry-status");
 const nodesEl = document.getElementById("nodes");
 const menuEl = document.getElementById("menu");
@@ -30,6 +36,12 @@ function safeText(value, fallback = "") {
     return fallback;
   }
   return String(value);
+}
+
+function formatMoneyMinor(amount, currency) {
+  const code = /^[A-Z]{3}$/.test(String(currency || "")) ? currency : "DKK";
+  const digits = ZERO_DECIMAL_CURRENCIES.has(code) ? 0 : THREE_DECIMAL_CURRENCIES.has(code) ? 3 : 2;
+  return `${(Number(amount || 0) / (10 ** digits)).toFixed(digits)} ${code}`;
 }
 
 function asArray(value) {
@@ -534,7 +546,7 @@ function renderSelectedNode(node) {
   });
 }
 
-function renderMenu(items) {
+function renderMenu(items, currency) {
   menuEl.replaceChildren();
 
   if (!items.length) {
@@ -546,7 +558,7 @@ function renderMenu(items) {
     const wrapper = document.createElement("div");
     wrapper.className = "menu-item";
     appendStrong(wrapper, item.name);
-    wrapper.appendChild(document.createTextNode(` - ${safeText(item.price, "?")} DKK`));
+    wrapper.appendChild(document.createTextNode(` - ${formatMoneyMinor(item.price, currency)}`));
     appendBreak(wrapper);
     appendStatus(wrapper, item.description);
     const meta = document.createElement("div");
@@ -568,7 +580,7 @@ async function selectNode(node) {
   try {
     const menu = await fetchJsonWithTimeout(`${node.endpoint}/menu`);
     selectedNodeMenuState = "ready";
-    renderMenu(menu.items || []);
+    renderMenu(menu.items || [], menu.currency || "DKK");
     updateOrderControls();
     setLog(menu);
     return { ok: true, menu };

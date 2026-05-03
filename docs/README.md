@@ -17,7 +17,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
 - `schemas/`
   JSON Schema files for core protocol objects, discover views, and reference inspection responses.
 - `examples/`
-  Canonical example payloads for requests and responses.
+  Canonical example payloads for requests and responses, plus synthetic
+  photo-map menu fixtures under `examples/menu-photo-map-fixtures/`.
 - `MODULE-PROVIDERS.md`
   Planned `v0.2` model for module providers, module manifests, data access, signatures, and trust claims.
 - `COMMUNITY-MODULES.md`
@@ -30,6 +31,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Planned `v0.2` execution contract for module lanes, event/result shape, permissions, fallback policy, and idempotency.
 - `PAYMENT-ADAPTER-STANDARD.md`
   Public guardrail for payment modules: P4P routes payment requests to adapters but does not become a payment provider.
+- `MONEY.md`
+  Active rule for menu currency, integer minor-unit prices, order totals, and payment-adapter amount boundaries.
 - `MENU-PHOTO-MAP-TEST-TARGETS.md`
   Manual external menu targets for testing photographed/paper-menu mapping without copying third-party assets into the repo.
 - `FIRST-FLOWS.md`

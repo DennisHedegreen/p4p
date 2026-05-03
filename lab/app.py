@@ -213,8 +213,9 @@ class ProcessManager:
                 "P4P_NODE_MODULES": "p4p.payment.cash",
                 "P4P_NODE_LAT": str(lat),
                 "P4P_NODE_LNG": str(lng),
-                "P4P_MENU_ITEM_1_PRICE": str(70 + node_index),
-                "P4P_MENU_ITEM_2_PRICE": str(80 + node_index),
+                "P4P_MENU_CURRENCY": "DKK",
+                "P4P_MENU_ITEM_1_PRICE": str(7000 + node_index * 100),
+                "P4P_MENU_ITEM_2_PRICE": str(8000 + node_index * 100),
             }
         )
         command = [str(NODE_PYTHON), "-m", "uvicorn", "demo_node:app", "--port", str(port)]

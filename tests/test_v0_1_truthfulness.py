@@ -263,6 +263,30 @@ class P4PTruthfulnessTests(unittest.TestCase):
             client_version="p4p-web-0.1",
         )
 
+    def test_money_contract_uses_minor_units_and_iso_menu_currency(self) -> None:
+        from p4p_core import Menu, MenuItem, format_money_minor, utc_now
+
+        menu = Menu(
+            currency="eur",
+            updated_at=utc_now(),
+            items=[
+                MenuItem(
+                    id="margherita",
+                    name="Margherita",
+                    description="Test item",
+                    price=1299,
+                    category="pizza",
+                )
+            ],
+        )
+
+        self.assertEqual(menu.currency, "EUR")
+        self.assertEqual(format_money_minor(6500, "DKK"), "65.00 DKK")
+        self.assertEqual(format_money_minor(1299, "USD"), "12.99 USD")
+        self.assertEqual(format_money_minor(1200, "JPY"), "1200 JPY")
+        with self.assertRaises(ValidationError):
+            Menu(currency="PIZZACOIN", updated_at=utc_now(), items=[])
+
     def test_single_registry_fallback_still_works(self) -> None:
         demo = load_module(
             "demo-node/demo_node.py",
@@ -2801,13 +2825,13 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(events[1].source_module, "local.pizzacoin.wallet")
-            self.assertEqual(events[1].metadata["amount"], 65)
+            self.assertEqual(events[1].metadata["amount"], 6500)
             self.assertEqual(events[1].metadata["currency"], "PIZZACOIN")
             self.assertEqual(events[2].source_module, "local.pizzacoin.wallet")
             self.assertEqual(events[2].metadata["external_payment_id"], "pay_test_001")
             self.assertEqual(payment_client.posts[0][0], "http://127.0.0.1:8301/p4p/payment")
             self.assertEqual(payment_client.posts[0][1]["customer_user_id"], "usr_test_customer")
-            self.assertEqual(payment_client.posts[0][1]["amount"], 65)
+            self.assertEqual(payment_client.posts[0][1]["amount"], 6500)
             self.assertEqual(payment_client.posts[1][0], "http://127.0.0.1:8301/p4p/payment/pay_test_001/confirm")
             self.assertEqual(stored[0].payment_method, "external_test_payment")
             self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
@@ -3036,7 +3060,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             id="pizza-17",
                             name="Pizza 17",
                             description="Tomato, cheese, chili",
-                            price=89,
+                            price=8900,
                             category="pizza",
                             active=True,
                         ),
@@ -3044,7 +3068,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             id="durum-test",
                             name="Durum Test",
                             description="Hidden from public menu",
-                            price=75,
+                            price=7500,
                             category="kebab",
                             active=False,
                         ),
@@ -3094,7 +3118,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             id="pizza-17",
                             name="Pizza 17",
                             description="Tomato, cheese, chili",
-                            price=89,
+                            price=8900,
                             category="pizza",
                             active=True,
                         ),
@@ -3102,7 +3126,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             id="durum-test",
                             name="Durum Test",
                             description="Hidden from public menu",
-                            price=75,
+                            price=7500,
                             category="kebab",
                             active=False,
                         ),
@@ -3141,6 +3165,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIn("p4p.menu.list", info["modules"])
             self.assertIn("Pizza 17", page)
             self.assertIn("Tomato, cheese, chili", page)
+            self.assertIn("89.00 DKK", page)
             self.assertIn('data-item-id="pizza-17"', page)
             self.assertNotIn("Durum Test", page)
             self.assertIn('fetch("/p4p/order"', page)
@@ -3196,7 +3221,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             id="pizza-17",
                             name="Pizza 17",
                             description="Tomato, cheese, chili",
-                            price=89,
+                            price=8900,
                             category="pizza",
                             active=True,
                         ),
@@ -3204,7 +3229,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             id="durum-test",
                             name="Durum Test",
                             description="Hidden from photo map",
-                            price=75,
+                            price=7500,
                             category="kebab",
                             active=False,
                         ),
@@ -3244,6 +3269,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIn("Photo Map Menu", page)
             self.assertIn("Pizza 17", page)
             self.assertIn("Tomato, cheese, chili", page)
+            self.assertIn("89.00 DKK", page)
             self.assertIn('data-photo-map-item-id="pizza-17"', page)
             self.assertIn('data-photo-map-mode="catalog-derived-regions"', page)
             self.assertNotIn("Durum Test", page)
@@ -4522,7 +4548,24 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         self.assertFalse([result for result in menu_results if result.level == "FAIL"])
 
-        bad_menu = checker.validate_menu({"currency": "EUR", "updated_at": "", "items": []})
+        eur_menu = checker.validate_menu(
+            {
+                "currency": "EUR",
+                "updated_at": "2026-04-29T12:00:00Z",
+                "items": [
+                    {
+                        "id": "margherita",
+                        "name": "Margherita",
+                        "description": "Test item",
+                        "price": 1299,
+                        "category": "pizza",
+                    }
+                ],
+            }
+        )
+        self.assertFalse([result for result in eur_menu if result.level == "FAIL"])
+
+        bad_menu = checker.validate_menu({"currency": "EURO", "updated_at": "", "items": []})
         self.assertGreaterEqual(len([result for result in bad_menu if result.level == "FAIL"]), 3)
 
         accepted = checker.validate_order_response(

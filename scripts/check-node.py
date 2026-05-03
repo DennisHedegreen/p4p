@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -21,6 +22,7 @@ SAFE_ORDER_MODES = {"disabled", "menu_only", "test"}
 MODULE_STATUSES = {"active", "fallback_only", "disabled"}
 MODULE_VISIBILITIES = {"public", "operator_only", "trust_only"}
 MODULE_READINESS = {"planned", "test", "live"}
+CURRENCY_CODE_RE = re.compile(r"^[A-Z]{3}$")
 
 
 @dataclass
@@ -202,10 +204,11 @@ def validate_module_projection(payload: dict[str, Any], *, path: str) -> list[Ch
 
 def validate_menu(menu: dict[str, Any]) -> list[CheckResult]:
     results: list[CheckResult] = []
-    if menu.get("currency") == "DKK":
-        results.append(CheckResult("PASS", "menu.currency", "currency=DKK"))
+    currency = menu.get("currency")
+    if isinstance(currency, str) and CURRENCY_CODE_RE.fullmatch(currency):
+        results.append(CheckResult("PASS", "menu.currency", f"currency={currency}"))
     else:
-        results.append(CheckResult("FAIL", "menu.currency", "currency must be DKK in v0.1"))
+        results.append(CheckResult("FAIL", "menu.currency", "currency must be a 3-letter uppercase code"))
 
     if isinstance(menu.get("updated_at"), str) and menu["updated_at"]:
         results.append(CheckResult("PASS", "menu.updated_at", "present"))
@@ -229,6 +232,8 @@ def validate_menu(menu: dict[str, Any]) -> list[CheckResult]:
                 results.append(CheckResult("FAIL", f"menu.items[{index}].{field}", f"expected {expected_type.__name__}"))
         if isinstance(item.get("price"), int) and item["price"] < 0:
             results.append(CheckResult("FAIL", f"menu.items[{index}].price", "price must be >= 0"))
+        elif isinstance(item.get("price"), int):
+            results.append(CheckResult("PASS", f"menu.items[{index}].price", "integer minor units"))
     return results
 
 

@@ -46,6 +46,25 @@ The implementation receives an order-scoped payment request and returns module r
 
 That does not make P4P the payment provider.
 
+## Amount And Currency
+
+P4P menu prices and order totals are integer minor units in the node's menu
+currency.
+
+Examples:
+
+- `6500` with `DKK` means `65.00 DKK`
+- `1299` with `USD` means `12.99 USD`
+- `1200` with `JPY` means `1200 JPY`
+
+The core must not perform currency conversion. A real payment adapter should
+receive the order amount and currency from the restaurant/node context and hand
+that to the selected provider.
+
+Internal mocks and sandbox ledgers may use explicit test currency names for
+debugging, but they must be labelled as non-production and must not be
+presented as real money or settlement.
+
 ## Operator Status
 
 Operator tooling should show the difference between:

@@ -148,6 +148,7 @@ class PilotStore:
             query += " ORDER BY sort_order, id"
             rows = self._connection.execute(query).fetchall()
             return Menu(
+                currency=self._config.menu_currency,
                 updated_at=utc_now(),
                 items=[
                     MenuItem(

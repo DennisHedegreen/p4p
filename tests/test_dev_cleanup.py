@@ -210,6 +210,22 @@ class P4PDevCleanupTests(unittest.TestCase):
             for service_name in scenario.services:
                 self.assertIn(service_name, config.services)
 
+    def test_synthetic_menu_photo_map_fixtures_have_manifest_and_files(self) -> None:
+        fixture_root = REPO_ROOT / "docs/examples/menu-photo-map-fixtures"
+        manifest = json.loads((fixture_root / "manifest.json").read_text(encoding="utf-8"))
+        readme = (fixture_root / "README.md").read_text(encoding="utf-8")
+
+        self.assertEqual(manifest["status"], "synthetic-test-fixtures")
+        self.assertTrue(manifest["policy"]["not_real_restaurants"])
+        self.assertTrue(manifest["policy"]["not_partner_material"])
+        self.assertIn("not catalog truth", readme.lower())
+        currencies = {fixture["currency"] for fixture in manifest["fixtures"]}
+        self.assertEqual(currencies, {"BRL", "JPY", "USD", "EUR", "DKK"})
+        for fixture in manifest["fixtures"]:
+            image_path = fixture_root / fixture["file"]
+            self.assertTrue(image_path.exists(), fixture["file"])
+            self.assertGreater(image_path.stat().st_size, 100_000, fixture["file"])
+
     def test_proof_status_and_release_notes_anchor_public_gate(self) -> None:
         proof_status = (REPO_ROOT / "docs/PROOF-STATUS.md").read_text(encoding="utf-8")
         release_notes = (REPO_ROOT / "docs/RELEASE-NOTES.md").read_text(encoding="utf-8")

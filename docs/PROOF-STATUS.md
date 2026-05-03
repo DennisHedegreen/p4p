@@ -1,6 +1,6 @@
 # P4P Proof Status
 
-Current checkpoint: 30 April 2026
+Current checkpoint: 3 May 2026
 
 This file is the dated proof checkpoint for the public P4P surface.
 
@@ -28,6 +28,20 @@ Verified on 30 April 2026:
 This means the current repo state is internally coherent enough to keep the public claim narrow and honest.
 
 It does not by itself mean the hosted surface is fully green.
+
+Verified again on 3 May 2026 before the public GitHub/site update:
+
+- `./.venv/bin/python -m unittest tests.test_v0_1_truthfulness` passed with `106/106`
+- `./.venv/bin/python -m unittest tests.test_dev_cleanup` passed with `31/31`
+- `bash scripts/public-audit.sh` passed with `137/137`
+- `node --check client/app.js` passed
+- `python3 -m json.tool docs/examples/menu-photo-map-fixtures/manifest.json` passed
+- `python3 -m json.tool private/data/p4p/site-data.json` passed from the repository root
+- `python3 -m json.tool public/www/pizza4people/modules.json` passed after rebuilding the public site
+- `git diff --check` passed
+- `./.venv/bin/python scripts/build_public_site.py` regenerated `public/www/pizza4people/`
+
+This 3 May checkpoint adds the money/currency contract, synthetic paper-menu photo-map fixtures, the generated module catalog update, and an explicit public-site payment boundary.
 
 ## Public hosting check
 
@@ -66,6 +80,13 @@ Confirmed after the 30 April 2026 upload:
 - `pizza4people.com/` now shows the `public repo is the conservative story branch` wording
 - `pizza4people.com/press-kit/` loads the current Danish press-kit HTML
 
+Prepared for the 3 May 2026 upload:
+
+- the generated homepage now mentions replaceable customer menu modules, internal mock payment modules, operator workflow modules, and integer minor-unit pricing with an explicit node currency
+- the generated module section now repeats the payment boundary: payment modules are adapters chosen by the restaurant/operator; P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record
+- the generated homepage now treats 30 April 2026 as an announced closure date, not a future event
+- `public/www/pizza4people/modules.json` now lists the current module manifests, including `p4p.menu.list`, `p4p.menu.photo-map`, `p4p.customer.status`, `p4p.kitchen.screen`, `p4p.stock.basic`, `p4p.payment.cash`, `p4p.payment.godpay-mock`, and `p4p.payment.chaospay-mock`
+
 Local repo truth remains:
 
 - `public/www/pizza4people/index.html`
@@ -84,6 +105,10 @@ Pizza4People is a public protocol proof.
 The next step is a controlled live pilot.
 
 It is not a finished restaurant platform, not a production security claim, and not a broad rollout.
+
+Payment modules are adapters. P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
+
+Menu prices use explicit currency codes and integer minor units. P4P does not do currency conversion.
 
 ## Remaining public gate
 

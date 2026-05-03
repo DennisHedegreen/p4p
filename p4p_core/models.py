@@ -17,6 +17,7 @@ from .constants import (
     OrderMode,
     OrderStatus,
 )
+from .money import CURRENCY_CODE_PATTERN, normalize_currency_code
 from .time import utc_now
 
 
@@ -185,7 +186,7 @@ class MenuItem(BaseModel):
     id: str = Field(pattern=CATEGORY_PATTERN)
     name: str = Field(min_length=1)
     description: str = ""
-    price: int = Field(ge=0)
+    price: int = Field(ge=0, description="Integer minor units in the menu currency")
     category: str = Field(pattern=CATEGORY_PATTERN)
     active: bool = True
 
@@ -193,9 +194,14 @@ class MenuItem(BaseModel):
 class Menu(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    currency: str = "DKK"
+    currency: str = Field(default="DKK", pattern=CURRENCY_CODE_PATTERN)
     updated_at: datetime
     items: list[MenuItem]
+
+    @field_validator("currency", mode="before")
+    @classmethod
+    def normalize_currency(cls, value: str) -> str:
+        return normalize_currency_code(str(value))
 
 
 class MenuUpdate(BaseModel):

@@ -13,6 +13,7 @@ from p4p_core import (
     env_str,
     load_reference_module_catalog,
     load_registry_urls,
+    normalize_currency_code,
     normalize_module_ids,
 )
 from p4p_core.constants import OrderMode
@@ -74,6 +75,7 @@ class DemoConfig:
     node_open: bool
     node_order_mode: str
     node_modules: list[str]
+    menu_currency: str
     menu_item_1_id: str
     menu_item_1_name: str
     menu_item_1_description: str
@@ -119,14 +121,15 @@ def build_demo_config() -> DemoConfig:
         node_open=env_str("P4P_NODE_OPEN", "true").lower() == "true",
         node_order_mode=env_str("P4P_NODE_ORDER_MODE", "test"),
         node_modules=normalize_module_ids(env_list("P4P_NODE_MODULES", [])),
+        menu_currency=normalize_currency_code(env_str("P4P_MENU_CURRENCY", "DKK")),
         menu_item_1_id=env_str("P4P_MENU_ITEM_1_ID", "margherita"),
         menu_item_1_name=env_str("P4P_MENU_ITEM_1_NAME", "Margherita"),
         menu_item_1_description=env_str("P4P_MENU_ITEM_1_DESCRIPTION", "Tomat, mozzarella, oregano"),
-        menu_item_1_price=int(env_str("P4P_MENU_ITEM_1_PRICE", "75")),
+        menu_item_1_price=int(env_str("P4P_MENU_ITEM_1_PRICE", "7500")),
         menu_item_2_id=env_str("P4P_MENU_ITEM_2_ID", "vesuvio"),
         menu_item_2_name=env_str("P4P_MENU_ITEM_2_NAME", "Vesuvio"),
         menu_item_2_description=env_str("P4P_MENU_ITEM_2_DESCRIPTION", "Tomat, ost, skinke"),
-        menu_item_2_price=int(env_str("P4P_MENU_ITEM_2_PRICE", "85")),
+        menu_item_2_price=int(env_str("P4P_MENU_ITEM_2_PRICE", "8500")),
     )
 
 

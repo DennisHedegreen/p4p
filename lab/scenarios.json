@@ -125,8 +125,9 @@
         "P4P_NODE_MODULES": "p4p.payment.cash",
         "P4P_NODE_LAT": "55.6542",
         "P4P_NODE_LNG": "12.4156",
-        "P4P_MENU_ITEM_1_PRICE": "71",
-        "P4P_MENU_ITEM_2_PRICE": "81"
+        "P4P_MENU_CURRENCY": "DKK",
+        "P4P_MENU_ITEM_1_PRICE": "7100",
+        "P4P_MENU_ITEM_2_PRICE": "8100"
       },
       "port": 8101,
       "health_url": "http://127.0.0.1:8101/health",
@@ -162,7 +163,8 @@
         "P4P_NODE_BASE_URL": "http://127.0.0.1:8595",
         "P4P_NODE_OPEN": "true",
         "P4P_NODE_ORDER_MODE": "live",
-        "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.photo-map,p4p.menu.list,p4p.customer.status,p4p.payment.cash"
+        "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.photo-map,p4p.menu.list,p4p.customer.status,p4p.payment.cash",
+        "P4P_MENU_CURRENCY": "DKK"
       },
       "port": 8595,
       "health_url": "http://127.0.0.1:8595/",

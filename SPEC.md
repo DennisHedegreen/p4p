@@ -200,14 +200,19 @@ Live order verification belongs in the node operator, trust, and certification l
       "id": "margherita",
       "name": "Margherita",
       "description": "Tomat, mozzarella, oregano",
-      "price": 75,
+      "price": 7500,
       "category": "pizza"
     }
   ]
 }
 ```
 
-Price is an integer in whole DKK for v0.1.
+`currency` is a three-letter currency code for the whole menu.
+
+`price` is an integer in minor units for that currency. For DKK, EUR, and USD,
+`7500` means `75.00`. P4P does not perform currency conversion; the node owns
+the menu currency and payment adapters must receive the same order amount and
+currency unless they are clearly marked internal mocks.
 
 ### 4.4 Order Format
 

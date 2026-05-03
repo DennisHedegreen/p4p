@@ -764,7 +764,7 @@
           fields.appendChild(catalogInput("Name", "name", item.name));
           fields.appendChild(catalogInput("Description", "description", item.description));
           fields.appendChild(catalogInput("Category", "category", item.category));
-          fields.appendChild(catalogInput("Price", "price", item.price, "number"));
+          fields.appendChild(catalogInput("Price (minor units)", "price", item.price, "number"));
 
           const activeField = document.createElement("label");
           activeField.className = "check-field";

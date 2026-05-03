@@ -25,6 +25,7 @@ from p4p_core import (
     PublicOrderStatus,
     StoredOrder,
     build_cors_middleware_options,
+    format_money_minor,
     utc_now,
 )
 from p4p_core.constants import PROTOCOL_VERSION
@@ -426,13 +427,14 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
         for category, items in grouped.items():
             cards: list[str] = []
             for item in items:
+                price_label = html.escape(format_money_minor(item.price, menu.currency))
                 cards.append(
                     f"""
           <article class="item" data-item-id="{html.escape(item.id, quote=True)}" data-price="{item.price}">
             <div>
               <h3>{html.escape(item.name)}</h3>
               <p>{html.escape(item.description)}</p>
-              <span>{item.price} {html.escape(menu.currency)}</span>
+              <span>{price_label}</span>
             </div>
             <div class="stepper" aria-label="Quantity for {html.escape(item.name, quote=True)}">
               <button type="button" data-action="decrease" aria-label="Decrease {html.escape(item.name, quote=True)}">-</button>
@@ -657,7 +659,7 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
           </label>
           <div class="summary" aria-live="polite">
             <p>Total</p>
-            <p class="total" id="total">0 {html.escape(menu.currency)}</p>
+            <p class="total" id="total">{html.escape(format_money_minor(0, menu.currency))}</p>
             <p id="selected-count">No items selected</p>
           </div>
           <button id="submit-order" type="submit"{disabled_attr}>Send order</button>
@@ -669,6 +671,8 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
       const canOrder = {str(accepts_orders and bool(menu.items)).lower()};
       const statusLinksEnabled = {str(status_links_enabled).lower()};
       const currency = "{html.escape(menu.currency, quote=True)}";
+      const zeroDecimalCurrencies = new Set(["BIF","CLP","DJF","GNF","ISK","JPY","KMF","KRW","PYG","RWF","UGX","VND","VUV","XAF","XOF","XPF"]);
+      const threeDecimalCurrencies = new Set(["BHD","IQD","JOD","KWD","LYD","OMR","TND"]);
       const cards = Array.from(document.querySelectorAll("[data-item-id]"));
       const form = document.getElementById("order-form");
       const submit = document.getElementById("submit-order");
@@ -690,11 +694,17 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
           .filter((item) => item.quantity > 0);
       }}
 
+      function formatMoneyMinor(amount, code) {{
+        const digits = zeroDecimalCurrencies.has(code) ? 0 : threeDecimalCurrencies.has(code) ? 3 : 2;
+        const factor = 10 ** digits;
+        return `${{(amount / factor).toFixed(digits)}} ${{code}}`;
+      }}
+
       function updateSummary() {{
         const items = selectedItems();
         const amount = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
         const count = items.reduce((sum, item) => sum + item.quantity, 0);
-        total.textContent = `${{amount}} ${{currency}}`;
+        total.textContent = formatMoneyMinor(amount, currency);
         selectedCount.textContent = count === 0 ? "No items selected" : `${{count}} item${{count === 1 ? "" : "s"}} selected`;
         submit.disabled = !canOrder || count === 0;
       }}
@@ -794,6 +804,7 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
     else:
         regions: list[str] = []
         for index, item in enumerate(menu.items, start=1):
+            price_label = html.escape(format_money_minor(item.price, menu.currency))
             regions.append(
                 f"""
               <button
@@ -808,7 +819,7 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
                 <span class="region-copy">
                   <strong>{html.escape(item.name)}</strong>
                   <small>{html.escape(item.description)}</small>
-                  <em>{item.price} {html.escape(menu.currency)}</em>
+                  <em>{price_label}</em>
                 </span>
                 <span class="region-qty" aria-label="Selected quantity">0</span>
               </button>"""
@@ -1082,7 +1093,7 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
           </label>
           <div class="summary" aria-live="polite">
             <p>Total</p>
-            <p class="total" id="total">0 {html.escape(menu.currency)}</p>
+            <p class="total" id="total">{html.escape(format_money_minor(0, menu.currency))}</p>
             <p id="selected-count">No areas selected</p>
             <div class="selected-list" id="selected-list"></div>
           </div>
@@ -1095,6 +1106,8 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
       const canOrder = {str(accepts_orders and bool(menu.items)).lower()};
       const statusLinksEnabled = {str(status_links_enabled).lower()};
       const currency = "{html.escape(menu.currency, quote=True)}";
+      const zeroDecimalCurrencies = new Set(["BIF","CLP","DJF","GNF","ISK","JPY","KMF","KRW","PYG","RWF","UGX","VND","VUV","XAF","XOF","XPF"]);
+      const threeDecimalCurrencies = new Set(["BHD","IQD","JOD","KWD","LYD","OMR","TND"]);
       const hotspots = Array.from(document.querySelectorAll("[data-photo-map-item-id]"));
       const form = document.getElementById("order-form");
       const submit = document.getElementById("submit-order");
@@ -1124,11 +1137,17 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
           .filter((item) => item.quantity > 0);
       }}
 
+      function formatMoneyMinor(amount, code) {{
+        const digits = zeroDecimalCurrencies.has(code) ? 0 : threeDecimalCurrencies.has(code) ? 3 : 2;
+        const factor = 10 ** digits;
+        return `${{(amount / factor).toFixed(digits)}} ${{code}}`;
+      }}
+
       function updateSummary() {{
         const items = selectedItems();
         const amount = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
         const count = items.reduce((sum, item) => sum + item.quantity, 0);
-        total.textContent = `${{amount}} ${{currency}}`;
+        total.textContent = formatMoneyMinor(amount, currency);
         selectedCount.textContent = count === 0 ? "No areas selected" : `${{count}} item${{count === 1 ? "" : "s"}} selected`;
         selectedList.innerHTML = items.map((item) => `
           <div class="selected-row">

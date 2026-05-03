@@ -288,6 +288,7 @@ def build_demo_runtime(config: DemoConfig | None = None) -> DemoRuntime:
         ),
         node_manifest=None,
         menu=Menu(
+            currency=effective_config.menu_currency,
             updated_at=utc_now(),
             items=[
                 MenuItem(

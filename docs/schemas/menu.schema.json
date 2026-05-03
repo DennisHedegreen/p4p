@@ -8,7 +8,8 @@
   "properties": {
     "currency": {
       "type": "string",
-      "const": "DKK"
+      "pattern": "^[A-Z]{3}$",
+      "description": "Three-letter currency code for all item prices in this menu."
     },
     "updated_at": {
       "type": "string",
@@ -34,7 +35,8 @@
           },
           "price": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Integer minor units in the menu currency. For DKK/EUR/USD, 6500 means 65.00."
           },
           "category": {
             "type": "string",
