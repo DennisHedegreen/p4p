@@ -104,6 +104,7 @@ These things are explicitly not the claim today:
 If you want to understand the public proof claim:
 
 - `PROOF.md`
+- `docs/WHITEPAPER-v0.1.md`
 - `docs/PROOF-STATUS.md`
 - `docs/RELEASE-NOTES.md`
 

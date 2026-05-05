@@ -420,6 +420,32 @@ class P4PDevCleanupTests(unittest.TestCase):
                 self.assertIn("not real money", text)
                 self.assertIn("not real settlement", text)
 
+    def test_whitepaper_keeps_public_claim_boundaries(self) -> None:
+        whitepaper = (REPO_ROOT / "docs/WHITEPAPER-v0.1.md").read_text(encoding="utf-8")
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        docs_index = (REPO_ROOT / "docs/README.md").read_text(encoding="utf-8")
+        reader_guide = (REPO_ROOT / "docs/GITHUB-READER-GUIDE.md").read_text(encoding="utf-8")
+
+        self.assertIn("# P4P Working Whitepaper v0.1", whitepaper)
+        self.assertIn("not production-ready", whitepaper)
+        self.assertIn("advanced prototype", whitepaper)
+        self.assertIn("controlled live pilot", whitepaper)
+        self.assertIn("P4P is a phone book, not a marketplace.", whitepaper)
+        self.assertIn("P4P is the socket, not the appliances.", whitepaper)
+        self.assertIn(
+            "P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.",
+            whitepaper,
+        )
+        self.assertIn("Do not call this `P4P Pay`.", whitepaper)
+        self.assertIn("None of these are real money, real settlement, real wallets, crypto", whitepaper)
+        self.assertIn("P4P v0.1 is not:", whitepaper)
+        self.assertIn("- a marketplace", whitepaper)
+        self.assertIn("- a payment provider", whitepaper)
+        self.assertIn("- a crypto project", whitepaper)
+        self.assertIn("docs/WHITEPAPER-v0.1.md", readme)
+        self.assertIn("WHITEPAPER-v0.1.md", docs_index)
+        self.assertIn("docs/WHITEPAPER-v0.1.md", reader_guide)
+
     def test_reference_provider_catalog_deduplicates_shared_provider_identity(self) -> None:
         providers = load_reference_provider_catalog()
         modules = load_reference_module_catalog()

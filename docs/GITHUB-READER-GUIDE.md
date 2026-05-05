@@ -31,8 +31,9 @@ If you only want the public story:
 
 1. `README.md`
 2. `PROOF.md`
-3. `docs/PROOF-STATUS.md`
-4. `docs/RELEASE-NOTES.md`
+3. `docs/WHITEPAPER-v0.1.md`
+4. `docs/PROOF-STATUS.md`
+5. `docs/RELEASE-NOTES.md`
 
 If you want the protocol:
 

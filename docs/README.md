@@ -34,6 +34,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Planned `v0.2` execution contract for module lanes, event/result shape, permissions, fallback policy, and idempotency.
 - `PAYMENT-ADAPTER-STANDARD.md`
   Public guardrail for payment modules: P4P routes payment requests to adapters but does not become a payment provider.
+- `WHITEPAPER-v0.1.md`
+  Working public whitepaper for the prototype: problem, scope, core protocol, module model, payment boundary, trust/federation direction, non-goals, and roadmap.
 - `MONEY.md`
   Active rule for menu currency, integer minor-unit prices, order totals, and payment-adapter amount boundaries.
 - `MENU-PHOTO-MAP-TEST-TARGETS.md`
