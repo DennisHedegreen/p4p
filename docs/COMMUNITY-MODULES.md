@@ -93,6 +93,7 @@ The manifest should follow:
 
 The deeper module model is described in:
 
+- `docs/modules/README.md`
 - `docs/MODULE-RULES.md`
 - `docs/MODULE-PROVIDERS.md`
 - `docs/MODULE-EXECUTION-CONTRACT.md`

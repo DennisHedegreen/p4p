@@ -387,6 +387,39 @@ class P4PDevCleanupTests(unittest.TestCase):
             for event_name in payload.get("suggested_fallbacks", {}):
                 self.assertIn(event_name, allowed_events)
 
+    def test_reference_module_docs_cover_every_manifest(self) -> None:
+        module_root = REPO_ROOT / "modules"
+        docs_root = REPO_ROOT / "docs/modules"
+        index = (docs_root / "README.md").read_text(encoding="utf-8")
+        payment_boundary = (
+            "P4P does not hold funds, process payments, store payment credentials, "
+            "settle money, or act as merchant of record."
+        )
+
+        for module_dir in sorted(path for path in module_root.iterdir() if path.is_dir()):
+            module_payload = json.loads((module_dir / "module.json").read_text(encoding="utf-8"))
+            module_id = str(module_payload["module_id"])
+            module_doc = docs_root / f"{module_id}.md"
+            self.assertTrue(module_doc.exists(), module_id)
+
+            text = module_doc.read_text(encoding="utf-8")
+            self.assertIn(f"# {module_id}", text)
+            self.assertIn(f"Status: `{module_payload['status']}`", text)
+            self.assertIn(f"../../modules/{module_id}/module.json", text)
+            self.assertIn(f"../../modules/{module_id}/provider.json", text)
+            self.assertIn("## Purpose", text)
+            self.assertIn("## What It Does Not Own", text)
+            self.assertIn("## Data Access", text)
+            self.assertIn("## Events", text)
+            self.assertIn(f"({module_id}.md)", index)
+
+            if module_payload["module_class"] == "payment":
+                self.assertIn(payment_boundary, text)
+                self.assertIn("Payment modules are adapters chosen by the restaurant/operator.", text)
+            if "mock" in module_id:
+                self.assertIn("not real money", text)
+                self.assertIn("not real settlement", text)
+
     def test_reference_provider_catalog_deduplicates_shared_provider_identity(self) -> None:
         providers = load_reference_provider_catalog()
         modules = load_reference_module_catalog()

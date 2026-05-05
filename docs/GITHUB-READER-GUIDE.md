@@ -51,19 +51,21 @@ If you want the runtime architecture:
 If you want the module direction:
 
 1. `docs/COMMUNITY-MODULES.md`
-2. `docs/MODULE-PROVIDERS.md`
-3. `docs/MODULE-EXECUTION-CONTRACT.md`
-4. `docs/FIRST-FLOWS.md`
-5. `docs/MODULE-RULES.md`
-6. `modules/README.md`
+2. `docs/modules/README.md`
+3. `docs/MODULE-PROVIDERS.md`
+4. `docs/MODULE-EXECUTION-CONTRACT.md`
+5. `docs/FIRST-FLOWS.md`
+6. `docs/MODULE-RULES.md`
+7. `modules/README.md`
 
 If you want to build a module:
 
 1. `docs/COMMUNITY-MODULES.md`
-2. `docs/MODULE-RULES.md`
-3. `docs/MODULE-PROVIDERS.md`
-4. `docs/MODULE-EXECUTION-CONTRACT.md`
-5. `modules/README.md`
+2. `docs/modules/README.md`
+3. `docs/MODULE-RULES.md`
+4. `docs/MODULE-PROVIDERS.md`
+5. `docs/MODULE-EXECUTION-CONTRACT.md`
+6. `modules/README.md`
 
 ## Repo Shape
 
@@ -85,6 +87,8 @@ Core protocol is the small direct loop: registry discovery, node identity, node 
 Provider manifests identify who publishes a module.
 
 Module manifests describe what a capability does, what data it needs, and how it reports results.
+
+`docs/modules/` explains each current reference, planned, and internal mock module in ordinary language before you inspect the raw JSON manifests.
 
 External modules may live in their own repositories, but they should still follow the same manifest and status-label rules.
 

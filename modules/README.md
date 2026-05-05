@@ -10,6 +10,7 @@ It is not a claim that every listed module is live, trusted, or customer-facing.
 
 For the public community-module guide, read:
 
+- `../docs/modules/README.md`
 - `../docs/COMMUNITY-MODULES.md`
 - `../docs/MODULE-RULES.md`
 - `../docs/MODULE-PROVIDERS.md`

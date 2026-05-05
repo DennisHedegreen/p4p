@@ -118,6 +118,7 @@ If you want to understand the module/runtime direction:
 
 - `ARCHITECTURE.md`
 - `docs/COMMUNITY-MODULES.md`
+- `docs/modules/README.md`
 - `docs/MODULE-EXECUTION-CONTRACT.md`
 - `docs/FIRST-FLOWS.md`
 - `modules/`
@@ -125,6 +126,7 @@ If you want to understand the module/runtime direction:
 If you want to build or publish a module:
 
 - `docs/COMMUNITY-MODULES.md`
+- `docs/modules/README.md`
 - `docs/MODULE-RULES.md`
 - `docs/MODULE-PROVIDERS.md`
 - `docs/MODULE-EXECUTION-CONTRACT.md`
