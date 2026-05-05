@@ -158,13 +158,26 @@
         "8595"
       ],
       "env": {
-        "P4P_PILOT_NODE_DB_PATH": "/tmp/p4p-lab-pilot-photo-map.sqlite3",
+        "P4P_PILOT_NODE_DB_PATH": "/tmp/p4p-lab-pilot-photo-map-images.sqlite3",
         "P4P_OPERATOR_TOKEN": "change-this",
         "P4P_NODE_BASE_URL": "http://127.0.0.1:8595",
         "P4P_NODE_OPEN": "true",
         "P4P_NODE_ORDER_MODE": "live",
         "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.photo-map,p4p.menu.list,p4p.customer.status,p4p.payment.cash",
-        "P4P_MENU_CURRENCY": "DKK"
+        "P4P_NODE_CATEGORIES": "pizza,kebab",
+        "P4P_MENU_CURRENCY": "DKK",
+        "P4P_MENU_ITEM_1_ID": "margherita",
+        "P4P_MENU_ITEM_1_NAME": "Margherita",
+        "P4P_MENU_ITEM_1_DESCRIPTION": "Tomat, mozzarella, basilikum",
+        "P4P_MENU_ITEM_1_PRICE": "7500",
+        "P4P_MENU_ITEM_1_CATEGORY": "pizza",
+        "P4P_MENU_ITEM_1_IMAGE_URL": "/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png",
+        "P4P_MENU_ITEM_2_ID": "durum-kebab",
+        "P4P_MENU_ITEM_2_NAME": "Durum kebab",
+        "P4P_MENU_ITEM_2_DESCRIPTION": "Kebab, salat, dressing",
+        "P4P_MENU_ITEM_2_PRICE": "7900",
+        "P4P_MENU_ITEM_2_CATEGORY": "kebab",
+        "P4P_MENU_ITEM_2_IMAGE_URL": "/p4p/assets/food-image-fixtures/dishes/dish-durum-kebab.png"
       },
       "port": 8595,
       "health_url": "http://127.0.0.1:8595/",

@@ -201,7 +201,8 @@ Live order verification belongs in the node operator, trust, and certification l
       "name": "Margherita",
       "description": "Tomat, mozzarella, oregano",
       "price": 7500,
-      "category": "pizza"
+      "category": "pizza",
+      "image_url": "/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png"
     }
   ]
 }
@@ -213,6 +214,10 @@ Live order verification belongs in the node operator, trust, and certification l
 `7500` means `75.00`. P4P does not perform currency conversion; the node owns
 the menu currency and payment adapters must receive the same order amount and
 currency unless they are clearly marked internal mocks.
+
+`image_url` is optional visual metadata supplied by the node/operator. It may be
+an HTTPS/HTTP URL or a same-origin absolute path. It is not catalog truth about
+ingredients, allergens, availability, or price.
 
 ### 4.4 Order Format
 

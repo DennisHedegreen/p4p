@@ -1,0 +1,173 @@
+{
+  "version": "0.1",
+  "status": "synthetic-image-fixtures",
+  "created_at": "2026-05-03",
+  "generated_at": "2026-05-03",
+  "fixture_count": 22,
+  "max_fixture_dimension_px": 900,
+  "policy": {
+    "source": "AI-generated fictional food, ingredient, and menu-card test images created from the local prompt pack.",
+    "not_real_restaurants": true,
+    "not_partner_material": true,
+    "not_production_catalog_truth": true,
+    "not_advertising_claims": true,
+    "automation_rule": "Use generated images as visual fixtures only. Catalog truth must remain structured operator-approved data."
+  },
+  "directories": {
+    "dishes": "Generated dish item images for menu/catalog rendering tests.",
+    "ingredients": "Generated isolated ingredient images for ingredient/allergen UI tests.",
+    "menu-cards": "Generated fictional menu card images for UI layout tests."
+  },
+  "prompt_specs": [
+    {
+      "id": "dish-margherita-pizza",
+      "category": "dish",
+      "target_file": "dishes/dish-margherita-pizza.png",
+      "catalog_item_hint": "margherita",
+      "test_focus": ["menu image rendering", "classic pizza item", "no text in image"]
+    },
+    {
+      "id": "dish-pepperoni-pizza",
+      "category": "dish",
+      "target_file": "dishes/dish-pepperoni-pizza.png",
+      "catalog_item_hint": "pepperoni",
+      "test_focus": ["menu image rendering", "meat pizza item", "no text in image"]
+    },
+    {
+      "id": "dish-kebab-pizza",
+      "category": "dish",
+      "target_file": "dishes/dish-kebab-pizza.png",
+      "catalog_item_hint": "kebab-pizza",
+      "test_focus": ["menu image rendering", "mixed pizza/takeaway category", "dressing visibility"]
+    },
+    {
+      "id": "dish-vegetarian-pizza",
+      "category": "dish",
+      "target_file": "dishes/dish-vegetarian-pizza.png",
+      "catalog_item_hint": "vegetarian-pizza",
+      "test_focus": ["menu image rendering", "vegetarian item", "multiple ingredients"]
+    },
+    {
+      "id": "dish-durum-kebab",
+      "category": "dish",
+      "target_file": "dishes/dish-durum-kebab.png",
+      "catalog_item_hint": "durum-kebab",
+      "test_focus": ["non-pizza dish", "wrap category", "cross-category catalog"]
+    },
+    {
+      "id": "dish-cheeseburger",
+      "category": "dish",
+      "target_file": "dishes/dish-cheeseburger.png",
+      "catalog_item_hint": "cheeseburger",
+      "test_focus": ["burger category", "cross-category catalog", "menu list thumbnails"]
+    },
+    {
+      "id": "dish-fries",
+      "category": "dish",
+      "target_file": "dishes/dish-fries.png",
+      "catalog_item_hint": "fries",
+      "test_focus": ["side item", "combo add-on", "small item image"]
+    },
+    {
+      "id": "dish-side-salad",
+      "category": "dish",
+      "target_file": "dishes/dish-side-salad.png",
+      "catalog_item_hint": "side-salad",
+      "test_focus": ["side item", "fresh category", "ingredient visibility"]
+    },
+    {
+      "id": "ingredient-tomato",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-tomato.png",
+      "ingredient_hint": "tomato",
+      "test_focus": ["ingredient picker", "allergen/ingredient explanation"]
+    },
+    {
+      "id": "ingredient-mozzarella",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-mozzarella.png",
+      "ingredient_hint": "mozzarella",
+      "test_focus": ["ingredient picker", "milk allergen explanation"]
+    },
+    {
+      "id": "ingredient-pepperoni",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-pepperoni.png",
+      "ingredient_hint": "pepperoni",
+      "test_focus": ["ingredient picker", "meat add-on"]
+    },
+    {
+      "id": "ingredient-kebab-meat",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-kebab-meat.png",
+      "ingredient_hint": "kebab meat",
+      "test_focus": ["ingredient picker", "takeaway add-on"]
+    },
+    {
+      "id": "ingredient-mushroom",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-mushroom.png",
+      "ingredient_hint": "mushroom",
+      "test_focus": ["ingredient picker", "vegetarian add-on"]
+    },
+    {
+      "id": "ingredient-red-onion",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-red-onion.png",
+      "ingredient_hint": "red onion",
+      "test_focus": ["ingredient picker", "vegetable add-on"]
+    },
+    {
+      "id": "ingredient-chili",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-chili.png",
+      "ingredient_hint": "chili",
+      "test_focus": ["ingredient picker", "spicy marker"]
+    },
+    {
+      "id": "ingredient-olive",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-olive.png",
+      "ingredient_hint": "olive",
+      "test_focus": ["ingredient picker", "vegetarian add-on"]
+    },
+    {
+      "id": "ingredient-basil",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-basil.png",
+      "ingredient_hint": "basil",
+      "test_focus": ["ingredient picker", "fresh herb"]
+    },
+    {
+      "id": "ingredient-garlic",
+      "category": "ingredient",
+      "target_file": "ingredients/ingredient-garlic.png",
+      "ingredient_hint": "garlic",
+      "test_focus": ["ingredient picker", "flavor add-on"]
+    },
+    {
+      "id": "menu-card-pizza-item",
+      "category": "menu-card",
+      "target_file": "menu-cards/menu-card-pizza-item.png",
+      "test_focus": ["menu-card layout", "fictional price display", "image/text boundary"]
+    },
+    {
+      "id": "menu-card-combo-offer",
+      "category": "menu-card",
+      "target_file": "menu-cards/menu-card-combo-offer.png",
+      "test_focus": ["combo layout", "multiple item images", "fictional price display"]
+    },
+    {
+      "id": "menu-card-ingredient-grid",
+      "category": "menu-card",
+      "target_file": "menu-cards/menu-card-ingredient-grid.png",
+      "test_focus": ["ingredient grid layout", "label fit", "small thumbnail slots"]
+    },
+    {
+      "id": "menu-card-allergen-note",
+      "category": "menu-card",
+      "target_file": "menu-cards/menu-card-allergen-note.png",
+      "test_focus": ["allergen note layout", "operator warning text", "non-orderable info card"]
+    }
+  ]
+}

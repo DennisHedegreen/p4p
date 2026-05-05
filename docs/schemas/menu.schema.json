@@ -41,6 +41,14 @@
           "category": {
             "type": "string",
             "minLength": 1
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Optional operator-side availability flag. Public menu responses should only expose active items."
+          },
+          "image_url": {
+            "type": ["string", "null"],
+            "description": "Optional item image URL or same-origin absolute path supplied by the node/operator."
           }
         }
       }

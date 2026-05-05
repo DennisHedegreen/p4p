@@ -270,6 +270,26 @@ button:disabled {
   background: rgba(255, 255, 255, 0.025);
 }
 
+.menu-item.has-image {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.menu-item-image {
+  width: 80px;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.menu-item.has-image .pill-row {
+  grid-column: 2;
+  margin-top: 0;
+}
+
 .status-block {
   min-height: 7rem;
 }

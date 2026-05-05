@@ -62,10 +62,12 @@ class PilotStore:
                     price INTEGER NOT NULL,
                     category TEXT NOT NULL,
                     active INTEGER NOT NULL,
+                    image_url TEXT NOT NULL DEFAULT '',
                     sort_order INTEGER NOT NULL
                 )
                 """
             )
+            self._ensure_menu_item_columns()
             self._connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS orders (
@@ -99,6 +101,14 @@ class PilotStore:
             )
         self._seed_menu_if_empty()
 
+    def _ensure_menu_item_columns(self) -> None:
+        columns = {
+            str(row["name"])
+            for row in self._connection.execute("PRAGMA table_info(menu_items)").fetchall()
+        }
+        if "image_url" not in columns:
+            self._connection.execute("ALTER TABLE menu_items ADD COLUMN image_url TEXT NOT NULL DEFAULT ''")
+
     def close(self) -> None:
         with self._lock:
             self._connection.close()
@@ -111,18 +121,20 @@ class PilotStore:
             self.replace_menu(
                 [
                     MenuItem(
-                        id="kebab-pita",
+                        id=self._config.menu_item_1_id,
                         name=self._config.menu_item_1_name,
                         description=self._config.menu_item_1_description,
                         price=self._config.menu_item_1_price,
-                        category="kebab",
+                        category=self._config.menu_item_1_category,
+                        image_url=self._config.menu_item_1_image_url,
                     ),
                     MenuItem(
-                        id="durum-kebab",
+                        id=self._config.menu_item_2_id,
                         name=self._config.menu_item_2_name,
                         description=self._config.menu_item_2_description,
                         price=self._config.menu_item_2_price,
-                        category="kebab",
+                        category=self._config.menu_item_2_category,
+                        image_url=self._config.menu_item_2_image_url,
                     ),
                 ]
             )
@@ -158,6 +170,7 @@ class PilotStore:
                         price=row["price"],
                         category=row["category"],
                         active=bool(row["active"]),
+                        image_url=str(row["image_url"] or "") or None,
                     )
                     for row in rows
                 ],
@@ -170,8 +183,8 @@ class PilotStore:
                 self._connection.execute(
                     """
                     INSERT INTO menu_items(
-                        id, name, description, price, category, active, sort_order
-                    ) VALUES(?, ?, ?, ?, ?, ?, ?)
+                        id, name, description, price, category, active, image_url, sort_order
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         item.id,
@@ -180,6 +193,7 @@ class PilotStore:
                         item.price,
                         item.category,
                         1 if item.active else 0,
+                        item.image_url or "",
                         index,
                     ),
                 )

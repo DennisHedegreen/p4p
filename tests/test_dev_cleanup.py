@@ -203,6 +203,8 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("pilot-photo-map", service_ids)
         self.assertIn("primary-registry", service_ids)
         self.assertIn("p4p.menu.photo-map", config.services["pilot-photo-map"].env["P4P_NODE_MODULES"])
+        self.assertIn("food-image-fixtures", config.services["pilot-photo-map"].env["P4P_MENU_ITEM_1_IMAGE_URL"])
+        self.assertEqual(config.services["pilot-photo-map"].env["P4P_MENU_ITEM_1_ID"], "margherita")
         self.assertIn("/api/scenarios", page)
         self.assertIn("lab/scenarios.json", page)
         self.assertNotIn("Start Primary Registry", page)
@@ -225,6 +227,35 @@ class P4PDevCleanupTests(unittest.TestCase):
             image_path = fixture_root / fixture["file"]
             self.assertTrue(image_path.exists(), fixture["file"])
             self.assertGreater(image_path.stat().st_size, 100_000, fixture["file"])
+
+    def test_synthetic_food_image_fixtures_have_manifest_and_files(self) -> None:
+        fixture_root = REPO_ROOT / "docs/examples/food-image-fixtures"
+        manifest = json.loads((fixture_root / "manifest.json").read_text(encoding="utf-8"))
+        readme = (fixture_root / "README.md").read_text(encoding="utf-8")
+        prompts = (fixture_root / "PROMPTS.md").read_text(encoding="utf-8")
+
+        self.assertEqual(manifest["status"], "synthetic-image-fixtures")
+        self.assertEqual(manifest["fixture_count"], 22)
+        self.assertEqual(manifest["max_fixture_dimension_px"], 900)
+        self.assertTrue(manifest["policy"]["not_real_restaurants"])
+        self.assertTrue(manifest["policy"]["not_partner_material"])
+        self.assertTrue(manifest["policy"]["not_production_catalog_truth"])
+        self.assertTrue(manifest["policy"]["not_advertising_claims"])
+        self.assertIn("not restaurant data", readme.lower())
+        self.assertIn("Global rules", prompts)
+        self.assertIn("no logos", prompts)
+
+        categories = {spec["category"] for spec in manifest["prompt_specs"]}
+        self.assertEqual(categories, {"dish", "ingredient", "menu-card"})
+        self.assertGreaterEqual(len(manifest["prompt_specs"]), 20)
+        target_files = [spec["target_file"] for spec in manifest["prompt_specs"]]
+        self.assertEqual(len(target_files), len(set(target_files)))
+        for target_file in target_files:
+            self.assertRegex(target_file, r"^(dishes|ingredients|menu-cards)/[-a-z0-9]+\.png$")
+            image_path = fixture_root / target_file
+            self.assertIn(image_path.parent.name, {"dishes", "ingredients", "menu-cards"})
+            self.assertTrue(image_path.exists(), target_file)
+            self.assertGreater(image_path.stat().st_size, 100_000, target_file)
 
     def test_proof_status_and_release_notes_anchor_public_gate(self) -> None:
         proof_status = (REPO_ROOT / "docs/PROOF-STATUS.md").read_text(encoding="utf-8")

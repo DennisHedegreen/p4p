@@ -189,6 +189,24 @@ class MenuItem(BaseModel):
     price: int = Field(ge=0, description="Integer minor units in the menu currency")
     category: str = Field(pattern=CATEGORY_PATTERN)
     active: bool = True
+    image_url: str | None = Field(
+        default=None,
+        description="Optional item image URL or same-origin path supplied by the node/operator.",
+    )
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            return None
+        if any(character.isspace() for character in normalized):
+            raise ValueError("image_url must not contain whitespace")
+        if normalized.startswith(("https://", "http://", "/")):
+            return normalized
+        raise ValueError("image_url must be http(s) or a same-origin absolute path")
 
 
 class Menu(BaseModel):

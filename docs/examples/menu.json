@@ -7,7 +7,8 @@
       "name": "Margherita",
       "description": "Tomat, mozzarella, oregano",
       "price": 7500,
-      "category": "pizza"
+      "category": "pizza",
+      "image_url": "/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png"
     },
     {
       "id": "vesuvio",

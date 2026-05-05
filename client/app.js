@@ -557,10 +557,21 @@ function renderMenu(items, currency) {
   for (const item of items) {
     const wrapper = document.createElement("div");
     wrapper.className = "menu-item";
-    appendStrong(wrapper, item.name);
-    wrapper.appendChild(document.createTextNode(` - ${formatMoneyMinor(item.price, currency)}`));
-    appendBreak(wrapper);
-    appendStatus(wrapper, item.description);
+    if (typeof item.image_url === "string" && item.image_url) {
+      wrapper.classList.add("has-image");
+      const image = document.createElement("img");
+      image.className = "menu-item-image";
+      image.src = new URL(item.image_url, selectedNode.endpoint).href;
+      image.alt = safeText(item.name);
+      image.loading = "lazy";
+      wrapper.appendChild(image);
+    }
+    const copy = document.createElement("div");
+    appendStrong(copy, item.name);
+    copy.appendChild(document.createTextNode(` - ${formatMoneyMinor(item.price, currency)}`));
+    appendBreak(copy);
+    appendStatus(copy, item.description);
+    wrapper.appendChild(copy);
     const meta = document.createElement("div");
     meta.className = "pill-row";
     appendPill(meta, item.id);

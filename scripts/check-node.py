@@ -234,6 +234,20 @@ def validate_menu(menu: dict[str, Any]) -> list[CheckResult]:
             results.append(CheckResult("FAIL", f"menu.items[{index}].price", "price must be >= 0"))
         elif isinstance(item.get("price"), int):
             results.append(CheckResult("PASS", f"menu.items[{index}].price", "integer minor units"))
+        image_url = item.get("image_url")
+        if image_url is not None:
+            if not isinstance(image_url, str) or not image_url:
+                results.append(CheckResult("FAIL", f"menu.items[{index}].image_url", "must be a non-empty string or null"))
+            elif not (
+                image_url.startswith("https://")
+                or image_url.startswith("http://")
+                or image_url.startswith("/")
+            ):
+                results.append(CheckResult("FAIL", f"menu.items[{index}].image_url", "must be http(s) or same-origin absolute path"))
+            elif any(character.isspace() for character in image_url):
+                results.append(CheckResult("FAIL", f"menu.items[{index}].image_url", "must not contain whitespace"))
+            else:
+                results.append(CheckResult("PASS", f"menu.items[{index}].image_url", "optional visual asset"))
     return results
 
 

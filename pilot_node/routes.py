@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from p4p_core import (
     Menu,
@@ -62,7 +62,9 @@ from pilot_node.runtime import (
 )
 
 
-OPERATOR_HTML_PATH = Path(__file__).resolve().parents[1] / "pilot-node" / "operator.html"
+P4P_ROOT = Path(__file__).resolve().parents[1]
+OPERATOR_HTML_PATH = P4P_ROOT / "pilot-node" / "operator.html"
+FOOD_IMAGE_FIXTURE_ROOT = P4P_ROOT / "docs" / "examples" / "food-image-fixtures"
 
 
 def header_value(value: str | None) -> str | None:
@@ -172,6 +174,7 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
             "health": "GET /health",
             "info": "GET /p4p/info",
             "menu": "GET /p4p/menu",
+            "food_image_fixture": "GET /p4p/assets/food-image-fixtures/{asset_path}",
             "menu_list": "GET /p4p/menu/list",
             "menu_photo_map": "GET /p4p/menu/photo-map",
             "order": "POST /p4p/order",
@@ -185,6 +188,20 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
             "operator_reannounce": "POST /operator/reannounce",
         },
     }
+
+
+def food_image_fixture(asset_path: str) -> FileResponse:
+    requested = Path(asset_path)
+    if requested.is_absolute() or ".." in requested.parts or requested.suffix.lower() != ".png":
+        raise HTTPException(status_code=404, detail="Unknown fixture asset")
+    target = (FOOD_IMAGE_FIXTURE_ROOT / requested).resolve()
+    try:
+        target.relative_to(FOOD_IMAGE_FIXTURE_ROOT.resolve())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Unknown fixture asset") from exc
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Unknown fixture asset")
+    return FileResponse(target, media_type="image/png")
 
 
 def public_payment_methods(runtime: PilotRuntime) -> list[str]:
@@ -428,10 +445,19 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
             cards: list[str] = []
             for item in items:
                 price_label = html.escape(format_money_minor(item.price, menu.currency))
+                item_name = html.escape(item.name, quote=True)
+                image_html = (
+                    f"""
+            <img class="item-image" src="{html.escape(item.image_url, quote=True)}" alt="{item_name}" loading="lazy">"""
+                    if item.image_url
+                    else ""
+                )
+                item_class = "item has-image" if item.image_url else "item"
                 cards.append(
                     f"""
-          <article class="item" data-item-id="{html.escape(item.id, quote=True)}" data-price="{item.price}">
-            <div>
+          <article class="{item_class}" data-item-id="{html.escape(item.id, quote=True)}" data-price="{item.price}">
+            {image_html}
+            <div class="item-copy">
               <h3>{html.escape(item.name)}</h3>
               <p>{html.escape(item.description)}</p>
               <span>{price_label}</span>
@@ -522,11 +548,22 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 12px;
+        align-items: center;
         padding: 12px 0;
         border-top: 1px solid #e4ebe8;
       }}
+      .item.has-image {{
+        grid-template-columns: 96px minmax(0, 1fr) auto;
+      }}
       .item:first-of-type {{
         border-top: 0;
+      }}
+      .item-image {{
+        width: 96px;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        object-fit: cover;
+        background: #eef2f1;
       }}
       .item h3 {{
         font-size: 1rem;
@@ -630,6 +667,18 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
         }}
         .checkout {{
           position: static;
+        }}
+      }}
+      @media (max-width: 560px) {{
+        .item.has-image {{
+          grid-template-columns: 72px minmax(0, 1fr);
+        }}
+        .item-image {{
+          width: 72px;
+        }}
+        .item .stepper {{
+          grid-column: 1 / -1;
+          justify-self: end;
         }}
       }}
     </style>
@@ -805,17 +854,26 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
         regions: list[str] = []
         for index, item in enumerate(menu.items, start=1):
             price_label = html.escape(format_money_minor(item.price, menu.currency))
+            item_name = html.escape(item.name, quote=True)
+            image_html = (
+                f"""
+                <img class="region-photo" src="{html.escape(item.image_url, quote=True)}" alt="{item_name}" loading="lazy">"""
+                if item.image_url
+                else ""
+            )
+            hotspot_class = "hotspot has-image" if item.image_url else "hotspot"
             regions.append(
                 f"""
               <button
                 type="button"
-                class="hotspot"
+                class="{hotspot_class}"
                 data-photo-map-item-id="{html.escape(item.id, quote=True)}"
                 data-price="{item.price}"
                 data-region-index="{index}"
                 aria-pressed="false"
               >
                 <span class="region-number">{index}</span>
+                {image_html}
                 <span class="region-copy">
                   <strong>{html.escape(item.name)}</strong>
                   <small>{html.escape(item.description)}</small>
@@ -937,9 +995,19 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
         text-align: left;
         cursor: pointer;
       }}
+      .hotspot.has-image {{
+        grid-template-columns: 34px 76px minmax(0, 1fr) 34px;
+      }}
       .hotspot[aria-pressed="true"] {{
         border-color: #00796b;
         background: #ecf8f5;
+      }}
+      .region-photo {{
+        width: 76px;
+        aspect-ratio: 1;
+        border-radius: 7px;
+        object-fit: cover;
+        background: #eef2f1;
       }}
       .region-number, .region-qty {{
         display: grid;
@@ -1064,6 +1132,18 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
         }}
         .checkout {{
           position: static;
+        }}
+      }}
+      @media (max-width: 560px) {{
+        .hotspot.has-image {{
+          grid-template-columns: 32px 62px minmax(0, 1fr);
+        }}
+        .region-photo {{
+          width: 62px;
+        }}
+        .hotspot.has-image .region-qty {{
+          grid-column: 1 / -1;
+          justify-self: end;
         }}
       }}
     </style>
@@ -1686,6 +1766,10 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
     @app.get("/p4p/menu", response_model=Menu)
     def public_menu_route() -> Menu:
         return public_menu(runtime)
+
+    @app.get("/p4p/assets/food-image-fixtures/{asset_path:path}", response_class=FileResponse)
+    def food_image_fixture_route(asset_path: str) -> FileResponse:
+        return food_image_fixture(asset_path)
 
     @app.get("/p4p/menu/list", response_class=HTMLResponse)
     def public_menu_list_page_route() -> str:

@@ -765,6 +765,7 @@
           fields.appendChild(catalogInput("Description", "description", item.description));
           fields.appendChild(catalogInput("Category", "category", item.category));
           fields.appendChild(catalogInput("Price (minor units)", "price", item.price, "number"));
+          fields.appendChild(catalogInput("Image URL", "image_url", item.image_url));
 
           const activeField = document.createElement("label");
           activeField.className = "check-field";
@@ -802,7 +803,8 @@
           description: "",
           price: 0,
           category: "pizza",
-          active: true
+          active: true,
+          image_url: ""
         });
         state.menu = {
           currency: state.menu?.currency || "DKK",
@@ -822,7 +824,8 @@
             description: value("description"),
             price: Number.parseInt(value("price") || "0", 10),
             category: value("category"),
-            active: Boolean(row.querySelector('[name="active"]')?.checked)
+            active: Boolean(row.querySelector('[name="active"]')?.checked),
+            image_url: value("image_url") || null
           };
         });
       }

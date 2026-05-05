@@ -284,6 +284,27 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(format_money_minor(6500, "DKK"), "65.00 DKK")
         self.assertEqual(format_money_minor(1299, "USD"), "12.99 USD")
         self.assertEqual(format_money_minor(1200, "JPY"), "1200 JPY")
+        self.assertIsNone(menu.items[0].image_url)
+        self.assertEqual(
+            MenuItem(
+                id="durum-kebab",
+                name="Durum kebab",
+                description="Test item",
+                price=7900,
+                category="kebab",
+                image_url=" /p4p/assets/food-image-fixtures/dishes/dish-durum-kebab.png ",
+            ).image_url,
+            "/p4p/assets/food-image-fixtures/dishes/dish-durum-kebab.png",
+        )
+        with self.assertRaises(ValidationError):
+            MenuItem(
+                id="bad-image",
+                name="Bad image",
+                description="Test item",
+                price=100,
+                category="pizza",
+                image_url="assets/dish.png",
+            )
         with self.assertRaises(ValidationError):
             Menu(currency="PIZZACOIN", updated_at=utc_now(), items=[])
 
@@ -3063,6 +3084,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             price=8900,
                             category="pizza",
                             active=True,
+                            image_url="/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png",
                         ),
                         pilot.MenuItem(
                             id="durum-test",
@@ -3089,6 +3111,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(catalog_entry["health"], "available")
             self.assertEqual([item.id for item in updated.items], ["pizza-17", "durum-test"])
             self.assertEqual([item.id for item in public_menu.items], ["pizza-17"])
+            self.assertEqual(
+                public_menu.items[0].image_url,
+                "/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png",
+            )
             self.assertIsNotNone(row)
             event = json.loads(str(row["event_json"]))
             self.assertEqual(event["event"], "CATALOG_UPDATED")
@@ -3121,6 +3147,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             price=8900,
                             category="pizza",
                             active=True,
+                            image_url="/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png",
                         ),
                         pilot.MenuItem(
                             id="durum-test",
@@ -3167,6 +3194,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIn("Tomato, cheese, chili", page)
             self.assertIn("89.00 DKK", page)
             self.assertIn('data-item-id="pizza-17"', page)
+            self.assertIn('class="item has-image"', page)
+            self.assertIn('src="/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png"', page)
             self.assertNotIn("Durum Test", page)
             self.assertIn('fetch("/p4p/order"', page)
             self.assertIn("p4p-menu-list-0.1", page)
@@ -3224,6 +3253,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             price=8900,
                             category="pizza",
                             active=True,
+                            image_url="/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png",
                         ),
                         pilot.MenuItem(
                             id="durum-test",
@@ -3272,6 +3302,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIn("89.00 DKK", page)
             self.assertIn('data-photo-map-item-id="pizza-17"', page)
             self.assertIn('data-photo-map-mode="catalog-derived-regions"', page)
+            self.assertIn('class="hotspot has-image"', page)
+            self.assertIn('src="/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png"', page)
             self.assertNotIn("Durum Test", page)
             self.assertIn('fetch("/p4p/order"', page)
             self.assertIn("p4p-menu-photo-map-0.1", page)
@@ -4407,6 +4439,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(index["node_id"], "dk-brondby-kebab-001")
             self.assertTrue(index["accepts_orders"])
             self.assertEqual(index["endpoints"]["info"], "GET /p4p/info")
+            self.assertEqual(
+                index["endpoints"]["food_image_fixture"],
+                "GET /p4p/assets/food-image-fixtures/{asset_path}",
+            )
             self.assertEqual(index["endpoints"]["menu_list"], "GET /p4p/menu/list")
             self.assertEqual(index["endpoints"]["menu_photo_map"], "GET /p4p/menu/photo-map")
             self.assertEqual(index["endpoints"]["order"], "POST /p4p/order")
@@ -4542,11 +4578,13 @@ class P4PTruthfulnessTests(unittest.TestCase):
                         "description": "Test item",
                         "price": 6500,
                         "category": "kebab",
+                        "image_url": "/p4p/assets/food-image-fixtures/dishes/dish-durum-kebab.png",
                     }
                 ],
             }
         )
         self.assertFalse([result for result in menu_results if result.level == "FAIL"])
+        self.assertTrue(any(result.name == "menu.items[0].image_url" and result.level == "PASS" for result in menu_results))
 
         eur_menu = checker.validate_menu(
             {

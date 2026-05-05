@@ -18,7 +18,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   JSON Schema files for core protocol objects, discover views, and reference inspection responses.
 - `examples/`
   Canonical example payloads for requests and responses, plus synthetic
-  photo-map menu fixtures under `examples/menu-photo-map-fixtures/`.
+  photo-map menu fixtures under `examples/menu-photo-map-fixtures/` and
+  generated food/ingredient image fixtures under `examples/food-image-fixtures/`.
 - `MODULE-PROVIDERS.md`
   Planned `v0.2` model for module providers, module manifests, data access, signatures, and trust claims.
 - `COMMUNITY-MODULES.md`

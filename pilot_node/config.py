@@ -98,12 +98,18 @@ class PilotConfig:
     notify_email_mode: str
     db_path: str
     menu_currency: str
+    menu_item_1_id: str
     menu_item_1_name: str
     menu_item_1_description: str
     menu_item_1_price: int
+    menu_item_1_category: str
+    menu_item_1_image_url: str
+    menu_item_2_id: str
     menu_item_2_name: str
     menu_item_2_description: str
     menu_item_2_price: int
+    menu_item_2_category: str
+    menu_item_2_image_url: str
 
 
 def _is_payment_manifest(manifest: ModuleManifest) -> bool:
@@ -285,12 +291,18 @@ def build_pilot_config() -> PilotConfig:
         notify_email_mode=env_str("P4P_NOTIFY_EMAIL_MODE", "sent"),
         db_path=os.environ.get("P4P_PILOT_NODE_DB_PATH", ":memory:"),
         menu_currency=normalize_currency_code(env_str("P4P_MENU_CURRENCY", "DKK")),
+        menu_item_1_id=env_str("P4P_MENU_ITEM_1_ID", "kebab-pita"),
         menu_item_1_name=env_str("P4P_MENU_ITEM_1_NAME", "Kebab pita"),
         menu_item_1_description=env_str("P4P_MENU_ITEM_1_DESCRIPTION", "Kebab, salat, dressing"),
         menu_item_1_price=int(env_str("P4P_MENU_ITEM_1_PRICE", "6500")),
+        menu_item_1_category=env_str("P4P_MENU_ITEM_1_CATEGORY", "kebab"),
+        menu_item_1_image_url=env_str("P4P_MENU_ITEM_1_IMAGE_URL", "").strip(),
+        menu_item_2_id=env_str("P4P_MENU_ITEM_2_ID", "durum-kebab"),
         menu_item_2_name=env_str("P4P_MENU_ITEM_2_NAME", "Durum kebab"),
         menu_item_2_description=env_str("P4P_MENU_ITEM_2_DESCRIPTION", "Kebab, salat, dressing"),
         menu_item_2_price=int(env_str("P4P_MENU_ITEM_2_PRICE", "7500")),
+        menu_item_2_category=env_str("P4P_MENU_ITEM_2_CATEGORY", "kebab"),
+        menu_item_2_image_url=env_str("P4P_MENU_ITEM_2_IMAGE_URL", "").strip(),
     )
 
 
