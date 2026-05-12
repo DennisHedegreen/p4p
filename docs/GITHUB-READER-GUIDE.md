@@ -1,19 +1,21 @@
 # P4P GitHub Reader Guide
 
-This file is for people who land on the GitHub repo and need the project to explain itself quickly.
+This file routes readers to the right P4P document in the right order.
+
+It is a reading-path document, not the public proof claim, not the protocol spec, and not the proof checkpoint log.
 
 ## In One Sentence
 
-P4P is an open protocol for direct restaurant discovery and ordering, with replaceable modules for payments, printing, delivery, POS, booking, and other operator-owned workflows.
+P4P is an open protocol for direct restaurant discovery and ordering, with replaceable modules and operator-owned workflows around a small core.
 
 ## What To Believe Right Now
 
 Believe this:
 
 - advanced prototype
-- real code, real tests, real runtime split
-- public protocol proof now
+- public protocol proof for `v0.1`
 - controlled live pilot next
+- real code, real tests, real runtime split
 
 Do not believe this:
 
@@ -25,7 +27,19 @@ Do not believe this:
 - complete trust ecosystem
 - full federation finished as stable product
 
-## Fast Reading Path
+## Canonical Sources
+
+When documents overlap, read them like this:
+
+- `README.md`: repo entrypoint and shortest public claim
+- `PROOF.md`: canonical current public proof claim
+- `docs/WHITEPAPER-v0.1.md`: explainer and boundary document
+- `SPEC.md`: wire contract and normative rules
+- `ARCHITECTURE.md`: architecture and anti-capture boundary
+- `PILOT-LIVE.md`: separate next gate
+- `docs/PROOF-STATUS.md`: dated proof checkpoint log
+
+## Fast Reading Paths
 
 If you only want the public story:
 
@@ -47,17 +61,36 @@ If you want the runtime architecture:
 1. `ARCHITECTURE.md`
 2. `registry/README.md`
 3. `demo-node/README.md`
-4. `pilot-node/README.md`
+
+If you want to review the repo without reading everything:
+
+1. `REVIEW-ME.md`
+2. `README.md`
+3. `PROOF.md`
+4. `ARCHITECTURE.md`
+5. `tests/test_v0_1_truthfulness.py`
+
+If you want the live-pilot boundary:
+
+1. `PILOT-LIVE.md`
+2. `pilot-node/README.md`
+3. `TEST-GUIDE.md`
 
 If you want the module direction:
 
-1. `docs/COMMUNITY-MODULES.md`
-2. `docs/modules/README.md`
-3. `docs/MODULE-PROVIDERS.md`
-4. `docs/MODULE-EXECUTION-CONTRACT.md`
-5. `docs/FIRST-FLOWS.md`
-6. `docs/MODULE-RULES.md`
-7. `modules/README.md`
+1. `docs/MODULES-START-HERE.md`
+2. `docs/COMMUNITY-MODULES.md`
+3. `docs/modules/README.md`
+4. `docs/providers/README.md`
+5. `docs/MODULE-PROVIDERS.md`
+6. `docs/MODULE-EXECUTION-CONTRACT.md`
+7. `docs/FIRST-FLOWS.md`
+8. `docs/MODULE-RULES.md`
+9. `modules/README.md`
+
+Every current reference manifest should also have its own human-readable page under `docs/modules/`.
+
+Every unique current provider identity should also have its own human-readable page under `docs/providers/`.
 
 If you want to build a module:
 
@@ -72,28 +105,22 @@ If you want to build a module:
 
 The repo has four important layers:
 
-- core protocol and runtime: `registry/`, `demo-node/`, `pilot-node/`, `client/`, `p4p_core/`
+- core protocol and reference runtime: `registry/`, `demo-node/`, `client/`, `p4p_core/`
+- live-pilot foundation: `pilot-node/`
 - contract and explanation layer: `SPEC.md`, `ARCHITECTURE.md`, `docs/`
-- module reference layer: `modules/`, provider manifests, module manifests, and module execution docs
-- proof and release discipline: `PROOF.md`, `PILOT-LIVE.md`, `TEST-GUIDE.md`, `docs/RELEASE-NOTES.md`
+- proof and release discipline: `PROOF.md`, `PILOT-LIVE.md`, `TEST-GUIDE.md`, `docs/PROOF-STATUS.md`, `docs/RELEASE-NOTES.md`
 
-## Module Builder Map
+## Reading Notes
 
-Core protocol is the small direct loop: registry discovery, node identity, node menu, node order, and order-consent state.
+`demo-node/` belongs to the public proof.
 
-`pilot-node/` is the controlled live-pilot foundation and the current place where operator-owned module execution is tested.
+`pilot-node/` belongs to the controlled live-pilot path.
 
-`registry/` lists what nodes announce. It does not certify which modules are trusted.
-
-Provider manifests identify who publishes a module.
-
-Module manifests describe what a capability does, what data it needs, and how it reports results.
-
-`docs/modules/` explains each current reference, planned, and internal mock module in ordinary language before you inspect the raw JSON manifests.
-
-External modules may live in their own repositories, but they should still follow the same manifest and status-label rules.
+`registry/` lists what nodes announce. It does not become an order relay, payment owner, or hidden certification authority.
 
 Payment modules are adapters only. P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
+
+Community modules may exist without becoming automatically approved.
 
 ## Branch And Repo Reality
 
@@ -106,7 +133,7 @@ This project is intentionally split across:
 
 `main` should stay easier to show and easier to explain.
 
-That means GitHub may sometimes lag the private integration branch on purpose, but when it does, the public repo should still explain what it is missing and why.
+That means GitHub may sometimes lag the private integration branch on purpose, but the public repo should still explain what is missing and why.
 
 ## If You Review The Code
 
@@ -117,5 +144,5 @@ The main questions are:
 - are modules staying optional instead of becoming hidden requirements?
 - are community modules clearly labeled instead of silently treated as official?
 - are payment modules kept as adapters instead of becoming P4P as payment provider?
-- is local or node-owned state staying primary?
-- does the runtime become more inspectable rather than more magical?
+- is node-owned state staying primary after discovery?
+- does the runtime stay inspectable instead of becoming magical?

@@ -2,6 +2,8 @@
 
 Status: public GitHub guide for people who want to build P4P-compatible modules.
 
+If you are only trying to understand what a module is before you build one, read [`MODULES-START-HERE.md`](MODULES-START-HERE.md) first.
+
 P4P is an open protocol for direct restaurant discovery and ordering, with replaceable modules for payments, printing, delivery, POS, booking, and other operator-owned workflows.
 
 P4P is the socket, not the appliances.

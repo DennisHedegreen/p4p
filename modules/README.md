@@ -11,6 +11,7 @@ It is not a claim that every listed module is live, trusted, or customer-facing.
 For the public community-module guide, read:
 
 - `../docs/modules/README.md`
+- `../docs/providers/README.md`
 - `../docs/COMMUNITY-MODULES.md`
 - `../docs/MODULE-RULES.md`
 - `../docs/MODULE-PROVIDERS.md`
@@ -66,6 +67,12 @@ It is not a customer menu layout. It is the restaurant-side source of truth for
 item ids, names, descriptions, categories, prices, and active/inactive
 availability.
 
+`p4p.catalog.import.ocr` is a separate reference operator-surface helper for
+draft OCR/scanned-menu preview.
+
+It can sit beside `p4p.catalog.editor`, but it does not become catalog truth by
+itself and should be removable without breaking the basic catalog editor.
+
 `p4p.kitchen.screen` is a reference operator-surface module for the pilot node.
 
 It is not a public customer feature. It gives the restaurant operator a local
@@ -93,3 +100,19 @@ pilot node.
 It lets a customer check whether their submitted order is accepted, ready,
 completed, cancelled, or rejected. It must not expose customer contact details,
 customer name, order notes, operator-only events, or internal restaurant data.
+
+## Pilot Feedback Layer
+
+The current reference catalog now also carries a small planned pilot-feedback layer:
+
+- `p4p.order.print.backup`
+- `p4p.order.alert.basic`
+- `p4p.pickup.board.basic`
+- `p4p.notify.sms`
+- `p4p.payment.mobilepay`
+
+These are not live runtime claims.
+
+They now exist as narrow test lanes so five-place hardware and operator feedback can happen against something executable instead of against one vague box idea.
+
+`p4p.payment.mobilepay` should specifically be read as an external adapter invitation, not as a signal that P4P core wants to own payment integration responsibility.

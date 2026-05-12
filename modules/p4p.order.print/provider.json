@@ -7,19 +7,29 @@
   "contact": null,
   "modules": [
     "p4p.catalog.editor",
+    "p4p.catalog.import.ocr",
     "p4p.customer.status",
     "p4p.kitchen.screen",
     "p4p.menu.list",
     "p4p.menu.photo-map",
     "p4p.notify.email",
+    "p4p.notify.sms",
+    "p4p.order.alert.basic",
     "p4p.order.print",
+    "p4p.order.print.backup",
     "p4p.payment.cash",
     "p4p.payment.chaospay-mock",
     "p4p.payment.godpay-mock",
+    "p4p.payment.mobilepay",
+    "p4p.pickup.board.basic",
     "p4p.stock.basic",
     "p4p.trust.cvr-basic"
   ],
-  "supported_lanes": ["public_capability", "operator", "trust"],
+  "supported_lanes": [
+    "public_capability",
+    "operator",
+    "trust"
+  ],
   "status": "unsigned-reference",
   "signature": null
 }

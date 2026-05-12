@@ -1,0 +1,47 @@
+{
+  "module_id": "p4p.order.alert.basic",
+  "module_class": "notification",
+  "lane": "operator",
+  "type": "hardware-alert",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "test",
+  "description": "Triggers a local bell, buzzer, or light when a new order or hardware failure needs attention.",
+  "visibility": "operator_only",
+  "capabilities": ["trigger_local_alert", "report_status"],
+  "input_events": [
+    "ORDER_ACCEPTED",
+    "ORDER_NEEDS_HUMAN",
+    "PRINTER_OFFLINE",
+    "PRINT_TIMEOUT",
+    "PAPER_OUT"
+  ],
+  "output_events": [
+    "OUTBOUND_ACTION_REQUESTED",
+    "ACTION_COMPLETED",
+    "RETRY_SCHEDULED"
+  ],
+  "permissions": [
+    "read.order.summary",
+    "read.order.note",
+    "read.node.operator_config"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {
+    "NODE_CONNECTIVITY_LOST": ["p4p.notify.email", "p4p.notify.sms"]
+  },
+  "idempotency_scope": "operator_alert",
+  "failure_modes": ["NODE_CONNECTIVITY_LOST"],
+  "required_configuration": ["alert_target"],
+  "requires": [],
+  "data_access": ["order_summary", "alert_target"],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Triggers a local bell, buzzer, or light when an order or hardware problem needs fast attention.",
+    "data_access_summary": "Order summary and configured alert target.",
+    "trust_status": "reference self-test lane",
+    "readiness": "test",
+    "operator_status": "builtin operator self-test lane when enabled and configured"
+  }
+}

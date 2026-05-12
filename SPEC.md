@@ -9,6 +9,14 @@ Launch target: April 30, 2026
 Author: Dennis Hedegreen, Hedegreen Research
 License: MIT (code), CC BY 4.0 (specification)
 
+This file is the canonical wire contract.
+
+If documents overlap:
+
+- `SPEC.md` wins on normative protocol details
+- `PROOF.md` wins on the current public proof claim
+- `ARCHITECTURE.md` wins on system-boundary intent
+
 ---
 
 ## 1. Purpose

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="{{author_name}}">
+  <title>Pizza4People Module Pages</title>
+  <meta name="description" content="Plain-language module pages for the current Pizza4People stack, before raw manifests and GitHub docs.">
+  <link rel="canonical" href="{{canonical_url}}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Pizza4People Module Pages">
+  <meta property="og:description" content="A readable module catalog for the current Pizza4People proof stack.">
+  <meta property="og:url" content="{{canonical_url}}">
+  <meta property="og:site_name" content="Pizza4People">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <!-- {{generated_comment}} -->
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="../" aria-label="Pizza4People home">
+      <span class="brand-mark">P4P</span>
+      <span class="brand-copy">Pizza4People</span>
+    </a>
+    <nav class="top-nav" aria-label="Primary navigation">
+      <a href="../">Home</a>
+      <a href="../providers/">Providers</a>
+      <a href="../press-kit/">Press kit DK</a>
+      <a href="../press-kit/en.html">Press kit EN</a>
+      <a href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
+      <a href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero hero-compact" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Module pages / plain-language stack reading</p>
+        <h1 id="hero-title">Which module matters first?</h1>
+        <p class="hero-lede">This is the human module catalog for the current Pizza4People proof. Start here if you want to understand what the customer sees, what the shop controls, and where payment or trust boundaries sit before opening raw manifests.</p>
+        <div class="hero-actions" aria-label="Module links">
+          <a class="button" href="../">Back to homepage</a>
+          <a class="button button-secondary" href="#new-here">New here?</a>
+          <a class="button button-secondary" href="../providers/">Provider pages</a>
+          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+        </div>
+      </div>
+      <div class="brief-card">
+        <p class="brief-label">Current scope</p>
+        <p class="brief-line">{{module_count}} module pages across {{provider_count}} shared provider layer.</p>
+        <p>Readable first. Raw manifest and GitHub references only when you need the developer-facing view.</p>
+      </div>
+    </section>
+
+    <section id="new-here" class="section-grid" aria-labelledby="new-here-title">
+      <div>
+        <p class="section-kicker">New here?</p>
+        <h2 id="new-here-title">Start with the simple idea, not the raw ids.</h2>
+      </div>
+      <div class="section-body">
+        <p>P4P core is the road. Modules are optional tools around the road.</p>
+        <p>Good examples are menus, kitchen screens, pickup boards, alerts, and payment adapters. Bad examples are the registry itself or the direct node order endpoint itself.</p>
+      </div>
+      <div class="module-route-grid">
+{{module_reader_cards_html}}
+      </div>
+    </section>
+
+    <section class="section-grid" aria-labelledby="start-title">
+      <div>
+        <p class="section-kicker">Start here</p>
+        <h2 id="start-title">Three practical ways into the module stack.</h2>
+      </div>
+      <div class="module-route-grid">
+{{module_route_cards_html}}
+      </div>
+    </section>
+
+    <section class="section-grid" aria-labelledby="catalog-title">
+      <div>
+        <p class="section-kicker">Catalog</p>
+        <h2 id="catalog-title">Open the current stack by role, not by raw id.</h2>
+      </div>
+      <div class="section-body">
+        <p>The grouped list below is still the same narrow proof story. It is just arranged in the order a normal reader can use: customer surfaces first, then shop tools, then payment/trust edges, then internal tests.</p>
+        <p>If you want the exact technical language, GitHub remains the source of truth. This page is the public human layer above it.</p>
+      </div>
+    </section>
+
+    <section class="module-section" aria-labelledby="groups-title">
+      <div class="section-heading">
+        <p class="section-kicker">Current module pages</p>
+        <h2 id="groups-title">Read the current modules as tools, then open the details only when needed.</h2>
+      </div>
+      <div class="module-groups">
+{{module_groups_html}}
+      </div>
+    </section>
+
+    <section class="contact-section" id="contact" aria-labelledby="contact-title">
+      <p class="section-kicker">Contact</p>
+      <h2 id="contact-title">Questions about the module layer or the current proof boundary?</h2>
+      <p>Questions about module meaning, provider ownership, or the live-pilot boundary: <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
+      <p>Public proof front door: <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
+      <p>Broader protocol-family direction: <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <span>Pizza4People / Module Pages</span>
+    <span>Public protocol proof. Controlled live pilot next.</span>
+  </footer>
+</body>
+</html>

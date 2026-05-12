@@ -1,6 +1,6 @@
 # P4P
 
-An open protocol for direct restaurant-customer discovery and ordering, with replaceable modules for payments, printing, delivery, POS, booking, and other operator-owned workflows.
+An open protocol for direct restaurant-customer discovery and ordering.
 
 P4P is a phone book, not a marketplace.
 
@@ -8,346 +8,144 @@ P4P is the socket, not the appliances.
 
 P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
 
-Payment modules are adapters chosen by the restaurant/operator.
+Payment modules are adapters chosen by the restaurant or node operator.
 
-The core idea is simple:
+## What To Believe Right Now
 
-basic restaurant-customer contact should not require a platform taking rent on first contact.
+- status: advanced prototype
+- current public claim: public protocol proof for `v0.1`
+- next gate: controlled live pilot
+- public story: narrower than the full private `dev` runtime
 
-Companies are allowed to build on top.
+The current proof is small on purpose:
 
-But the connection itself should stay open.
+1. a node announces itself to one or more registries
+2. a client discovers the node through a registry
+3. the client fetches the menu directly from the node
+4. the client sends an order directly to the node
+5. the client can fail over to a backup registry for discovery
 
-## If You Opened This On GitHub
+After discovery, the registry is out of the loop.
 
-If you only have a few minutes, read in this order:
+## What Is Claimed In `v0.1`
 
-1. this `README.md`
-2. `PROOF.md`
-3. `SPEC.md`
-4. `docs/GITHUB-READER-GUIDE.md`
-5. `docs/COMMUNITY-MODULES.md`
-6. `docs/RELEASE-NOTES.md`
+The current public proof claims only that direct restaurant-customer discovery and ordering can work without a marketplace platform owning first contact.
 
-That path should tell you:
+That includes:
 
-- what P4P is trying to prove
-- what is real in the code now
-- what is still only design material
-- how to start reading or building modules
-- how the public and private GitHub repos are split
+- registry discovery
+- direct node menu fetch
+- direct node order submission
+- `order_mode` as explicit order consent
+- client failover across registries
+- a public demo node marked `order_mode: "test"`
 
-## What v0.1 is
+`demo-node/` is the proof surface.
 
-The current target is not a full product stack.
+`pilot-node/` is not part of the current public proof claim. It is the next gate.
 
-It is a narrow reference implementation that proves this loop:
+## What Exists In Prototype But Is Not The Public Claim
 
-1. A node announces itself to one or more registries
-2. A client discovers the node through a registry
-3. The client fetches the menu directly from the node
-4. The client sends an order directly to the node
-5. The client fails over to a backup registry for discovery if the primary disappears
+These layers exist in the repo as prototype support or future-direction work:
 
-Nodes also announce `order_mode` so discovery is not confused with permission to receive orders.
-
-The reference demo uses `test` orders.
-
-Real restaurant order intake belongs behind explicit node-operator activation.
-
-Nodes also sign announcements and heartbeats with an Ed25519 node key in the reference implementation.
-
-That protects a signed `node_id` from simple unsigned takeover and from older signed replays at the same registry once a newer signed event has been accepted, but it does not certify the restaurant.
-
-The current skeleton can also carry an optional root-signed delegation, so a restaurant root identity can authorize a day-to-day operational node key for one `node_id` without giving the registry any private keys.
-
-The next identity slice now also exists: a root-signed node manifest can be posted to registries so revoked operational keys disappear from discovery and a new root key can take over through a previous-root rotation proof.
-
-In `v0.1`, failover means client failover across registries while nodes dual-register to both.
-
-It does not mean automatic registry-to-registry synchronization.
-
-## Current Reading
-
-Status: advanced prototype.
-
-The public story should stay narrower than the full `dev` runtime:
-
-- public claim: public protocol proof plus controlled live-pilot path
-- `demo-node/` is the proof and lab node, not a live restaurant node
-- `pilot-node/` is the controlled live-pilot foundation and the only live-directed node surface
-- identity, manifests, mirroring, curated directory, trust claims, module manifests, and the first pilot runtime lanes exist as real prototype layers, but they are not production guarantees
-
-## What Is Real Today
-
-These things are implemented in the reference runtime today:
-
-- signed node announcements and heartbeats
+- signed node identity scaffolding beyond the minimum proof story
 - optional root-signed delegation and manifest-based key lifecycle
-- registry failover for discovery
-- direct node menu fetch and direct order submission
-- moderated directory and signed trust-claim skeletons
-- manifest-backed module and provider reference catalogs
-- additive flow contracts for pilot runtime lanes
-- pilot-node stock validation and pay-at-pickup payment-mode lanes
+- registry source export/import and mirror cache work
+- moderated directory scaffolding
+- signed trust-claim scaffolding
+- module manifests, provider manifests, and pilot runtime lanes
+- controlled live-pilot operator flows in `pilot-node/`
 
-These things are explicitly not the claim today:
+They are real prototype material.
 
-- production restaurant rollout
+They are not the same thing as the current public proof claim.
+
+## What P4P Is Not Claiming Today
+
+P4P is not currently claiming:
+
+- broad production rollout
+- production restaurant operations
+- production security
 - online payment
 - delivery orchestration
-- user-account platform
-- broad federation finished as a stable product
+- registry-side order relay
+- customer account platform
+- verified community module marketplace
+- finished federation
+- complete trust ecosystem
 
-## Start Here By Goal
+## Start Here
 
-If you want to understand the public proof claim:
+If you only want the current public claim:
 
-- `PROOF.md`
-- `docs/WHITEPAPER-v0.1.md`
-- `docs/PROOF-STATUS.md`
-- `docs/RELEASE-NOTES.md`
+1. `README.md`
+2. `PROOF.md`
+3. `docs/WHITEPAPER-v0.1.md`
+4. `docs/PROOF-STATUS.md`
 
-If you want to understand the wire contract:
+If you want the wire contract:
 
-- `SPEC.md`
-- `docs/README.md`
-- `docs/schemas/`
-- `docs/examples/`
+1. `SPEC.md`
+2. `docs/README.md`
+3. `docs/schemas/`
+4. `docs/examples/`
 
-If you want to understand the module/runtime direction:
+If you want to give a second opinion without reading the whole repo:
 
-- `ARCHITECTURE.md`
-- `docs/COMMUNITY-MODULES.md`
-- `docs/modules/README.md`
-- `docs/MODULE-EXECUTION-CONTRACT.md`
-- `docs/FIRST-FLOWS.md`
-- `modules/`
+1. `REVIEW-ME.md`
+2. `README.md`
+3. `PROOF.md`
+4. `ARCHITECTURE.md`
+5. `tests/test_v0_1_truthfulness.py`
 
-If you want to build or publish a module:
+If you want runtime architecture and anti-capture boundaries:
 
-- `docs/COMMUNITY-MODULES.md`
-- `docs/modules/README.md`
-- `docs/MODULE-RULES.md`
-- `docs/MODULE-PROVIDERS.md`
-- `docs/MODULE-EXECUTION-CONTRACT.md`
-- `modules/README.md`
+1. `ARCHITECTURE.md`
+2. `registry/README.md`
+3. `demo-node/README.md`
 
-If you want to understand the current live-pilot boundary:
+If you want the next gate after the proof:
 
-- `PILOT-LIVE.md`
-- `pilot-node/README.md`
-- `TEST-GUIDE.md`
+1. `PILOT-LIVE.md`
+2. `pilot-node/README.md`
+3. `docs/FIVE-PLACE-PILOT-PACK.md`
+4. `TEST-GUIDE.md`
 
-## Long-Term Network Shape
+If you want the module direction:
 
-`Pizza4People` is the first concrete proof network.
+1. `docs/MODULES-START-HERE.md`
+2. `docs/GITHUB-READER-GUIDE.md`
+3. `docs/COMMUNITY-MODULES.md`
+4. `docs/modules/README.md`
+5. `docs/MODULE-EXECUTION-CONTRACT.md`
+6. `modules/README.md`
 
-`Protocols4People` is the broader umbrella direction.
+## Canonical Document Roles
 
-The long-term shape is not one flat global registry run as a permanent center.
+When documents overlap, read them like this:
 
-It is a federation of scoped registries that may exist at different levels:
+- `README.md`: repo entrypoint and shortest public claim
+- `PROOF.md`: canonical `v0.1` proof claim
+- `docs/WHITEPAPER-v0.1.md`: explainer for humans before raw code
+- `SPEC.md`: wire contract and normative rules
+- `ARCHITECTURE.md`: service boundaries and anti-capture design
+- `PILOT-LIVE.md`: separate next gate, not current proof
+- `docs/GITHUB-READER-GUIDE.md`: reading-path routing
+- `docs/PROOF-STATUS.md`: dated factual checkpoint log
 
-- umbrella registry
-- vertical registry
-- country registry
-- local or community registry
+If a statement is about what the protocol contract is, `SPEC.md` wins.
 
-Example direction:
+If a statement is about what the architecture should preserve, `ARCHITECTURE.md` wins.
 
-`Protocols4People -> Pizza4People -> Denmark -> local city or region registries`
+If a statement is about what is publicly claimed right now, `PROOF.md` wins.
 
-The same node may appear in more than one scope at the same time.
+If a statement is about hosted or dated public proof facts, `docs/PROOF-STATUS.md` wins.
 
-A scoped registry is a discovery surface, not a second identity authority.
+## Beyond `v0.1`
 
-Node identity should still come from node keys, root keys, delegations, and node manifests.
+P4P is the first concrete vertical proof inside a broader `Protocols4People` direction.
 
-`v0.1` does not implement full scoped federation or a complete trust ecosystem yet, but the reference runtime now includes the first moderated directory skeleton on top of discoverability.
+That broader direction matters, but it is secondary to the current proof.
 
-## Beyond Pizza
-
-`P4P` should not be read as "pizza software forever."
-
-It is the first concrete proof profile.
-
-The broader direction is `Protocols4People`:
-
-- a small shared protocol core
-- multiple vertical profiles
-- a broad module economy
-- scoped registries at umbrella, vertical, country, and local levels
-
-In that reading:
-
-- `Pizza4People` is one vertical profile
-- ticketing could become another
-- retail goods could become another
-- local services could become another
-
-The important discipline is to keep the shared core small.
-
-The core should solve:
-
-- identity
-- announce
-- discovery
-- current state
-- manifests
-- feeds or snapshots
-- direct endpoint-to-endpoint contact
-
-The current reference runtime now includes a first registry snapshot surface for later mirroring and umbrella ingestion, mirror ingest, and a separate moderated directory layer above discoverability.
-
-The moderation capability is now explicit too: curating the active index and moderating the public directory are no longer treated as the same registry power.
-
-The runtime now also includes the first signed trust-claim skeleton: a registry can issue a signed `reviewed` or `verified` claim, another registry can import it, and the moderated directory can project that claim without turning it into node identity or ordinary discoverability.
-
-It now also includes the first mirror consumer, so one registry can import and cache another registry's signed source snapshot and expose mirrored nodes through normal discovery.
-
-The current runtime can also poll configured upstream registries automatically, but it still treats mirrored state as a local cache layer rather than a full federation graph, and it does not re-export mirrored cache as fresh source of record.
-
-Vertical profiles should then define domain-specific objects and flows.
-
-Modules should carry everything else:
-
-- payment
-- delivery
-- booking
-- invoicing
-- trust
-- inventory
-- POS
-- scanning
-- supplier integrations
-
-That same module economy may also reach backward into production and supply chains, not only forward into customer checkout.
-
-## Build A Module
-
-P4P should make it possible for restaurants, vendors, and open-source maintainers to build modules without asking one central platform for permission.
-
-The public GitHub path is:
-
-1. fork this repo or publish a separate module repo
-2. read `docs/COMMUNITY-MODULES.md`
-3. choose a non-core module id namespace
-4. create a provider manifest and module manifest
-5. test the module locally against `pilot-node`
-6. open a pull request or link the external repo from discussion/docs
-
-Every module must declare its status, data access, operator boundary, readiness, and failure modes.
-
-Community modules are not automatically certified, verified, or approved by P4P.
-
-Payment modules are adapter boundaries only. They must not be marketed as `P4P Pay` or as P4P holding money.
-
-## Reference implementation
-
-- `registry/` — FastAPI registry server
-- `demo-node/` — simulated restaurant node
-- `pilot-node/` — first controlled live restaurant node foundation
-- `client/` — minimal web client
-- `demo-node/operator.html` — demo-only node operator surface
-- `SPEC.md` — canonical protocol spec
-- `ARCHITECTURE.md` — long-term system boundaries and module model
-- `ROADMAP.md` — gate-based path from proof-safe cleanup to pilot, hardening, and later trust or module work
-- `PILOT-LIVE.md` — first live restaurant pilot scope, topology, and stop conditions
-- `PROOF.md` — proof-safe public story and online proof target for `v0.1`
-- `docs/` — schemas and example payloads for the core contract
-- `docs/NODE-IMPLEMENTER-KIT.md` — independent node builder and interop-session guide
-- `docs/PROOF-STATUS.md` — current public proof checkpoint, hosting reality, and remaining public gate
-- `docs/RELEASE-NOTES.md` — short checkpoint and release-candidate notes
-- `docs/RELEASE-PLAN.md` — branch, tag, and alpha milestone rules
-- `docs/GITHUB-READER-GUIDE.md` — short map for GitHub readers, reviewers, and first-time contributors
-- `docs/PUBLIC-GITHUB.md` — safe public/private GitHub split for publishing
-- `modules/` — reference module manifests and examples
-- `deploy/` — public proof deployment notes and example runtime config
-- `scripts/build_public_site.py` — generator for `public/www/pizza4people/` from `private/data/p4p/site-data.json` plus `modules/`
-- `scripts/public-audit.sh` — local pre-publication audit helper
-- `TEST-GUIDE.md` — rescue gate, local proof flow, and local pilot dry-run guide
-- `TEST-GUIDE-OPERATOR.md` — short Danish operator version of the testing flow
-
-`lab/` lives beside the protocol implementation as a local debug harness.
-
-It is not part of the protocol surface.
-
-The reference node operator is also not part of the public protocol surface.
-
-It is the first restaurant-owned control layer for toggling node state, order mode, modules, and registry health.
-
-Treat `scripts/build_public_site.py` plus `private/data/p4p/site-data.json` as the canonical public-site source for `pizza4people.com`.
-
-The press-kit HTML files under `public/www/pizza4people/press-kit/` are the maintained source.
-
-The PDFs are artifacts.
-
-## Current stance
-
-- `v0.1` proves discovery and direct ordering
-- the public claim should stay: public protocol proof + controlled live pilot next
-- `protocol_version: "0.1"` is separate from repo alpha release tags
-- `main` should stay showable; `dev` can move faster
-- public `main` and private `dev` must live in separate GitHub repositories, because GitHub visibility is repository-level
-- no protocol-managed payment
-- no delivery
-- no user accounts
-- no review system
-- no production security
-- no broad production restaurant operations yet
-- `pilot-node/` is the controlled live-pilot target, not the demo node
-- no CVR-backed restaurant verification
-- modules are not a public third-party execution marketplace; only a small reference subset is executable inside `pilot-node`
-
-## Protocol stance
-
-- core discovery should stay open
-- direct ordering should work without commercial permission
-- registries may be run by anyone
-- modules may be free or paid
-- menu is core, not a module
-- companies may participate, but should not own the base contact layer
-
-## Why now
-
-Just Eat exits Denmark on April 30, 2026.
-
-That makes the timing window real, but the immediate goal is proof, not product theater, and the next gate after proof is a controlled live pilot rather than a broad rollout.
-
-## Legacy project folders
-
-`tracker/`, `tablet-app/`, and `customer-app/` remain as broader product-track placeholders.
-
-They are not the canonical build target for `v0.1`.
-
-See `SPEC.md` for the working protocol definition.
-
-See `ARCHITECTURE.md` for the proper long-term build shape.
-
-## Publishing
-
-The safe public model is:
-
-- public repo: `github.com/DennisHedegreen/p4p`
-- private repo: `github.com/DennisHedegreen/p4p-dev`
-
-Do not make a repository public while it still contains a private `dev` branch or private reachable history.
-
-Before publishing a public branch, run:
-
-```sh
-bash scripts/public-audit.sh
-```
-
-See `docs/PUBLIC-GITHUB.md` for the full split and release sequence.
-
-For repo workflow and push cadence, see `CONTRIBUTING.md`.
-
-## License
-
-Code is licensed under MIT.
-
-Protocol text and documentation are licensed under CC BY 4.0.
-
-See `LICENSE.md`.
+Read `docs/WHITEPAPER-v0.1.md` and `ARCHITECTURE.md` for the larger module, trust, and federation direction after the current proof boundary.

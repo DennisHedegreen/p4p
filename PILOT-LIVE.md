@@ -12,6 +12,10 @@ The public proof and the live pilot are separate gates.
 
 `pilot-node/` belongs to this pilot document.
 
+This file is the next gate after the current public proof.
+
+It is not part of the current `v0.1` proof claim.
+
 ## 1. Pilot Goal
 
 The pilot should prove one thing:

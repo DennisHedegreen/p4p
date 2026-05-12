@@ -1,0 +1,51 @@
+{
+  "module_id": "p4p.catalog.import.ocr",
+  "module_class": "operator_surface",
+  "lane": "operator",
+  "type": "catalog-import",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "reference-example",
+  "description": "Operator-owned draft OCR helper for previewing menu text or photographed paper menus before catalog review.",
+  "visibility": "operator_only",
+  "capabilities": [
+    "preview_catalog_import_from_text",
+    "preview_catalog_import_from_image",
+    "review_draft_catalog_items"
+  ],
+  "input_events": [
+    "CATALOG_IMPORT_PREVIEW_REQUESTED"
+  ],
+  "output_events": [
+    "CATALOG_IMPORT_PREVIEW_READY"
+  ],
+  "permissions": [
+    "read.catalog.import_source",
+    "preview.catalog.import"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {},
+  "idempotency_scope": "operator_catalog_import_preview",
+  "failure_modes": [
+    "CATALOG_IMPORT_PREVIEW_FAILED"
+  ],
+  "requires": [
+    "p4p.catalog.editor"
+  ],
+  "data_access": [
+    "draft_catalog_item_id",
+    "draft_catalog_item_name",
+    "draft_catalog_item_price",
+    "draft_catalog_item_category",
+    "draft_catalog_source_line"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Lets a restaurant operator preview OCR/scanned menu lines as draft catalog items before human review.",
+    "data_access_summary": "Draft item ids, names, prices, categories, and OCR source lines. Operator-only; does not write catalog truth by itself.",
+    "trust_status": "reference manifest, unsigned provider",
+    "readiness": "test",
+    "operator_status": "available in the pilot-node operator dashboard when enabled alongside the catalog editor"
+  }
+}

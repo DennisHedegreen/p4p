@@ -26,6 +26,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   GitHub-first guide for building, labeling, testing, and publishing P4P-compatible modules without treating every module as official or production-ready.
 - `modules/`
   Human-readable reference pages for every current module manifest, including purpose, status, data access, boundaries, and local test paths.
+- `providers/`
+  Human-readable reference pages for every unique current provider manifest identity in the reference catalog.
 - `MODULE-RULES.md`
   Practical boundary rules for deciding what is core, what is a module, and what registries must not control.
 - `EVENT-CATALOG.md`

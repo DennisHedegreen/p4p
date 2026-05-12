@@ -57,6 +57,8 @@ h3 { color: var(--ink); font-size: 1rem; margin-bottom: 0.4rem; }
 .module-card dl div { display: grid; grid-template-columns: 5.8rem minmax(0, 1fr); gap: 0.7rem; border-top: 1px solid rgba(0, 0, 0, 0.08); padding-top: 0.7rem; }
 .module-card dt { color: var(--muted); font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; }
 .module-card dd { margin: 0; color: var(--muted); }
+.module-links { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid rgba(0, 0, 0, 0.08); font-size: 0.86rem; }
+.module-links span { color: var(--muted); }
 .download-note { margin-top: 1.5rem; color: var(--muted); font-size: 0.7rem; }
 .footer-line { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: 0.7rem; margin-top: 1.35rem; }
 @media (max-width: 760px) { .hero-grid, .two-col, .three-col, .module-grid, .pilot-map, .flow { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); justify-self: center; } }

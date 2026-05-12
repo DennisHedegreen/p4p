@@ -8,6 +8,14 @@ Read this together with `SPEC.md`.
 
 `ARCHITECTURE.md` defines how to implement the contract without collapsing back into platform capture.
 
+This file is not the current public proof claim.
+
+If documents overlap:
+
+- `SPEC.md` wins on normative wire contract
+- `PROOF.md` wins on what is publicly claimed right now
+- `ARCHITECTURE.md` wins on service boundaries and anti-capture design
+
 ## 1. Architectural Goal
 
 P4P should make one thing cheap, open, and hard to capture:

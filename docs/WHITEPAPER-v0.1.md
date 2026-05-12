@@ -1,18 +1,27 @@
 # P4P Working Whitepaper v0.1
 
-Status: working whitepaper for the public prototype.
+Status: working explainer for the public protocol proof.
 
 Date: 2026-05-05
 
-Audience: developers, restaurant operators, module builders, journalists, and reviewers who need the project boundary before reading the raw code.
+Audience: developers, restaurant operators, module builders, journalists, and reviewers who need the project boundary before reading raw code.
+
+This is not the canonical proof claim.
+
+This is not the protocol spec.
+
+This is not the proof checkpoint log.
 
 This is not a production promise.
 
-This is not an investment document.
+It is the human explanation of what P4P is trying to prove, why the boundary is narrow, and what lies beyond the current proof.
 
-This is not a payment-provider claim.
+When documents overlap:
 
-It is a technical and architectural explanation of what P4P is trying to prove.
+- `PROOF.md` wins on the current public claim
+- `SPEC.md` wins on normative contract details
+- `ARCHITECTURE.md` wins on system boundary and anti-capture design
+- `docs/PROOF-STATUS.md` wins on dated hosted-proof facts
 
 ## Abstract
 
@@ -20,17 +29,19 @@ P4P is an open protocol for direct restaurant discovery and ordering, with repla
 
 The core claim is small:
 
-basic restaurant-customer discovery and ordering should not require a marketplace platform to own the first contact.
+basic restaurant-customer discovery and ordering should not require a marketplace platform to own first contact.
 
 P4P is a phone book, not a marketplace.
 
 P4P is the socket, not the appliances.
 
-Restaurants and node operators choose their modules. Module providers can publish adapters and tools. Customers and clients can inspect what a node declares. Registries can help discovery without becoming the authority that owns restaurant identity, module certification, payment, or customer relationships.
+Restaurants and node operators choose their modules. Module providers can publish adapters and tools. Registries can help discovery without becoming the authority that owns restaurant identity, module certification, payment, or customer relationships.
 
-The current implementation is an advanced prototype. It includes a registry, demo node, pilot node, browser client, module manifests, operator controls, catalog/menu surfaces, internal mock payment modules, identity/signature scaffolding, mirror/import work, moderated directory scaffolding, and local lab tools.
+The current implementation is an advanced prototype.
 
-The next practical target is a controlled live pilot, not a broad production rollout.
+The current public claim is a protocol proof.
+
+The next gate is a controlled live pilot.
 
 ## 1. Problem
 
@@ -48,20 +59,7 @@ P4P starts from a narrower question:
 
 Can a restaurant expose a small, direct, machine-readable node that lets customers find it, read its current menu, and send an order request without the discovery layer becoming a marketplace middleman?
 
-If that works, everything else can become modular:
-
-- payment adapter
-- printer/POS handoff
-- kitchen screen
-- delivery adapter
-- booking adapter
-- stock check
-- menu importer
-- AI menu assistant
-- trust claim
-- accounting export
-
-The important part is that those tools should compete as modules and services, not as the gatekeeper to first contact.
+If that works, everything else can become modular.
 
 ## 2. Design Position
 
@@ -79,7 +77,7 @@ This means:
 - module listing is not approval
 - payment adapter support is not P4P becoming a payment provider
 - customer menu presentation is not catalog truth
-- operator tooling belongs with the node/operator, not the registry
+- operator tooling belongs with the node or operator, not the registry
 - basic interoperability must not require a commercial module
 
 The protocol should make direct contact possible.
@@ -88,7 +86,7 @@ It should not force one company to own the restaurant-customer relationship.
 
 ## 3. Scope And Maturity
 
-The current P4P status is:
+The current public reading should be:
 
 ```text
 advanced prototype
@@ -97,7 +95,7 @@ controlled live pilot next
 not production-ready
 ```
 
-Implemented prototype areas include:
+Implemented in prototype today:
 
 - registry announce, heartbeat, discover, and registry-info endpoints
 - direct node menu and order endpoints
@@ -107,24 +105,28 @@ Implemented prototype areas include:
 - registry source export/import and mirror cache work
 - moderated directory and trust-claim scaffolding
 - reference module manifests and provider manifests
-- pilot-node operator controls
-- pilot-node catalog, stock, payment-mode, kitchen, customer-status, list-menu, and photo-map menu lanes
+- pilot-node operator controls and runtime lanes
 - internal mock payment modules for local debugging
-- synthetic fixture packs for safe menu and food-image testing
-- local lab scenario runner
+- local lab and fixture tooling
 
-Not claimed today:
+Part of the current public proof claim:
 
-- production restaurant rollout
-- production security
-- production payment integration
-- delivery network
-- customer account platform
-- verified community module marketplace
-- final federation governance
-- complete trust ecosystem
+- direct discovery through a registry
+- direct menu fetch from the node
+- direct order submission to the node
+- explicit `order_mode`
+- registry failover for discovery
 
-This whitepaper documents the current direction and boundary. It should be read together with `SPEC.md`, `ARCHITECTURE.md`, `PILOT-LIVE.md`, and the files in `docs/`.
+Next gate, not current proof:
+
+- controlled live pilot with one real restaurant
+
+Future direction, not current claim:
+
+- broader trust ecosystem
+- broader federation
+- broader module economy
+- other vertical profiles beyond restaurant ordering
 
 ## 4. Actors
 
@@ -136,14 +138,7 @@ The person or client software looking for a restaurant, reading its menu, and se
 
 The actor responsible for running or controlling a node. This may be the restaurant itself or a technical operator acting for the restaurant.
 
-The node operator controls:
-
-- order mode
-- local catalog
-- active modules
-- operator credentials
-- payment adapter selection
-- kitchen/order workflow
+The node operator controls local catalog, order mode, active modules, operator credentials, payment adapter selection, and kitchen or order workflow.
 
 ### Node
 
@@ -177,8 +172,6 @@ Provider identity belongs in provider manifests and later signatures, not as hid
 
 An optional capability around the core.
 
-A module can add a payment adapter, printer connector, stock check, kitchen surface, customer menu presentation, trust claim, notification, delivery handoff, or similar workflow.
-
 If removing the module breaks basic discovery, menu fetch, or direct order submission, the module has been placed too deep.
 
 ## 5. Core Protocol
@@ -205,13 +198,11 @@ The current reference flow is:
 6. The node decides whether orders are disabled, test-only, or live.
 7. Optional modules may participate in local runtime lanes.
 
-The public menu endpoint is core.
+The menu endpoint is core.
 
-A menu importer can be a module.
+Menu importer or menu presentation layers can be modules.
 
-A menu presentation surface can be a module.
-
-But the node's ability to expose a menu is part of the base protocol.
+The node's ability to expose a menu is part of the base protocol.
 
 ## 6. Order Mode
 
@@ -225,40 +216,33 @@ Nodes expose `order_mode` so clients and registries can distinguish:
 
 This matters because a restaurant may be discoverable before it is ready for real ordering.
 
-The controlled live pilot should only use `live` when the operator has intentionally enabled it and understands what the node will receive.
+The public proof uses a demo node marked `test`.
+
+The controlled live pilot is the separate gate where `live` becomes operational.
 
 ## 7. Reference Implementation
 
 The repository contains several reference layers:
 
 - `registry/`: FastAPI registry implementation
-- `demo-node/`: narrow proof node for public protocol and lab flows
+- `demo-node/`: narrow proof node for the public protocol proof
 - `pilot-node/`: controlled live-pilot foundation
 - `client/`: browser reference client
 - `p4p_core/`: shared models, money helpers, module catalog loading, flow contracts, and CORS helpers
 - `modules/`: provider and module manifests
 - `docs/modules/`: human-readable module pages
 - `lab/`: local scenario runner and operator test surface
-- `scripts/`: public audit and public-site generation helpers
+- `scripts/`: audit and public-site generation helpers
 
-The pilot node is currently the most important live-directed surface.
+Read these layers carefully:
 
-It includes:
+- `demo-node/` belongs to the current public proof
+- `pilot-node/` belongs to the next gate
+- many runtime support layers exist in prototype without becoming part of the narrow public claim
 
-- token-protected operator endpoints
-- catalog editor
-- customer menu list
-- customer photo-map menu
-- customer order status
-- kitchen screen
-- stock validation
-- active payment module selection
-- built-in cash adapter
-- GodPay mock
-- declared ChaosPay mock
-- optional external payment module manifest loading
+The reference implementation is useful because it makes the architecture inspectable.
 
-The reference implementation is useful because it makes the architecture inspectable. It is not a production-hosting guarantee.
+It is not a production-hosting guarantee.
 
 ## 8. Module Model
 
@@ -286,20 +270,16 @@ Current status families:
 | Family | Meaning |
 | --- | --- |
 | `reference` | P4P reference module or reference example. |
-| `internal-mock` | Internal local/debug module. Not real-world provider behavior. |
-| `planned` | Manifest/design material that is not executable yet. |
-| `operator-local` | Local node/operator module. |
-| `community` | Third-party/community material, not automatically approved by P4P. |
+| `internal-mock` | Internal local or debug module. Not real-world provider behavior. |
+| `planned` | Manifest or design material that is not executable yet. |
+| `operator-local` | Local node or operator module. |
+| `community` | Third-party or community material, not automatically approved by P4P. |
 
-The important rule:
-
-publication on GitHub is not certification.
-
-Community modules are welcome, but they must be clearly labeled.
+Publication on GitHub is not certification.
 
 ## 9. Current Reference Modules
 
-Current human-readable module pages live in `docs/modules/`.
+Human-readable module pages live in `docs/modules/`.
 
 Implemented or test-ready reference modules include:
 
@@ -319,9 +299,9 @@ Declared or planned modules include:
 - `p4p.payment.chaospay-mock`
 - `p4p.trust.cvr-basic`
 
-These modules are not a production marketplace.
+These modules are reference material.
 
-They are reference material showing how a module should explain itself.
+They are not a production marketplace.
 
 ## 10. Payment Boundary
 
@@ -329,7 +309,7 @@ This boundary is central:
 
 P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
 
-Payment modules are adapters chosen by the restaurant/operator.
+Payment modules are adapters chosen by the restaurant or node operator.
 
 P4P core may:
 
@@ -337,7 +317,7 @@ P4P core may:
 - select the node's active payment module
 - send an order-scoped payment request to that module
 - receive module result events
-- expose operator status for active/configured/reachable modules
+- expose operator status for active, configured, or reachable modules
 
 P4P core must not:
 
@@ -352,19 +332,17 @@ P4P core must not:
 
 Do not call this `P4P Pay`.
 
-If a future module integrates a real provider, that module must say who owns the merchant relationship and which external provider handles payment, confirmation, settlement, refunds, disputes, and compliance.
-
 ## 11. Internal Payment Test Modules
 
 Internal payment test modules exist only to test P4P flow behavior.
 
 `p4p.payment.cash` is a reference adapter for payment outside the P4P protocol, such as pay-at-pickup or direct in-person payment.
 
-`p4p.payment.godpay-mock` is an executable random approval/failure debug module. It rolls `1..100`, compares the result to a threshold, and records the roll and outcome.
+`p4p.payment.godpay-mock` is an executable approval or failure debug module.
 
-`p4p.payment.chaospay-mock` is a declared future chaos module for ugly edge cases such as timeouts, duplicate callbacks, invalid signatures, wrong amount, late callbacks, conflicting statuses, and state changes out of order.
+`p4p.payment.chaospay-mock` is a declared future chaos module for ugly edge cases such as timeouts, duplicate callbacks, invalid signatures, wrong amount, late callbacks, conflicting statuses, and out-of-order state changes.
 
-`Pizzacoin` is a sandbox ledger for local experiments. It is useful for fake balance, module health, idempotency, and adapter-boundary testing.
+`Pizzacoin` is a sandbox ledger for local experiments.
 
 None of these are real money, real settlement, real wallets, crypto, redeemable value, or production payment methods.
 
@@ -376,29 +354,11 @@ P4P separates three ideas that platforms often merge:
 - customer menu presentation
 - order request
 
-The catalog is operator-owned local item data:
+The restaurant or operator-controlled catalog remains the source used for prices, availability, and order item ids.
 
-- item id
-- name
-- description
-- price in integer minor units
-- currency
-- category
-- active/inactive availability
-- optional presentation image URL
+List views, photo-map menus, import helpers, OCR, and AI surfaces can sit on top of that catalog.
 
-The customer menu can then be shown in different ways:
-
-- `p4p.menu.list`: classic list view
-- `p4p.menu.photo-map`: clickable paper-menu style view
-- future AI menu assistant: conversation on top of the structured catalog
-- future menu importer/OCR: intake tool feeding operator-reviewed catalog data
-
-Important boundary:
-
-images, prompts, OCR output, and AI suggestions are not catalog truth by themselves.
-
-The restaurant/operator-controlled catalog remains the source used for prices, availability, and order item ids.
+They are not the same thing as catalog truth.
 
 ## 13. Money And Currency
 
@@ -412,8 +372,6 @@ Examples:
 
 P4P core does not perform currency conversion.
 
-A real payment adapter should receive the amount and currency from the restaurant/node context and hand that to the selected payment provider.
-
 Internal mocks and sandbox ledgers may use explicit test labels only when clearly marked as non-production.
 
 ## 14. Trust, Identity, And Registry Scope
@@ -422,7 +380,7 @@ Registries help clients find nodes.
 
 They must not become the owner of restaurant identity.
 
-The current reference implementation includes:
+Implemented in prototype today:
 
 - signed node announcements
 - signed heartbeats
@@ -433,19 +391,14 @@ The current reference implementation includes:
 - signed trust-claim scaffolding
 - moderated directory scaffolding
 
-These layers are important because open discovery needs abuse resistance.
+These layers matter because open discovery needs abuse resistance.
 
 They are not yet a complete trust ecosystem.
 
-Longer term, trust should be layered:
+For the current public proof, the important line is simpler:
 
-- node keys prove control over a node id
-- root keys can delegate operational keys
-- registries can record signed state
-- trust groups can issue claims
-- clients can choose which claims they care about
-
-Discovery should remain separable from certification.
+- discovery must stay separable from certification
+- node identity must not silently become registry ownership
 
 ## 15. Federation Direction
 
@@ -456,7 +409,7 @@ The long-term model is scoped registries:
 - umbrella registry
 - vertical registry
 - country registry
-- local/community registry
+- local or community registry
 
 For example:
 
@@ -485,7 +438,7 @@ Possible module providers include:
 - restaurant chains
 - independent developers
 
-The repository should encourage people to build modules, but public documentation must keep labels visible:
+The repository should encourage module building, but public documentation must keep labels visible:
 
 - reference
 - internal mock
@@ -496,11 +449,11 @@ The repository should encourage people to build modules, but public documentatio
 
 No community module should be treated as approved simply because it exists.
 
-No payment module should imply P4P handles money.
-
 ## 17. Non-Goals
 
 P4P v0.1 is not:
+
+P4P `v0.1` is not:
 
 - a marketplace
 - a delivery platform
@@ -519,38 +472,18 @@ Some of those things may exist as independent modules or services later.
 
 They should not become the core.
 
-## 18. Roadmap
+## 18. Near-Term Direction
 
-Near-term:
+Near-term work should stay legible in this order:
 
-1. keep GitHub public profile coherent
-2. keep module pages and manifests aligned
-3. publish this working whitepaper
-4. update the public site to expose module pages and the whitepaper
-5. continue pilot-node hardening
-6. prepare a controlled live pilot with one real restaurant
+1. keep the public proof coherent and honest
+2. keep documentation, manifests, and public site copy aligned
+3. continue pilot-node hardening
+4. prepare a controlled live pilot with one real restaurant
 
-Prototype module work:
+Prototype support layers may continue to evolve.
 
-- improve module operator status
-- finish ChaosPay mock for failure-path testing
-- explore AI menu assistant over structured catalog data
-- explore printer/POS handoff
-- explore delivery/driver workflow
-- keep payment adapters as boundaries, not P4P payment
-
-Trust/federation work:
-
-- tighten node identity lifecycle
-- define trust-claim review policy
-- clarify scoped registry behavior
-- avoid central certification by default
-
-Public proof work:
-
-- keep `pizza4people.com` aligned with the repo
-- publish proof-safe documentation
-- show what works without overclaiming production readiness
+They should not silently widen the public proof claim.
 
 ## 19. Success Criteria
 
@@ -562,18 +495,19 @@ P4P is moving in the right direction if:
 - the operator can choose modules
 - modules can be replaced without rewriting the core
 - payment remains an adapter boundary
-- the registry does not certify everything by default
-- public documentation says what is real and what is only planned
-- tests protect the public claim from drifting into product theater
+- discovery remains separable from certification
+- public documentation says what is implemented in prototype, what is claimed now, what is next gate, and what is future direction
 
 ## 20. Short Public Summary
 
 P4P is an open protocol for direct restaurant discovery and ordering.
 
-The core is small: registry, node, menu, order, and current state.
+The current public claim is small: discovery, menu fetch, direct order, and registry failover without a marketplace middleman.
 
-Everything else should be replaceable modules.
+Everything else should stay modular or explicitly secondary.
 
-P4P is not a marketplace and not a payment provider.
+The current code is an advanced prototype.
 
-The current code is an advanced prototype, with a controlled live pilot as the next practical gate.
+The current public story is a protocol proof.
+
+The next practical gate is a controlled live pilot.

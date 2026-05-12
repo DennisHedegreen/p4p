@@ -1,0 +1,37 @@
+{
+  "module_id": "p4p.payment.mobilepay",
+  "module_class": "payment",
+  "lane": "public_capability",
+  "type": "payment",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "planned",
+  "description": "External-developer adapter slot for exposing a MobilePay-style pay-at-pickup payment option without moving payment processing into P4P.",
+  "visibility": "public",
+  "capabilities": ["report_payment_mode", "mark_mobilepay_at_pickup"],
+  "input_events": ["PAYMENT_REQUIRED", "PAYMENT_FAILED"],
+  "output_events": ["PAYMENT_MODE_CHANGED", "PAYMENT_FAILED"],
+  "permissions": [
+    "read.order.summary",
+    "write.payment.state",
+    "read.node.operator_config"
+  ],
+  "blocking_policy": "blocking",
+  "suggested_fallbacks": {
+    "PAYMENT_FAILED": ["p4p.payment.cash", "p4p.notify.email"]
+  },
+  "idempotency_scope": "payment_mode_resolution",
+  "failure_modes": ["PAYMENT_FAILED"],
+  "required_configuration": ["payment_destination"],
+  "requires": [],
+  "data_access": ["order_total", "fulfillment_type", "payment_destination"],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Declares an external-developer MobilePay-style pay-at-pickup adapter slot for a node.",
+    "data_access_summary": "Order total, fulfillment type, and configured operator payment destination. No card or account credentials.",
+    "trust_status": "external-developer invitation, not reference runtime",
+    "readiness": "planned",
+    "operator_status": "not enabled; external-developer invitation only after cash-first pilot feedback"
+  }
+}

@@ -228,6 +228,35 @@ class MenuUpdate(BaseModel):
     items: list[MenuItem] = Field(min_length=1)
 
 
+class MenuImportPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    raw_text: str = Field(min_length=1)
+    source_name: str = ""
+
+
+class MenuImportPreviewCandidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item: MenuItem
+    source_line: str = Field(min_length=1)
+    source_price_text: str = Field(min_length=1)
+    confidence: Literal["low", "medium", "high"] = Field(default="medium")
+
+
+class MenuImportPreviewResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_kind: Literal["ocr_text", "ocr_image"] = Field(default="ocr_text")
+    source_name: str = ""
+    parsed_at: datetime
+    candidates: list[MenuImportPreviewCandidate]
+    ignored_lines: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    extracted_text: str | None = None
+    ocr_line_count: int | None = None
+
+
 class OrderItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

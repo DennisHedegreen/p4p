@@ -27,7 +27,7 @@ It lets a restaurant operator maintain the structured catalog that customer menu
 ## What It Does Not Own
 
 - customer menu layout
-- paper-menu image mapping
+- OCR preview/import logic
 - stock validation
 - payment
 - kitchen status
@@ -48,6 +48,13 @@ Allowed data:
 - `catalog_item_active`
 
 The reference runtime also carries optional item image metadata as a presentation aid. Images do not become truth for ingredients, allergens, availability, price, or payment.
+
+If you want OCR or scanned paper-menu preview, pair this module with [`p4p.catalog.import.ocr`](p4p.catalog.import.ocr.md). That helper stays draft-only and still requires a human to save catalog truth through this editor.
+
+The generic operator shell keeps this module narrow.
+Photo OCR controls live on the dedicated operator module page for `p4p.catalog.import.ocr`,
+not inside the shared catalog-editor shell. The built-in catalog editor now lives
+in the separate catalog room at `GET /operator/catalog`, not on the live operations page.
 
 ## Events
 
@@ -75,7 +82,7 @@ P4P_NODE_MODULES=p4p.catalog.editor,p4p.menu.list,p4p.payment.cash
 Then open:
 
 ```text
-GET /operator
+GET /operator/catalog
 GET /operator/menu
 PUT /operator/menu
 ```

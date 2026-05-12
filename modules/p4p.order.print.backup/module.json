@@ -1,0 +1,68 @@
+{
+  "module_id": "p4p.order.print.backup",
+  "module_class": "printer",
+  "lane": "operator",
+  "type": "order-routing",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "test",
+  "description": "Routes accepted orders to a secondary printer target or local spool when the main print path fails.",
+  "visibility": "operator_only",
+  "capabilities": ["reroute_print_job", "report_status"],
+  "input_events": [
+    "PRINTER_OFFLINE",
+    "PRINT_TIMEOUT",
+    "PAPER_OUT",
+    "PRINT_UNCERTAIN"
+  ],
+  "output_events": [
+    "PRINT_SUCCESS_CONFIRMED",
+    "PRINT_FAILED_PRECHECK",
+    "PRINT_UNCERTAIN",
+    "PRINTER_OFFLINE",
+    "PAPER_LOW",
+    "PAPER_OUT",
+    "PAPER_JAM",
+    "PRINT_TIMEOUT"
+  ],
+  "permissions": [
+    "read.order.summary",
+    "read.order.items",
+    "read.order.note",
+    "read.node.operator_config"
+  ],
+  "blocking_policy": "fallback_required",
+  "suggested_fallbacks": {
+    "PRINTER_OFFLINE": ["p4p.notify.email", "p4p.notify.sms"],
+    "PRINT_TIMEOUT": ["p4p.notify.email", "p4p.notify.sms"],
+    "PAPER_OUT": ["p4p.notify.email", "p4p.notify.sms"]
+  },
+  "idempotency_scope": "order_print_backup",
+  "failure_modes": [
+    "PRINT_FAILED_PRECHECK",
+    "PRINT_UNCERTAIN",
+    "PRINTER_OFFLINE",
+    "PAPER_LOW",
+    "PAPER_OUT",
+    "PAPER_JAM",
+    "PRINT_TIMEOUT"
+  ],
+  "required_configuration": ["backup_printer_target"],
+  "requires": ["p4p.order.print"],
+  "data_access": [
+    "order_items",
+    "note",
+    "customer_contact",
+    "fulfillment_type",
+    "backup_printer_target"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Routes accepted orders to a second printer path or local spool when the first print target fails.",
+    "data_access_summary": "Order items, note, customer contact, fulfillment type, and configured backup printer target.",
+    "trust_status": "reference self-test lane",
+    "readiness": "test",
+    "operator_status": "builtin operator self-test lane when enabled and configured"
+  }
+}

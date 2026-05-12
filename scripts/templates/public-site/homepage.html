@@ -26,14 +26,12 @@
       <span class="brand-copy">Pizza4People</span>
     </a>
     <nav class="top-nav" aria-label="Primary navigation">
+      <a href="#owner">For pizzerias</a>
       <a href="#proof">Proof</a>
+      <a href="modules/">Modules</a>
       <a href="#story">Story</a>
-      <a href="#press">Press</a>
-      <a href="press-kit/">Press kit DK</a>
-      <a href="press-kit/en.html">Press kit EN</a>
-      <a href="#trust">Trust</a>
-      <a href="#modules">Modules</a>
-      <a href="#roadmap">Roadmap</a>
+      <a href="providers/">Providers</a>
+      <a href="press-kit/">Press kit</a>
       <a href="#contact">Contact</a>
     </nav>
   </header>
@@ -43,15 +41,28 @@
         <p class="eyebrow">{{hero_eyebrow}}</p>
         <h1 id="hero-title">{{hero_title}}</h1>
         <p class="hero-lede">{{hero_lede}}</p>
+        <div class="hero-tags" aria-label="Current shape">
+          <span>Public proof now</span>
+          <span>Pickup-first pilot next</span>
+          <span>Not a marketplace app</span>
+        </div>
         <div class="hero-actions" aria-label="Proof links">
-          <a class="button" href="#story">60-second version</a>
+          <a class="button" href="#owner">If you run a pizzeria</a>
           <a class="button button-secondary" href="#proof">See the proof</a>
           <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
-          <a class="button button-secondary" href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
-          <a class="button button-secondary" href="{{umbrella_url}}" rel="noopener noreferrer">Broader vision</a>
-          <a class="button button-secondary" href="press-kit/">Press kit DK</a>
-          <a class="button button-secondary" href="press-kit/en.html">Press kit EN</a>
         </div>
+        <p class="hero-links">
+          More routes:
+          <a href="#story">60-second version</a>
+          <span>/</span>
+          <a href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
+          <span>/</span>
+          <a href="{{umbrella_url}}" rel="noopener noreferrer">Broader vision</a>
+          <span>/</span>
+          <a href="press-kit/">Press kit DK</a>
+          <span>/</span>
+          <a href="press-kit/en.html">Press kit EN</a>
+        </p>
       </div>
       <figure class="proof-figure">
         <img src="assets/protocol-proof-map.svg" alt="Diagram showing client discovery through registries and direct menu/order flow to the restaurant node.">
@@ -61,6 +72,32 @@
 
     <section class="notice" aria-label="Current status">
       <p>{{notice}} <a href="{{just_eat_source_url}}" rel="noopener noreferrer">Source</a>.</p>
+    </section>
+
+    <section class="owner-brief" id="owner" aria-labelledby="owner-title">
+      <div class="section-heading">
+        <p class="section-kicker">If You Run A Pizzeria</p>
+        <h2 id="owner-title">This is the simple version.</h2>
+        <p>Pizza4People is trying to keep the basic digital connection in the restaurant's hands. The first live shape is intentionally small: controlled pickup orders, direct menu control, and simple payment at pickup before anything broader.</p>
+      </div>
+      <div class="owner-grid">
+{{owner_cards_html}}
+      </div>
+    </section>
+
+    <section id="modules" class="module-section" aria-labelledby="modules-title">
+      <div class="section-heading">
+        <p class="section-kicker">How The Pieces Fit</p>
+        <h2 id="modules-title">Start with what matters to the shop, then open the details only if needed.</h2>
+        <p>The list below is intentionally written for first understanding, not for manifest reading. Each box opens into the technical links only when you need them.</p>
+        <p>Payment stays narrow on purpose. P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.</p>
+        <p>If modules make no sense yet, start with the simple guide inside the <a href="modules/#new-here">module pages</a>.</p>
+        <p>If you want the full public reading path for the module layer, open the dedicated <a href="modules/">module pages</a>.</p>
+        <p>The current public catalog points to {{provider_count}} readable provider identity page as a separate human layer: <a href="providers/">open provider catalog</a>.</p>
+      </div>
+      <div class="module-groups">
+{{module_groups_html}}
+      </div>
     </section>
 
     <section class="press-ready" id="press" aria-labelledby="press-ready-title">
@@ -88,7 +125,7 @@
 
     <section class="plain-demo" aria-labelledby="plain-demo-title">
       <div class="section-heading">
-        <p class="section-kicker">What a journalist can see</p>
+        <p class="section-kicker">What you can see already</p>
         <h2 id="plain-demo-title">Four visible things, no protocol knowledge required.</h2>
       </div>
       <div class="plain-grid">
@@ -144,18 +181,6 @@
         <div class="trace" role="list" aria-label="Verification chain">
 {{trace_html}}
         </div>
-      </div>
-    </section>
-
-    <section id="modules" class="module-section" aria-labelledby="modules-title">
-      <div class="section-heading">
-        <p class="section-kicker">Module Catalog</p>
-        <h2 id="modules-title">Providers can add functions without owning discovery.</h2>
-        <p>Modules are declared capabilities. The node operator decides which modules a restaurant node announces and uses. This catalog is generated from module manifests in the repo.</p>
-        <p>Payment modules are adapters chosen by the restaurant/operator. P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.</p>
-      </div>
-      <div class="module-grid">
-{{modules_html}}
       </div>
     </section>
 

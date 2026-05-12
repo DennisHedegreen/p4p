@@ -1,0 +1,53 @@
+{
+  "module_id": "p4p.pickup.board.basic",
+  "module_class": "operator_surface",
+  "lane": "operator",
+  "type": "pickup-board",
+  "provider_id": "p4p.reference",
+  "version": "0.1",
+  "status": "test",
+  "description": "Shows accepted and ready orders on a simple local board facing the pickup counter.",
+  "visibility": "operator_only",
+  "capabilities": ["render_pickup_board", "report_status"],
+  "input_events": [
+    "ORDER_ACCEPTED",
+    "ORDER_STATUS_UPDATED",
+    "ORDER_REJECTED",
+    "PAYMENT_MODE_CHANGED"
+  ],
+  "output_events": [
+    "OUTBOUND_ACTION_REQUESTED",
+    "ACTION_COMPLETED",
+    "RETRY_SCHEDULED"
+  ],
+  "permissions": [
+    "read.order.summary",
+    "read.order.status",
+    "read.order.estimated_ready",
+    "read.order.payment_method"
+  ],
+  "blocking_policy": "non_blocking",
+  "suggested_fallbacks": {
+    "NODE_CONNECTIVITY_LOST": ["p4p.kitchen.screen", "p4p.notify.email"]
+  },
+  "idempotency_scope": "pickup_board_render",
+  "failure_modes": ["NODE_CONNECTIVITY_LOST"],
+  "required_configuration": ["pickup_board_target"],
+  "requires": [],
+  "data_access": [
+    "order_summary",
+    "order_status",
+    "estimated_ready_time",
+    "payment_method",
+    "pickup_board_target"
+  ],
+  "entrypoint": null,
+  "signature": null,
+  "public_catalog": {
+    "function": "Shows accepted or ready direct orders on a simple local pickup board near the counter.",
+    "data_access_summary": "Order summary, public order status, estimated ready time, payment mode, and configured pickup-board target.",
+    "trust_status": "reference operator surface",
+    "readiness": "test",
+    "operator_status": "builtin local counter surface when enabled and configured"
+  }
+}
