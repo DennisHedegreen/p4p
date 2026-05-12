@@ -27,6 +27,20 @@ The current proof is small on purpose:
 
 After discovery, the registry is out of the loop.
 
+## What This Looks Like Now
+
+These screenshots are here so a reviewer can see the shape quickly before diving into prose or code.
+
+The boundary still matters:
+
+- `protocols4people.com/modules/shop` is public proof surface
+- `pilot-node` screenshots are the controlled live-pilot next gate, not the current `v0.1` claim
+
+| Public shop family | Pilot-node operations | Pilot-node modules |
+| --- | --- | --- |
+| [![Public shop family](docs/assets/screenshots/protocols-shop-family-github.png)](https://protocols4people.com/modules/shop/) | [![Pilot-node operations](docs/assets/screenshots/operator-operations-tablet-github.png)](pilot-node/README.md) | [![Pilot-node modules](docs/assets/screenshots/operator-modules-tablet-github.png)](pilot-node/README.md) |
+| Public human reading layer before manifests and docs. | Next gate: local orders, kitchen flow, and node state on the restaurant-owned node. | Next gate: running now vs desired after restart, with restart truth kept explicit. |
+
 ## What Is Claimed In `v0.1`
 
 The current public proof claims only that direct restaurant-customer discovery and ordering can work without a marketplace platform owning first contact.

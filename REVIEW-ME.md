@@ -46,6 +46,21 @@ Read in this order:
 
 If you care more about wire-level correctness than product framing, swap step 3 for [`SPEC.md`](SPEC.md).
 
+## Visible Surfaces
+
+These images are routing aids, not the claim itself.
+
+- `protocols4people.com/modules/shop` is a public human-reading surface.
+- `pilot-node` screenshots below are controlled live-pilot / next-gate material.
+- none of the operator screenshots should be read as the current `v0.1` proof loop.
+
+| Surface | Why it matters |
+| --- | --- |
+| [![Public shop family](docs/assets/screenshots/protocols-shop-family-github.png)](https://protocols4people.com/modules/shop/) | Start here if you want to judge whether the public module story is now readable before GitHub docs and manifests. |
+| [![Pilot-node operations](docs/assets/screenshots/operator-operations-tablet-github.png)](pilot-node/README.md) | This is the local operations room in the next gate. Review whether the restaurant-owned node still reads like a local machine instead of a platform backoffice. |
+| [![Pilot-node discover](docs/assets/screenshots/operator-discover-tablet-github.png)](pilot-node/README.md) | Review whether public discovery and local module control are kept separate instead of being blurred into one marketplace surface. |
+| [![Pilot-node import](docs/assets/screenshots/operator-import-tablet-github.png)](pilot-node/README.md) | Review whether module import stays metadata-only and honest instead of quietly turning into a package manager. |
+
 ## What To Review
 
 Please focus on these questions:

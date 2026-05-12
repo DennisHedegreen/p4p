@@ -181,6 +181,13 @@ class P4PDevCleanupTests(unittest.TestCase):
         protocols_shop_page = (
             WORKSPACE_ROOT / "public/www/protocols4people/modules/shop/index.html"
         ).read_text(encoding="utf-8")
+        screenshot_pack = builder.load_screenshot_pack()
+        screenshot_source_root = builder.screenshot_asset_source_root(screenshot_pack)
+        public_screenshot_root = WORKSPACE_ROOT / "public/www/pizza4people/assets/screenshots"
+        protocols_screenshot_root = WORKSPACE_ROOT / "public/www/protocols4people/assets/screenshots"
+
+        self.assertTrue(builder.SITE_DATA_PATH.exists())
+        self.assertTrue(builder.SCREENSHOT_PACK_PATH.exists())
 
         module_ids = [entry["module_id"] for entry in modules_payload["modules"]]
         self.assertEqual(
@@ -256,6 +263,32 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("/modules/shop/", protocols_modules_page)
         self.assertIn("Protocols4People Shop Modules", protocols_shop_page)
         self.assertIn("module-catalog-payload", protocols_shop_page)
+        self.assertIn("What the restaurant will control locally in the controlled pilot.", homepage)
+        self.assertIn("They are not the narrow v0.1 proof loop itself.", homepage)
+        self.assertIn("assets/screenshots/operator-operations-tablet.png", homepage)
+        self.assertIn("What the local node looks like in the controlled pilot", press_kit_en)
+        self.assertIn("assets/screenshots/operator-import-tablet.png", press_kit_en)
+        self.assertIn(
+            "A homebuilt or external module can become visible on the node as metadata before it becomes part of the runtime.",
+            press_kit_en,
+        )
+        self.assertIn("payload.screenshot_sections", protocols_modules_page)
+        self.assertIn("assets/screenshots/operator-modules-tablet.png", protocols_modules_page)
+        self.assertIn("assets/screenshots/operator-discover-tablet.png", protocols_shop_page)
+        self.assertIn("assets/screenshots/operator-import-tablet.png", protocols_shop_page)
+        self.assertIn("screenshot_sections", protocols_modules_payload)
+        self.assertIn("protocols_catalog", protocols_modules_payload["screenshot_sections"])
+        self.assertIn("protocols_shop", protocols_modules_payload["screenshot_sections"])
+        screenshot_ids = [entry["id"] for entry in screenshot_pack["screenshots"]]
+        self.assertEqual(len(screenshot_ids), len(set(screenshot_ids)))
+        for entry in screenshot_pack["screenshots"]:
+            self.assertIn(entry["stage"], {"next_gate", "public_proof"})
+            self.assertTrue(entry["alt"])
+            self.assertTrue(entry["captions"])
+            self.assertTrue((screenshot_source_root / entry["assets"]["public"]).exists())
+            self.assertTrue((screenshot_source_root / entry["assets"]["github"]).exists())
+            self.assertTrue((public_screenshot_root / entry["assets"]["public"]).exists())
+            self.assertTrue((protocols_screenshot_root / entry["assets"]["public"]).exists())
         self.assertEqual([entry["provider_id"] for entry in providers_payload["providers"]], ["p4p.reference"])
         first_provider = providers_payload["providers"][0]
         self.assertEqual(first_provider["module_count"], len(module_ids))

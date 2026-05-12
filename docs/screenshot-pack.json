@@ -1,0 +1,336 @@
+{
+  "defaults": {
+    "public_asset_dir": "docs/assets/screenshots",
+    "raw_capture_dir": ".local/screenshots/raw",
+    "working_dir": ".local/screenshots/edited",
+    "operator_base_url": "http://127.0.0.1:8211",
+    "public_base_url": "http://127.0.0.1:8765"
+  },
+  "screenshots": [
+    {
+      "id": "operator-operations-tablet",
+      "display_order": 10,
+      "stage": "next_gate",
+      "source": {
+        "site": "operator",
+        "path": "/operator",
+        "viewport": {
+          "width": 1280,
+          "height": 1400
+        },
+        "virtual_time_budget_ms": 8000
+      },
+      "assets": {
+        "public": "operator-operations-tablet.png",
+        "github": "operator-operations-tablet-github.png"
+      },
+      "placements": [
+        "github_readme",
+        "github_review",
+        "pizza_home",
+        "pizza_press"
+      ],
+      "title": {
+        "da": "Lokalt driftsrum",
+        "en": "Local operations room"
+      },
+      "alt": {
+        "da": "Curated tablet-plate af P4P operations-rummet med køkkenflow, ordrestatus og lokal nodestatus.",
+        "en": "Curated tablet plate of the P4P operations room showing kitchen flow, order status, and local node state."
+      },
+      "captions": {
+        "github_readme": {
+          "en": "Pilot-node operations room: incoming orders, kitchen flow, and local state stay on the restaurant-owned node."
+        },
+        "github_review": {
+          "en": "This is the local operations room in the controlled pilot path. It shows what the restaurant controls itself after discovery."
+        },
+        "pizza_home": {
+          "en": "What the restaurant will control locally when the controlled pilot opens."
+        },
+        "pizza_press": {
+          "da": "Det lokale driftsrum til ordrer, køkken og nodestatus. Hører til den kontrollerede pilot, ikke det nuværende v0.1-proof.",
+          "en": "The local operations room for orders, kitchen flow, and node status. Part of the controlled pilot, not the current v0.1 proof."
+        }
+      }
+    },
+    {
+      "id": "operator-catalog-tablet",
+      "display_order": 20,
+      "stage": "next_gate",
+      "source": {
+        "site": "operator",
+        "path": "/operator/catalog",
+        "viewport": {
+          "width": 1280,
+          "height": 1500
+        },
+        "virtual_time_budget_ms": 8000
+      },
+      "assets": {
+        "public": "operator-catalog-tablet.png",
+        "github": "operator-catalog-tablet-github.png"
+      },
+      "placements": [
+        "github_readme",
+        "github_review",
+        "pizza_home",
+        "pizza_press"
+      ],
+      "title": {
+        "da": "Katalog og menu",
+        "en": "Catalog and menu"
+      },
+      "alt": {
+        "da": "Curated tablet-plate af P4P catalog-rummet med lokale menuitems og redigering.",
+        "en": "Curated tablet plate of the P4P catalog room showing local menu items and editing controls."
+      },
+      "captions": {
+        "github_readme": {
+          "en": "The shop keeps its own structured menu and edits it locally on the node."
+        },
+        "github_review": {
+          "en": "Catalog work is separated from live operations. Menu truth stays local to the restaurant-owned node."
+        },
+        "pizza_home": {
+          "en": "Menu editing belongs to the shop, not to the discovery layer."
+        },
+        "pizza_press": {
+          "da": "Menuen og katalogsandheden bliver redigeret lokalt på noden i stedet for at bo i en marketplace-backoffice.",
+          "en": "The menu and catalog truth are edited locally on the node instead of living inside a marketplace backoffice."
+        }
+      }
+    },
+    {
+      "id": "operator-modules-tablet",
+      "display_order": 30,
+      "stage": "next_gate",
+      "source": {
+        "site": "operator",
+        "path": "/operator/modules",
+        "viewport": {
+          "width": 1280,
+          "height": 1480
+        },
+        "virtual_time_budget_ms": 8000
+      },
+      "assets": {
+        "public": "operator-modules-tablet.png",
+        "github": "operator-modules-tablet-github.png"
+      },
+      "placements": [
+        "github_readme",
+        "github_review",
+        "pizza_home",
+        "pizza_press",
+        "protocols_catalog",
+        "protocols_shop"
+      ],
+      "title": {
+        "da": "Moduler på noden",
+        "en": "Modules on the node"
+      },
+      "alt": {
+        "da": "Curated tablet-plate af P4P modules-rummet med current modules, desired modules og restart-krav.",
+        "en": "Curated tablet plate of the P4P modules room showing current modules, desired modules, and restart-required truth."
+      },
+      "captions": {
+        "github_readme": {
+          "en": "Module control stays local: current state, desired state, and restart-required truth are visible on the node."
+        },
+        "github_review": {
+          "en": "This room keeps module changes explicit. Discovery, import, and desired runtime selection are separate concerns."
+        },
+        "pizza_home": {
+          "en": "The pilot node shows clearly when the running module set and the desired module set differ."
+        },
+        "pizza_press": {
+          "da": "Butikken kan se hvilke moduler der kører nu, hvilke der ønskes efter restart, og hvornår runtime sandt nok skal genstartes.",
+          "en": "The shop can see which modules run now, which are desired after restart, and when the runtime honestly needs a restart."
+        },
+        "protocols_catalog": {
+          "da": "Lokalt modulvalg sker på noden: kører nu, ønskes efter restart, og restart-krav bliver vist ærligt."
+        },
+        "protocols_shop": {
+          "da": "Shop-familien bliver ikke bare læst offentligt. Den kan også vælges og styres lokalt på noden."
+        }
+      }
+    },
+    {
+      "id": "operator-discover-tablet",
+      "display_order": 40,
+      "stage": "next_gate",
+      "source": {
+        "site": "operator",
+        "path": "/operator/discover",
+        "viewport": {
+          "width": 1280,
+          "height": 1500
+        },
+        "virtual_time_budget_ms": 8000
+      },
+      "assets": {
+        "public": "operator-discover-tablet.png",
+        "github": "operator-discover-tablet-github.png"
+      },
+      "placements": [
+        "github_review",
+        "pizza_press",
+        "protocols_catalog",
+        "protocols_shop"
+      ],
+      "title": {
+        "da": "Discover på noden",
+        "en": "Discover on the node"
+      },
+      "alt": {
+        "da": "Curated tablet-plate af P4P discover-rummet, hvor det offentlige modul-katalog bliver læst inde i den lokale node-shell.",
+        "en": "Curated tablet plate of the P4P discover room, where the public module catalog is read inside the local node shell."
+      },
+      "captions": {
+        "github_review": {
+          "en": "Discover is the bridge between the public module catalog and the local node. It stays read-only in this phase."
+        },
+        "pizza_press": {
+          "da": "Discover-rummet forbinder det offentlige modul-katalog med den lokale node uden at gøre noden til en app store.",
+          "en": "The Discover room connects the public module catalog to the local node without turning the node into an app store."
+        },
+        "protocols_catalog": {
+          "da": "Det offentlige modul-katalog kan læses direkte inde fra noden som en separat discovery-surface."
+        },
+        "protocols_shop": {
+          "da": "Før butikken ændrer noget, kan den læse den offentlige modul-forklaring lokalt i Discover-rummet."
+        }
+      }
+    },
+    {
+      "id": "operator-import-tablet",
+      "display_order": 50,
+      "stage": "next_gate",
+      "source": {
+        "site": "operator",
+        "path": "/operator/import",
+        "viewport": {
+          "width": 1280,
+          "height": 1480
+        },
+        "virtual_time_budget_ms": 8000
+      },
+      "assets": {
+        "public": "operator-import-tablet.png",
+        "github": "operator-import-tablet-github.png"
+      },
+      "placements": [
+        "github_review",
+        "pizza_press",
+        "protocols_shop"
+      ],
+      "title": {
+        "da": "Import af modulmanifest",
+        "en": "Import local manifest"
+      },
+      "alt": {
+        "da": "Curated tablet-plate af P4P import-rummet med et lokalt uploadet modulmanifest som metadata på noden.",
+        "en": "Curated tablet plate of the P4P import room showing a locally uploaded module manifest stored as metadata on the node."
+      },
+      "captions": {
+        "github_review": {
+          "en": "Local module import exists as a metadata-only phase. The node becomes aware of a manifest before anything becomes runnable."
+        },
+        "pizza_press": {
+          "da": "Et hjemmelavet eller eksternt modul kan gøres synligt på noden som metadata, før det bliver en del af runtime.",
+          "en": "A homebuilt or external module can become visible on the node as metadata before it becomes part of the runtime."
+        },
+        "protocols_shop": {
+          "da": "Import-rummet gør lokale modulmanifester synlige på noden uden at gøre dem runnable med det samme."
+        }
+      }
+    },
+    {
+      "id": "operator-module-detail-tablet",
+      "display_order": 60,
+      "stage": "next_gate",
+      "source": {
+        "site": "operator",
+        "path": "/operator/modules/view/p4p.catalog.import.ocr",
+        "viewport": {
+          "width": 1280,
+          "height": 1520
+        },
+        "virtual_time_budget_ms": 8000
+      },
+      "assets": {
+        "public": "operator-module-detail-tablet.png",
+        "github": "operator-module-detail-tablet-github.png"
+      },
+      "placements": [
+        "github_review",
+        "pizza_press",
+        "protocols_shop"
+      ],
+      "title": {
+        "da": "Detaljeside for modul",
+        "en": "Module detail page"
+      },
+      "alt": {
+        "da": "Curated tablet-plate af P4P moduldetaljesiden for OCR-importmodulet med owner-first forklaring og lokal status.",
+        "en": "Curated tablet plate of the P4P module detail page for the OCR import module, with owner-first explanation and local status."
+      },
+      "captions": {
+        "github_review": {
+          "en": "Each module can become a real operator page instead of only a flat status row."
+        },
+        "pizza_press": {
+          "da": "Et modul kan få sin egen lokale side med formål, grænser, status og handlinger i stedet for bare at være en teknisk række.",
+          "en": "A module can have its own local page with purpose, boundaries, status, and actions instead of being only a technical row."
+        },
+        "protocols_shop": {
+          "da": "Shop-familien bliver mere ærlig, når hvert modul kan læses som sin egen lokale operatorside."
+        }
+      }
+    },
+    {
+      "id": "protocols-shop-family",
+      "display_order": 70,
+      "stage": "public_proof",
+      "source": {
+        "site": "public",
+        "path": "/protocols4people/modules/shop/",
+        "viewport": {
+          "width": 1360,
+          "height": 1480
+        },
+        "virtual_time_budget_ms": 6000
+      },
+      "assets": {
+        "public": "protocols-shop-family.png",
+        "github": "protocols-shop-family-github.png"
+      },
+      "placements": [
+        "github_review",
+        "pizza_press",
+        "protocols_catalog"
+      ],
+      "title": {
+        "da": "Shop-familien offentligt",
+        "en": "Public shop family"
+      },
+      "alt": {
+        "da": "Curated plate af den offentlige Protocols4People-side for shop-modulfamilien.",
+        "en": "Curated plate of the public Protocols4People page for the shop module family."
+      },
+      "captions": {
+        "github_review": {
+          "en": "The public module family surface explains the local node stack in human language before GitHub manifests and docs."
+        },
+        "pizza_press": {
+          "da": "Protocols4People giver den generelle, menneskelige læsning af shop-modulerne før de lokale node-sider og GitHub-kontrakter.",
+          "en": "Protocols4People gives the generic human reading of the shop modules before the local node rooms and GitHub contracts."
+        },
+        "protocols_catalog": {
+          "da": "Shop-familien er den første offentlige indgang til modul-laget på Protocols4People."
+        }
+      }
+    }
+  ]
+}

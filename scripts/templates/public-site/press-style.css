@@ -59,6 +59,14 @@ h3 { color: var(--ink); font-size: 1rem; margin-bottom: 0.4rem; }
 .module-card dd { margin: 0; color: var(--muted); }
 .module-links { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid rgba(0, 0, 0, 0.08); font-size: 0.86rem; }
 .module-links span { color: var(--muted); }
+.gallery-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.press-screenshot-card { display: grid; gap: 0.8rem; border: 1px solid var(--line); border-radius: 16px; padding: 0.85rem; background: rgba(255, 253, 247, 0.72); }
+.press-screenshot-card img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid rgba(0, 0, 0, 0.08); }
+.press-screenshot-card figcaption { display: grid; gap: 0.4rem; margin: 0; }
+.screenshot-stage, .screenshot-route { font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.screenshot-stage { display: inline-flex; width: fit-content; min-height: 1.75rem; align-items: center; border: 1px solid rgba(43, 141, 85, 0.28); border-radius: 999px; padding: 0.25rem 0.6rem; color: var(--green); background: rgba(43, 141, 85, 0.08); font-size: 0.66rem; font-weight: 800; }
+.press-screenshot-card.proof .screenshot-stage { border-color: rgba(180, 122, 34, 0.3); color: var(--gold); background: rgba(180, 122, 34, 0.08); }
+.screenshot-route { color: var(--muted); font-size: 0.68rem; }
 .download-note { margin-top: 1.5rem; color: var(--muted); font-size: 0.7rem; }
 .footer-line { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: 0.7rem; margin-top: 1.35rem; }
-@media (max-width: 760px) { .hero-grid, .two-col, .three-col, .module-grid, .pilot-map, .flow { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); justify-self: center; } }
+@media (max-width: 760px) { .hero-grid, .two-col, .three-col, .module-grid, .pilot-map, .flow, .gallery-grid { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); justify-self: center; } }

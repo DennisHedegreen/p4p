@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-P4P_ROOT = ROOT / "P4P"
+P4P_ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE_ROOT = (
+    P4P_ROOT.parent
+    if (P4P_ROOT.parent / "private").exists() or (P4P_ROOT.parent / "public").exists()
+    else P4P_ROOT
+)
+ROOT = WORKSPACE_ROOT
 if str(P4P_ROOT) not in sys.path:
     sys.path.insert(0, str(P4P_ROOT))
 
@@ -20,13 +26,165 @@ from module_catalog import (
     public_module_catalog,
 )
 
-SITE_DATA_PATH = ROOT / "private/data/p4p/site-data.json"
+PRIVATE_SITE_DATA_PATH = ROOT / "private/data/p4p/site-data.json"
+REPO_SITE_DATA_PATH = P4P_ROOT / "docs/site-data.json"
+PRIVATE_SCREENSHOT_PACK_PATH = ROOT / "private/data/p4p/screenshot-pack.json"
+REPO_SCREENSHOT_PACK_PATH = P4P_ROOT / "docs/screenshot-pack.json"
 PUBLIC_ROOT = ROOT / "public/www/pizza4people"
 PROTOCOLS_ROOT = ROOT / "public/www/protocols4people"
 PRESS_ROOT = PUBLIC_ROOT / "press-kit"
 MODULES_ROOT = P4P_ROOT / "modules"
 TEMPLATE_ROOT = P4P_ROOT / "scripts/templates/public-site"
 PUBLIC_CATALOG_URLS = PublicCatalogUrls()
+PIZZA_SCREENSHOT_ROOT = PUBLIC_ROOT / "assets" / "screenshots"
+PROTOCOLS_SCREENSHOT_ROOT = PROTOCOLS_ROOT / "assets" / "screenshots"
+
+SCREENSHOT_STAGE_LABELS = {
+    "next_gate": {
+        "da": "Næste gate / pilot-node",
+        "en": "Pilot-node / next gate",
+    },
+    "public_proof": {
+        "da": "Offentligt proof",
+        "en": "Public proof",
+    },
+}
+
+
+def resolve_first_existing_path(*candidates: Path) -> Path:
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    joined = ", ".join(str(candidate) for candidate in candidates)
+    raise FileNotFoundError(f"Could not resolve required path from: {joined}")
+
+
+SITE_DATA_PATH = resolve_first_existing_path(PRIVATE_SITE_DATA_PATH, REPO_SITE_DATA_PATH)
+SCREENSHOT_PACK_PATH = resolve_first_existing_path(PRIVATE_SCREENSHOT_PACK_PATH, REPO_SCREENSHOT_PACK_PATH)
+SCREENSHOT_PACK_BASE_ROOT = ROOT if SCREENSHOT_PACK_PATH == PRIVATE_SCREENSHOT_PACK_PATH else P4P_ROOT
+
+
+def load_screenshot_pack() -> dict[str, object]:
+    return json.loads(SCREENSHOT_PACK_PATH.read_text(encoding="utf-8"))
+
+
+def public_localized_text(texts: dict[str, str] | None, locale: str) -> str:
+    if not texts:
+        return ""
+    normalized_locale = str(locale or "").strip().lower()
+    for candidate in (normalized_locale, "da", "en"):
+        value = str(texts.get(candidate, "")).strip()
+        if value:
+            return value
+    return next((str(value).strip() for value in texts.values() if str(value).strip()), "")
+
+
+def screenshot_asset_source_root(pack: dict[str, object]) -> Path:
+    defaults = pack.get("defaults", {})
+    return SCREENSHOT_PACK_BASE_ROOT / str(defaults.get("public_asset_dir", "docs/assets/screenshots"))
+
+
+def screenshot_stage_label(stage: str, *, locale: str) -> str:
+    return public_localized_text(SCREENSHOT_STAGE_LABELS.get(stage, {}), locale)
+
+
+def screenshot_entries(
+    pack: dict[str, object],
+    placement: str,
+    *,
+    locale: str,
+    asset_prefix: str,
+) -> list[dict[str, str]]:
+    source_root = screenshot_asset_source_root(pack)
+    entries: list[dict[str, str]] = []
+    for entry in sorted(pack.get("screenshots", []), key=lambda row: row["display_order"]):
+        if placement not in entry.get("placements", []):
+            continue
+        asset_name = str(entry.get("assets", {}).get("public", "")).strip()
+        if not asset_name:
+            continue
+        asset_path = source_root / asset_name
+        if not asset_path.exists():
+            continue
+        title = public_localized_text(entry.get("title", {}), locale)
+        alt = public_localized_text(entry.get("alt", {}), locale)
+        caption = public_localized_text(entry.get("captions", {}).get(placement, {}), locale)
+        entries.append(
+            {
+                "id": str(entry["id"]),
+                "asset_url": f"{asset_prefix}{asset_name}",
+                "title": title,
+                "alt": alt,
+                "caption": caption,
+                "stage": str(entry["stage"]),
+                "stage_label": screenshot_stage_label(str(entry["stage"]), locale=locale),
+                "route": str(entry.get("source", {}).get("path", "")),
+            }
+        )
+    return entries
+
+
+def screenshot_payload_entries(pack: dict[str, object], placement: str) -> list[dict[str, object]]:
+    source_root = screenshot_asset_source_root(pack)
+    payload_entries: list[dict[str, object]] = []
+    for entry in sorted(pack.get("screenshots", []), key=lambda row: row["display_order"]):
+        if placement not in entry.get("placements", []):
+            continue
+        asset_name = str(entry.get("assets", {}).get("public", "")).strip()
+        if not asset_name:
+            continue
+        if not (source_root / asset_name).exists():
+            continue
+        payload_entries.append(
+            {
+                "id": str(entry["id"]),
+                "asset_path": f"assets/screenshots/{asset_name}",
+                "title": entry.get("title", {}),
+                "alt": entry.get("alt", {}),
+                "captions": entry.get("captions", {}).get(placement, {}),
+                "stage": str(entry["stage"]),
+                "route": str(entry.get("source", {}).get("path", "")),
+            }
+        )
+    return payload_entries
+
+
+def render_screenshot_cards(entries: list[dict[str, str]], *, card_class: str = "screenshot-card") -> str:
+    rendered: list[str] = []
+    for entry in entries:
+        stage_class = " proof" if entry["stage"] == "public_proof" else ""
+        route_html = (
+            f'<span class="screenshot-route"><code>{escape(entry["route"])}</code></span>'
+            if entry["route"]
+            else ""
+        )
+        rendered.append(
+            f"""        <figure class="{card_class}{stage_class}">
+          <img src="{escape(entry["asset_url"])}" alt="{escape(entry["alt"])}">
+          <figcaption>
+            <span class="screenshot-stage">{escape(entry["stage_label"])}</span>
+            <strong>{escape(entry["title"])}</strong>
+            <p>{escape(entry["caption"])}</p>
+            {route_html}
+          </figcaption>
+        </figure>"""
+        )
+    return "\n".join(rendered)
+
+
+def copy_screenshot_assets(pack: dict[str, object]) -> None:
+    source_root = screenshot_asset_source_root(pack)
+    PIZZA_SCREENSHOT_ROOT.mkdir(parents=True, exist_ok=True)
+    PROTOCOLS_SCREENSHOT_ROOT.mkdir(parents=True, exist_ok=True)
+    for entry in pack.get("screenshots", []):
+        asset_name = str(entry.get("assets", {}).get("public", "")).strip()
+        if not asset_name:
+            continue
+        source_path = source_root / asset_name
+        if not source_path.exists():
+            continue
+        shutil.copy2(source_path, PIZZA_SCREENSHOT_ROOT / asset_name)
+        shutil.copy2(source_path, PROTOCOLS_SCREENSHOT_ROOT / asset_name)
 
 OWNER_EXPLAINERS = [
     {
@@ -869,6 +1027,41 @@ PROTOCOLS_MODULE_UI = {
         "ar": "افتح عائلة shop",
         "ku": "Malbata shop veke",
     },
+    "screenshots": {
+        "da": "Lokale flader",
+        "sv": "Lokala ytor",
+        "tr": "Yerel yüzeyler",
+        "ar": "الأسطح المحلية",
+        "ku": "Rûberên herêmî",
+    },
+    "screenshots_catalog_lede": {
+        "da": "Det offentlige modul-katalog ender på en lokal node, hvor butikken kan læse og styre modulerne selv.",
+        "sv": "Den offentliga modulkatalogen landar på en lokal nod där butiken kan läsa och styra modulerna själv.",
+        "tr": "Açık modül kataloğu, dükkânın modülleri yerel düğümde okuyup yönetebildiği yere bağlanır.",
+        "ar": "ينتهي كتالوج الوحدات العام على عقدة محلية حيث يمكن للمتجر قراءة الوحدات والتحكم بها بنفسه.",
+        "ku": "Kataloga giştî ya modulê di nodeyek herêmî de bi dawî dibe ku firotgeh dikare modulan bixwîne û bi xwe bi rê ve bibe.",
+    },
+    "screenshots_shop_lede": {
+        "da": "Shop-familien bliver først rigtig, når offentlig forklaring, lokal discover, import og modulvalg hænger sammen.",
+        "sv": "Shop-familjen blir först verklig när offentlig förklaring, lokal discovery, import och modulval hänger ihop.",
+        "tr": "Shop ailesi ancak açık açıklama, yerel keşif, içe aktarma ve modül seçimi birlikte çalışınca gerçek olur.",
+        "ar": "تصبح عائلة shop حقيقية حين تتماسك الشروح العامة مع الاكتشاف المحلي والاستيراد واختيار الوحدات.",
+        "ku": "Malbata shop tenê dema ku ravekirina giştî, discover ya herêmî, import û hilbijartina modulê bi hev re bixebitin rast dibe.",
+    },
+    "stage_next_gate": {
+        "da": "Næste gate / pilot-node",
+        "sv": "Nästa steg / pilot-nod",
+        "tr": "Sonraki kapı / pilot düğüm",
+        "ar": "البوابة التالية / عقدة تجريبية",
+        "ku": "Deriyê din / nodeya pilotê",
+    },
+    "stage_public_proof": {
+        "da": "Offentligt proof",
+        "sv": "Offentligt bevis",
+        "tr": "Kamusal kanıt",
+        "ar": "إثبات عام",
+        "ku": "Proofa giştî",
+    },
 }
 
 
@@ -970,6 +1163,54 @@ def protocols_modules_shell(
       border-color: rgba(123, 224, 196, 0.55);
       background: rgba(123, 224, 196, 0.06);
     }}
+    .screenshot-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      gap: 1rem;
+    }}
+    .screenshot-card {{
+      display: grid;
+      gap: 0.75rem;
+      padding: 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: 0.9rem;
+      background: rgba(23, 35, 31, 0.85);
+    }}
+    .screenshot-card img {{
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 0.85rem;
+      border: 1px solid rgba(219, 232, 216, 0.14);
+    }}
+    .screenshot-card figcaption {{
+      display: grid;
+      gap: 0.45rem;
+      margin: 0;
+    }}
+    .screenshot-stage {{
+      display: inline-flex;
+      width: fit-content;
+      min-height: 1.7rem;
+      align-items: center;
+      padding: 0 0.7rem;
+      border-radius: 999px;
+      background: rgba(123, 224, 196, 0.12);
+      color: var(--mint);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }}
+    .screenshot-stage.proof {{
+      background: rgba(233, 189, 99, 0.16);
+      color: var(--gold);
+    }}
+    .screenshot-route {{
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+    }}
     .modules-subnav {{
       display: flex;
       flex-wrap: wrap;
@@ -1033,12 +1274,20 @@ def protocols_modules_shell(
       <h2 id="browse-title"></h2>
       <div id="category-sections"></div>
     </section>
+
+    <section class="modules-section" id="screenshots-section" aria-labelledby="screens-title" hidden>
+      <p class="section-kicker" id="screens-kicker"></p>
+      <h2 id="screens-title"></h2>
+      <p class="hero-lede" id="screens-lede"></p>
+      <div id="screens-grid" class="screenshot-grid"></div>
+    </section>
   </main>
   <script id="module-catalog-payload" type="application/json">{catalog_json}</script>
   <script>
     const payload = JSON.parse(document.getElementById("module-catalog-payload").textContent);
     const ui = {json.dumps(PROTOCOLS_MODULE_UI, ensure_ascii=False)};
     const pageKind = document.querySelector("main").dataset.pageKind;
+    const basePath = {json.dumps(base_path)};
     const localeSwitcher = document.getElementById("locale-switcher");
 
     function normalizeLocale(locale) {{
@@ -1088,10 +1337,27 @@ def protocols_modules_shell(
       `;
     }}
 
+    function renderScreenshotCard(entry, locale) {{
+      const stageKey = entry.stage === "public_proof" ? "stage_public_proof" : "stage_next_gate";
+      const stageClass = entry.stage === "public_proof" ? "proof" : "";
+      return `
+        <figure class="screenshot-card">
+          <img src="${{basePath}}${{entry.asset_path}}" alt="${{localizedText(entry.alt, locale)}}" loading="lazy">
+          <figcaption>
+            <span class="screenshot-stage ${{stageClass}}">${{uiText(stageKey, locale)}}</span>
+            <strong>${{localizedText(entry.title, locale)}}</strong>
+            <p>${{localizedText(entry.captions, locale)}}</p>
+            <span class="screenshot-route"><code>${{entry.route}}</code></span>
+          </figcaption>
+        </figure>
+      `;
+    }}
+
     function render(locale) {{
       const family = payload.families[0];
       const categories = payload.categories;
       const modules = payload.modules;
+      const screenshotSections = payload.screenshot_sections || {{}};
       document.documentElement.lang = locale;
       document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
       document.title = pageKind === "shop" ? uiText("shop_title", locale) : uiText("modules_title", locale);
@@ -1131,6 +1397,19 @@ def protocols_modules_shell(
           </section>
         `;
       }}).join("");
+
+      const screenshots = pageKind === "shop" ? (screenshotSections.protocols_shop || []) : (screenshotSections.protocols_catalog || []);
+      const screenshotsSection = document.getElementById("screenshots-section");
+      if (screenshots.length) {{
+        screenshotsSection.hidden = false;
+        document.getElementById("screens-kicker").textContent = uiText("screenshots", locale);
+        document.getElementById("screens-title").textContent = pageKind === "shop" ? uiText("shop_title", locale) : uiText("modules_title", locale);
+        document.getElementById("screens-lede").textContent = pageKind === "shop" ? uiText("screenshots_shop_lede", locale) : uiText("screenshots_catalog_lede", locale);
+        document.getElementById("screens-grid").innerHTML = screenshots.map((entry) => renderScreenshotCard(entry, locale)).join("");
+      }} else {{
+        screenshotsSection.hidden = true;
+        document.getElementById("screens-grid").innerHTML = "";
+      }}
     }}
 
     localeSwitcher.addEventListener("change", (event) => {{
@@ -1763,14 +2042,26 @@ def render_press_module_cards(*, lang: str) -> str:
     return "\n".join(cards)
 
 
-def homepage_html(site_data: dict, modules: list[dict], providers: list[dict]) -> str:
+def homepage_html(
+    site_data: dict,
+    modules: list[dict],
+    providers: list[dict],
+    *,
+    screenshot_pack: dict[str, object],
+) -> str:
     home = site_data["homepage"]
     urls = site_data["canonical_urls"]
     contact = site_data["contact"]
+    next_gate_entries = screenshot_entries(
+        screenshot_pack,
+        "pizza_home",
+        locale="en",
+        asset_prefix="assets/screenshots/",
+    )
     return render_template(
         "homepage.html",
         {
-            "generated_comment": f"Generated from private/data/p4p/site-data.json and P4P/modules on {datetime.now(timezone.utc).isoformat()}",
+            "generated_comment": f"Generated from site-data + P4P/modules on {datetime.now(timezone.utc).isoformat()}",
             "author_name": escape(contact["name"]),
             "site_url": escape(urls["site"]),
             "hero_eyebrow": escape(home["eyebrow"]),
@@ -1810,17 +2101,32 @@ def homepage_html(site_data: dict, modules: list[dict], providers: list[dict]) -
             "proof_gate_heading": escape(home["proof_gate_heading"]),
             "gate_html": render_gate(home["proof_gate"]),
             "roadmap_html": render_roadmap(home["roadmap"]),
+            "pilot_gallery_html": render_screenshot_cards(next_gate_entries, card_class="screenshot-card compact"),
             "contact_email": escape(contact["email"]),
             "footer_status": escape(home["footer_status"]),
         },
     )
 
 
-def press_kit_html(site_data: dict, modules: list[dict], providers: list[dict], *, lang: str) -> str:
+def press_kit_html(
+    site_data: dict,
+    modules: list[dict],
+    providers: list[dict],
+    *,
+    lang: str,
+    screenshot_pack: dict[str, object],
+) -> str:
     data = site_data["press_kit"][lang]
     urls = site_data["canonical_urls"]
     contact = site_data["contact"]
     is_dk = lang == "dk"
+    locale = "da" if is_dk else "en"
+    press_entries = screenshot_entries(
+        screenshot_pack,
+        "pizza_press",
+        locale=locale,
+        asset_prefix="../assets/screenshots/",
+    )
     return render_template(
         "press-kit.html",
         {
@@ -1900,6 +2206,18 @@ def press_kit_html(site_data: dict, modules: list[dict], providers: list[dict], 
             "current_status_items_html": render_press_points(data["current_status_items"]),
             "next_test_title": escape(data["next_test_title"]),
             "next_test_items_html": render_press_points(data["next_test_items"], ordered=True),
+            "screenshots_label": escape("Pilot-flader" if is_dk else "Pilot surfaces"),
+            "screenshots_heading": escape(
+                "Sådan ser den lokale node ud i den kontrollerede pilot"
+                if is_dk
+                else "What the local node looks like in the controlled pilot"
+            ),
+            "screenshots_lede": escape(
+                "Det her er ikke det nuværende v0.1-proof. Det er den næste gate: de lokale driftsrum og modulflader, som restauranten selv kontrollerer."
+                if is_dk
+                else "This is not the current v0.1 proof. It is the next gate: the local control rooms and module surfaces the restaurant owns itself."
+            ),
+            "screenshots_html": render_screenshot_cards(press_entries, card_class="press-screenshot-card"),
             "primary_registry_text": escape(
                 "Første discovery-endpoint." if is_dk else "First discovery endpoint."
             ),
@@ -1957,8 +2275,12 @@ def providers_html(site_data: dict, providers: list[dict], modules_by_id: dict[s
     )
 
 
-def write_protocols_module_catalog() -> None:
+def write_protocols_module_catalog(*, screenshot_pack: dict[str, object]) -> None:
     catalog_payload = public_module_catalog(urls=PUBLIC_CATALOG_URLS)
+    catalog_payload["screenshot_sections"] = {
+        "protocols_catalog": screenshot_payload_entries(screenshot_pack, "protocols_catalog"),
+        "protocols_shop": screenshot_payload_entries(screenshot_pack, "protocols_shop"),
+    }
     write_text(
         PROTOCOLS_ROOT / "modules.json",
         json.dumps(catalog_payload, ensure_ascii=False, indent=2) + "\n",
@@ -1985,6 +2307,8 @@ def write_protocols_module_catalog() -> None:
 
 def build() -> None:
     site_data = load_site_data()
+    screenshot_pack = load_screenshot_pack()
+    copy_screenshot_assets(screenshot_pack)
     modules = load_modules()
     providers = load_providers(modules)
     modules_by_id = {entry["module_id"]: entry for entry in modules}
@@ -1996,16 +2320,16 @@ def build() -> None:
         PUBLIC_ROOT / "providers.json",
         json.dumps(provider_catalog_payload(site_data, providers), indent=2) + "\n",
     )
-    write_text(PUBLIC_ROOT / "index.html", homepage_html(site_data, modules, providers))
+    write_text(PUBLIC_ROOT / "index.html", homepage_html(site_data, modules, providers, screenshot_pack=screenshot_pack))
     write_text(PUBLIC_ROOT / "modules/index.html", modules_html(site_data, modules, providers))
     write_text(PUBLIC_ROOT / "providers/index.html", providers_html(site_data, providers, modules_by_id))
     for entry in modules:
         write_text(module_page_path(entry["module_id"]), module_page_html(site_data, entry, modules_by_id))
     for entry in providers:
         write_text(provider_page_path(entry["provider_id"]), provider_page_html(site_data, entry, modules_by_id))
-    write_text(PRESS_ROOT / "index.html", press_kit_html(site_data, modules, providers, lang="dk"))
-    write_text(PRESS_ROOT / "en.html", press_kit_html(site_data, modules, providers, lang="en"))
-    write_protocols_module_catalog()
+    write_text(PRESS_ROOT / "index.html", press_kit_html(site_data, modules, providers, lang="dk", screenshot_pack=screenshot_pack))
+    write_text(PRESS_ROOT / "en.html", press_kit_html(site_data, modules, providers, lang="en", screenshot_pack=screenshot_pack))
+    write_protocols_module_catalog(screenshot_pack=screenshot_pack)
 
 
 if __name__ == "__main__":

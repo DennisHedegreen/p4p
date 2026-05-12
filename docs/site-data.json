@@ -1,0 +1,249 @@
+{
+  "generated_at": "2026-05-03",
+  "canonical_urls": {
+    "site": "https://pizza4people.com/",
+    "press_kit_dk": "https://pizza4people.com/press-kit/",
+    "press_kit_en": "https://pizza4people.com/press-kit/en.html",
+    "repo": "https://github.com/DennisHedegreen/p4p",
+    "repo_proof": "https://github.com/DennisHedegreen/p4p/blob/main/PROOF.md",
+    "repo_spec": "https://github.com/DennisHedegreen/p4p/blob/main/SPEC.md",
+    "repo_readme": "https://github.com/DennisHedegreen/p4p/blob/main/README.md",
+    "repo_release_notes": "https://github.com/DennisHedegreen/p4p/blob/main/docs/RELEASE-NOTES.md",
+    "umbrella": "https://protocols4people.com/",
+    "just_eat_source": "https://newsroom.justeattakeaway.com/en-WW/262776-just-eat-takeaway-com-intends-to-cease-operations-in-denmark/"
+  },
+  "contact": {
+    "name": "Dennis Hedegreen",
+    "org": "Hedegreen Research",
+    "email": "hedegreen.research@gmail.com"
+  },
+  "homepage": {
+    "eyebrow": "Public protocol / controlled live pilot",
+    "title": "A pizza shop should be able to keep its menu and take orders direct.",
+    "lede": "Pizza4People is a public proof of one small thing: the customer can discover a restaurant through a public registry, but the menu and the order go straight to the shop. The first live shape is intentionally narrow: direct pickup orders and simple pay-at-pickup before anything broader.",
+    "notice": "Status: public protocol proof with a controlled live-pilot path, not broad production infrastructure. Just Eat Takeaway.com announced 30 April 2026 as the date its Danish operations would conclude.",
+    "press_heading": "The story is ready to discuss. The live restaurant pilot is still being prepared.",
+    "press_lede": "Pizza4People can be covered now as a public protocol proof responding to a real market exit. The careful wording is important: this is not a finished replacement for Just Eat, not a delivery company, and not a production restaurant network yet.",
+    "press_facts": [
+      {
+        "title": "What is public now",
+        "body": "Public main repo, public proof note, readable protocol/spec docs, schemas, reference code, and an independent node interop kit."
+      },
+      {
+        "title": "Where to start on GitHub",
+        "body": "Start with the repo README, the proof note, SPEC.md, and the release notes."
+      },
+      {
+        "title": "What is being tested next",
+        "body": "Several independent people can build their own nodes and check whether they interoperate before the first real pickup-order pilot goes live."
+      },
+      {
+        "title": "What changed in the module layer",
+        "body": "The public repo now includes replaceable customer menu modules, internal mock payment modules, operator workflow modules, and a money contract where prices are integer minor units with an explicit node currency."
+      },
+      {
+        "title": "What the first pilot means",
+        "body": "One restaurant-owned node, one primary registry, one backup registry, and explicit operator approval before live pickup orders."
+      },
+      {
+        "title": "Where to verify",
+        "body": "The public repo is the conservative story branch. The proof site and the broader protocol-family framing remain the narrowest public places to verify what exists now."
+      },
+      {
+        "title": "Press kit",
+        "body": "Open the press kit in Danish or English. PDF exports remain artifacts; the HTML kits are the maintained source."
+      }
+    ],
+    "story_heading": "Start with the restaurant, not the marketplace.",
+    "story_body": "The point is not to launch another giant food app. The point is to let a pizzeria keep the basic connection: its own menu, its own direct order endpoint, and a small pickup-first flow it can actually control. This public proof is the first step toward that.",
+    "one_sentence": "The customer finds the shop through a public directory, but the menu and order go straight to the shop.",
+    "plain_demo": [
+      {
+        "title": "Find a pizzeria",
+        "body": "The client asks a registry for nearby restaurant nodes and can discover a public proof node now."
+      },
+      {
+        "title": "Open the menu",
+        "body": "The menu is fetched from the restaurant node, either as structured items or through a photo-map view of a paper menu fixture."
+      },
+      {
+        "title": "Send a test order",
+        "body": "The order goes directly to the node. In the public proof this is a test order; in the pilot it becomes explicit restaurant-approved pickup ordering."
+      },
+      {
+        "title": "Break the primary registry",
+        "body": "Discovery still works through a backup registry because the node announced itself to both."
+      }
+    ],
+    "problem_heading": "A market exit exposes who owns the basic connection.",
+    "problem_body": [
+      "Closed marketplaces can be useful, but they also concentrate discovery, customer access, order intake, and commercial terms in one place. When a platform leaves, restaurants and customers should not have to rebuild the basic contact layer from zero.",
+      "For a journalist, the story is not \"new pizza app\". The story is whether basic local commerce should depend on one private discovery and ordering silo at a time."
+    ],
+    "proof_steps": [
+      {
+        "title": "Discover",
+        "body": "A client asks a registry for nearby pizza nodes. This is the phone book part."
+      },
+      {
+        "title": "Fetch menu",
+        "body": "The client requests the menu directly from the selected node. The registry is not the menu owner."
+      },
+      {
+        "title": "Send direct order",
+        "body": "The client sends the order directly to the node. Public proof orders remain test orders until a restaurant operator explicitly enables live mode."
+      },
+      {
+        "title": "Fail over",
+        "body": "If the primary registry disappears, discovery can still work through a backup registry."
+      }
+    ],
+    "takeaway_heading": "This is not a replacement for Just Eat today. It is a working argument for an open base layer.",
+    "takeaway_body": "A company can still build delivery, payments, support, loyalty, analytics, or hosting on top. The point is that no single company should have to own discovery, identity, and the first restaurant-customer contact for the system to work.",
+    "proves": [
+      "Public discovery can be separated from order handling.",
+      "Menu and test order requests can go directly to the node.",
+      "A node can sign announcements with its own key.",
+      "A registry can record public identity events without holding node private keys.",
+      "Menu prices can carry explicit currency and integer minor-unit amounts without P4P doing currency conversion."
+    ],
+    "does_not_prove": [
+      "No production security claim.",
+      "No broad production restaurant network yet.",
+      "No real payment processing, delivery, CVR verification, or certification yet.",
+      "No claim that registries automatically synchronize."
+    ],
+    "trust_heading": "Identity belongs with the node.",
+    "trust_body": "The current P4P direction is node-owned identity. A node signs its own announcement. A registry verifies the node signature, records an identity event, and can later publish signed snapshots. The registry does not need the restaurant's private key.",
+    "trace": [
+      "node signs",
+      "registry verifies",
+      "event is logged",
+      "snapshot can be signed",
+      "client can verify"
+    ],
+    "proof_gate_heading": "Selective outreach can point to the public repo. Broad launch still waits for the live-pilot dry run.",
+    "proof_gate": [
+      {"label": "client discovers through primary registry", "done": false},
+      {"label": "client fetches menu directly from node", "done": false},
+      {"label": "client sends a direct test order", "done": false},
+      {"label": "backup registry discovery works after primary failure", "done": false},
+      {"label": "public GitHub repo explains the public proof path clearly", "done": false},
+      {"label": "independent node interop kit is published", "done": true},
+      {"label": "live pilot node has completed end-to-end dry run", "done": false}
+    ],
+    "roadmap": [
+      "Public protocol. Clean GitHub repository, readable proof note, spec, schemas, reference implementation, and a short GitHub reading path.",
+      "Controlled restaurant pilot. One real restaurant node, primary registry, backup registry, and explicit operator approval before live orders.",
+      "Module manifests. Provider declarations with data-access boundaries, including menu, order, status, kitchen, stock, print, and internal mock payment modules.",
+      "Trust and federation. CVR binding, signed snapshots, scoped registries, and reviewable trust claims."
+    ],
+    "footer_status": "Public protocol proof. Controlled live pilot next."
+  },
+  "press_kit": {
+    "dk": {
+      "topbar_label": "Pizza4People pressekit",
+      "date_label": "29. april 2026",
+      "kicker": "Open protocol proof / kontrolleret live-pilot næste",
+      "headline": "Ikke endnu en pizzaapp.",
+      "lede": "Pizza4People er et offentligt proof af en lille model: en pizzabutik kan beholde sin egen menu, tage direkte pickup-ordrer og starte med betaling ved afhentning, mens kunden stadig kan finde butikken gennem en åben registry.",
+      "quote": "Den korte historie: Når en platform forlader et marked, bør restauranter og kunder ikke miste den grundlæggende digitale forbindelse, fordi forbindelsen aldrig var deres.",
+      "badges": ["Public GitHub", "Spec og kode public", "Interop-kit public", "Ikke produktion endnu"],
+      "why_now_heading": "Just Eat forlader Danmark. Det gør platformafhængighed synlig.",
+      "why_now_body": [
+        "Just Eat Takeaway.com bekræftede i deres newsroom, at driften i Danmark slutter den 30. april 2026. Det er ikke bare en nyhed om én app. Det er et synligt eksempel på et dybere spørgsmål: hvem ejer det digitale kontaktlag mellem restauranter og kunder?",
+        "Pizza4People svarer ikke med et nyt lukket marketplace. Det svarer med et smallere spørgsmål: kan den basale discovery, menuadgang og ordreafsendelse være åben protokol i stedet for platformsilo?"
+      ],
+      "journalist_bullets": [
+        "En pizzabutik kan beholde menuen og tage direkte pickup-ordrer.",
+        "Discovery kan være public uden at platformen ejer ordreflowet.",
+        "Det er ikke produktionsklar restaurantdrift endnu.",
+        "Næste trin er uafhængige node-tests og en kontrolleret restaurantpilot."
+      ],
+      "source_note": "Kilde: Just Eat Takeaway.com Newsroom, \"Just Eat Takeaway.com intends to cease operations in Denmark\", opdatering 14. april 2026.",
+      "system_heading": "Registry finder. Node ejer. Kunden taler direkte med node.",
+      "layers_heading": "Åben base først. Kommercielle services ovenpå.",
+      "status_heading": "Hvad der er publiceret, og hvad der testes næste.",
+      "current_status_title": "Klar nu",
+      "current_status_items": [
+        "Public proof-side: pizza4people.com",
+        "Umbrella-side: protocols4people.com",
+        "Public GitHub repository med spec, schemas og referencekode",
+        "Independent node implementer kit",
+        "Reference registry, client, demo-node og pilot-node foundation"
+      ],
+      "next_test_title": "Næste praktiske test",
+      "next_test_items": [
+        "2-3 uafhængige personer bygger hver sin node.",
+        "Hver node testes med samme checker.",
+        "Alle noder annoncerer til samme registry.",
+        "Client finder noderne og sender direkte testordre.",
+        "Første restaurantpilot kører pickup-only og kun med eksplicit live-mode."
+      ],
+      "verification_heading": "Andre kan bygge deres egen node og teste mod kontrakten.",
+      "verification_body": [
+        "Det vigtigste ved proofet er ikke, at én referenceimplementation virker. Det vigtige er, at andre kan implementere samme lille kontrakt og stadig interopere.",
+        "Derfor er der publiceret et implementer-kit og en dependency-free checker, som tester minimumsfladen for en node."
+      ],
+      "press_angles_heading": "Tre måder at dække historien uden at overdrive den.",
+      "press_angles": [
+        {"title": "Danmark / Just Eat", "body": "Fra landet hvor Just Eat blev skabt, kommer et åbent protokol-proof efter platformens Danmark-exit."},
+        {"title": "Open web / protocol", "body": "Kan lokal handel få et åbent base-lag før kommercielle services kobles på?"},
+        {"title": "Foodtech / restaurant", "body": "Restaurantens digitale identitet, menu og ordreendpoint kan ligge hos restauranten selv."}
+      ],
+      "status_line": "Kort korrekt statuslinje: Pizza4People er et offentligt open-protocol proof. Næste trin er uafhængig node-interoperabilitet og en kontrolleret live-pilot. Det er ikke en færdig restaurant-platform."
+    },
+    "en": {
+      "topbar_label": "Pizza4People press kit",
+      "date_label": "29 April 2026",
+      "kicker": "Open protocol proof / controlled live pilot next",
+      "headline": "Not another pizza app.",
+      "lede": "Pizza4People is a public proof of a small model: a pizza shop can keep its own menu, take direct pickup orders, and start with pay at pickup while the customer can still discover the shop through a public registry.",
+      "quote": "The short version: When a platform leaves a market, restaurants and customers should not lose the basic digital connection because that connection was never theirs.",
+      "badges": ["Public GitHub", "Spec and code public", "Interop kit public", "Not production yet"],
+      "why_now_heading": "Just Eat is leaving Denmark. Platform dependency becomes visible.",
+      "why_now_body": [
+        "Just Eat Takeaway.com has confirmed that operations in Denmark end on 30 April 2026. This is not only a story about one app. It exposes a deeper question: who owns the digital contact layer between restaurants and customers?",
+        "Pizza4People does not answer with another closed marketplace. It asks a narrower question: can basic discovery, menu access and order submission be an open protocol instead of a platform silo?"
+      ],
+      "journalist_bullets": [
+        "A pizza shop can keep its own menu and take direct pickup orders.",
+        "Discovery can stay public without the platform owning the order flow.",
+        "It is not production-ready restaurant infrastructure yet.",
+        "The next step is independent node tests and a controlled restaurant pilot."
+      ],
+      "source_note": "Source: Just Eat Takeaway.com Newsroom, \"Just Eat Takeaway.com intends to cease operations in Denmark\", update dated 14 April 2026.",
+      "system_heading": "Registry discovers. Node owns. Client talks directly to node.",
+      "layers_heading": "Open base first. Commercial services on top.",
+      "status_heading": "What is public now, and what gets tested next.",
+      "current_status_title": "Public now",
+      "current_status_items": [
+        "Public proof site: pizza4people.com",
+        "Umbrella site: protocols4people.com",
+        "Public GitHub repository with spec, schemas and reference code",
+        "Independent node implementer kit",
+        "Reference registry, client and node foundation"
+      ],
+      "next_test_title": "Next practical test",
+      "next_test_items": [
+        "Two or three independent people build their own nodes.",
+        "Each node is tested with the same checker.",
+        "All nodes announce to the same registry.",
+        "The client discovers nodes and sends direct test orders.",
+        "The first restaurant pilot runs pickup-only and only with explicit live mode."
+      ],
+      "verification_heading": "Others can build their own node and test against the contract.",
+      "verification_body": [
+        "The important part is not that one reference implementation works. The important part is that others can implement the same small contract and still interoperate.",
+        "The public repository includes an implementer kit and a dependency-free checker for the minimum node surface."
+      ],
+      "press_angles_heading": "Three ways to cover the story without overstating it.",
+      "press_angles": [
+        {"title": "Denmark / Just Eat", "body": "From the country where Just Eat began, an open protocol proof appears around the platform's Denmark exit."},
+        {"title": "Open web / protocol", "body": "Can local commerce get an open base layer before commercial services are added?"},
+        {"title": "Foodtech / restaurant", "body": "The restaurant's digital identity, menu and order endpoint can stay with the restaurant."}
+      ],
+      "status_line": "Accurate status line: Pizza4People is a public open-protocol proof. The next step is independent node interoperability and a controlled live pilot. It is not a finished restaurant platform."
+    }
+  }
+}
