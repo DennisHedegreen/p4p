@@ -6,6 +6,8 @@ import json
 import secrets
 from contextlib import asynccontextmanager, suppress
 from datetime import timedelta
+from email.parser import BytesParser
+from email.policy import default as email_policy_default
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -125,6 +127,66 @@ def header_value(value: str | None) -> str | None:
 def request_prefers_html(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "text/html" in accept or "application/xhtml+xml" in accept
+
+
+def _decode_multipart_text_field(part: Any) -> str:
+    payload = part.get_payload(decode=True) or b""
+    charset = part.get_content_charset() or "utf-8"
+    try:
+        return payload.decode(charset)
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Multipart text fields must be valid UTF-8 text") from exc
+
+
+def _parse_import_manifest_multipart(content_type: str, body: bytes) -> tuple[str, bytes]:
+    if not body:
+        raise HTTPException(status_code=400, detail="Multipart upload is empty")
+    try:
+        message = BytesParser(policy=email_policy_default).parsebytes(
+            f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8") + body
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Multipart upload could not be parsed") from exc
+    if not message.is_multipart():
+        raise HTTPException(status_code=400, detail="Multipart upload must include one manifest file")
+
+    source_name_override = ""
+    source_name = ""
+    content_bytes: bytes | None = None
+    for part in message.iter_parts():
+        if part.get_content_disposition() != "form-data":
+            continue
+        field_name = (part.get_param("name", header="content-disposition") or "").strip()
+        filename = part.get_filename()
+        if filename:
+            if content_bytes is not None:
+                raise HTTPException(status_code=400, detail="Multipart upload must include only one manifest file")
+            source_name = Path(filename).name or filename.strip()
+            content_bytes = part.get_payload(decode=True) or b""
+            continue
+        if field_name == "source_name":
+            source_name_override = _decode_multipart_text_field(part).strip()
+
+    if content_bytes is None:
+        raise HTTPException(status_code=400, detail="Multipart upload must include one manifest file")
+    return source_name_override or source_name, content_bytes
+
+
+async def import_manifest_request_payload(request: Request) -> tuple[str, bytes]:
+    content_type = request.headers.get("content-type", "")
+    body = await request.body()
+    if "multipart/form-data" in content_type:
+        return _parse_import_manifest_multipart(content_type, body)
+    if not body:
+        raise HTTPException(status_code=400, detail="Import request body is empty")
+    try:
+        payload = OperatorModuleManifestImport.model_validate_json(body)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Import request must be multipart form-data or valid JSON",
+        ) from exc
+    return payload.source_name, payload.manifest_json.encode("utf-8")
 
 
 def operator_locale(runtime: PilotRuntime) -> str:
@@ -2653,15 +2715,15 @@ def operator_import_module_manifest(
     if not normalized_source_name:
         raise HTTPException(status_code=400, detail="source_name must include a filename")
     if not content_bytes:
-        raise HTTPException(status_code=400, detail="manifest_json must not be empty")
+        raise HTTPException(status_code=400, detail="Manifest file must not be empty")
 
     try:
         payload = json.loads(content_bytes.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise HTTPException(status_code=400, detail="manifest_json must be valid UTF-8 JSON") from exc
+        raise HTTPException(status_code=400, detail="Manifest file must be valid UTF-8 JSON") from exc
 
     if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="manifest_json must contain one JSON object")
+        raise HTTPException(status_code=400, detail="Manifest file must contain one JSON object")
 
     try:
         manifest = ModuleManifest.from_payload(payload, source_path=Path(normalized_source_name))
@@ -3320,16 +3382,17 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         return operator_imported_manifests(runtime)
 
     @app.post("/operator/modules/import-manifest")
-    def operator_import_manifest_route(
-        payload: OperatorModuleManifestImport,
+    async def operator_import_manifest_route(
+        request: Request,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
+        source_name, content_bytes = await import_manifest_request_payload(request)
         return operator_import_module_manifest(
             runtime,
-            source_name=payload.source_name,
-            content_bytes=payload.manifest_json.encode("utf-8"),
+            source_name=source_name,
+            content_bytes=content_bytes,
         )
 
     @app.delete("/operator/modules/imports/{module_id}")

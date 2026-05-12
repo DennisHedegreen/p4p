@@ -16,6 +16,7 @@ from unittest.mock import patch
 import httpx
 from fastapi import HTTPException, Response
 from pydantic import ValidationError
+from starlette.requests import Request
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -4929,6 +4930,62 @@ class P4PTruthfulnessTests(unittest.TestCase):
             )
             self.assertTrue(deleted["removed"])
             self.assertEqual(deleted["imported_manifest_count"], 0)
+            pilot.store.close()
+
+    def test_pilot_node_operator_import_manifest_route_accepts_multipart_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_MODULES": "p4p.payment.cash",
+                "P4P_OPERATOR_TOKEN": "operator-secret",
+            }
+            pilot = load_module("pilot-node/pilot_app.py", env)
+            routes = load_module("pilot_node/routes.py", env)
+            payload = json.loads((REPO_ROOT / "modules/p4p.menu.list/module.json").read_text(encoding="utf-8"))
+            payload["module_id"] = "local.demo.multipart.menu"
+            payload["provider_id"] = "local.demo"
+            payload["version"] = "0.2"
+            boundary = "----P4PMultipartBoundary"
+            body = (
+                f"--{boundary}\r\n"
+                'Content-Disposition: form-data; name="manifest"; filename="module.json"\r\n'
+                "Content-Type: application/json\r\n\r\n"
+                f"{json.dumps(payload)}\r\n"
+                f"--{boundary}--\r\n"
+            ).encode("utf-8")
+
+            async def receive() -> dict[str, object]:
+                return {"type": "http.request", "body": body, "more_body": False}
+
+            request = Request(
+                {
+                    "type": "http",
+                    "method": "POST",
+                    "path": "/operator/modules/import-manifest",
+                    "query_string": b"",
+                    "headers": [
+                        (b"content-type", f"multipart/form-data; boundary={boundary}".encode("utf-8")),
+                        (b"accept", b"application/json"),
+                    ],
+                },
+                receive,
+            )
+
+            source_name, content_bytes = asyncio.run(routes.import_manifest_request_payload(request))
+            imported = pilot.operator_import_module_manifest(
+                source_name=source_name,
+                content_bytes=content_bytes,
+                authorization="Bearer operator-secret",
+            )
+
+            self.assertEqual(imported["manifest"]["module_id"], "local.demo.multipart.menu")
+            self.assertEqual(imported["manifest"]["source_name"], "module.json")
+            self.assertEqual(imported["manifest"]["validation_status"], "validated")
+            imports_room = pilot.operator_import(authorization="Bearer operator-secret")
+            self.assertEqual(imports_room["imported_manifest_count"], 1)
+            self.assertEqual(imports_room["imported_manifests"][0]["module_id"], "local.demo.multipart.menu")
             pilot.store.close()
 
     def test_pilot_node_operator_import_manifest_rejects_invalid_and_colliding_manifests(self) -> None:

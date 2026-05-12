@@ -182,19 +182,22 @@
         return tokenInput.value.trim();
       }
 
-      function requestHeaders() {
-        return {
+      async function request(path, options = {}) {
+        const headers = {
           "Accept": "application/json",
-          "Content-Type": "application/json",
           "X-P4P-Operator-Token": token()
         };
-      }
-
-      async function request(path, options = {}) {
+        let body;
+        if (options.formData) {
+          body = options.formData;
+        } else if (options.body !== undefined) {
+          headers["Content-Type"] = "application/json";
+          body = JSON.stringify(options.body);
+        }
         const response = await fetch(path, {
           method: options.method || "GET",
-          headers: requestHeaders(),
-          body: options.body ? JSON.stringify(options.body) : undefined
+          headers,
+          body
         });
         if (!response.ok) {
           const detail = await response.text().catch(() => "");
@@ -371,12 +374,11 @@
         }
         try {
           setStatus("Importing.");
+          const formData = new FormData();
+          formData.set("manifest", file, file.name);
           const result = await request("/operator/modules/import-manifest", {
             method: "POST",
-            body: {
-              source_name: file.name,
-              manifest_json: await file.text()
-            }
+            formData
           });
           manifestFileInput.value = "";
           await refresh();
