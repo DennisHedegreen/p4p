@@ -187,6 +187,29 @@ class ModuleHealthClient:
         return httpx.Response(200, request=request, json={"ok": self.ok})
 
 
+class NodeControlClient:
+    def __init__(self, routes: dict[str, object]) -> None:
+        self.routes = routes
+        self.calls: list[tuple[str, dict[str, str] | None]] = []
+
+    def __enter__(self) -> "NodeControlClient":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def get(self, url: str, headers: dict[str, str] | None = None) -> httpx.Response:
+        self.calls.append((url, headers))
+        request = httpx.Request("GET", url, headers=headers)
+        route = self.routes.get(url)
+        if route is None:
+            raise httpx.ConnectError("unmapped route", request=request)
+        if isinstance(route, Exception):
+            raise route
+        status_code, payload = route
+        return httpx.Response(status_code, request=request, json=payload)
+
+
 class P4PTruthfulnessTests(unittest.TestCase):
     def make_registry_metadata(self, **overrides) -> str:
         payload = {
@@ -681,6 +704,220 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
         self.assertEqual(rotation_error.exception.status_code, 400)
         self.assertEqual(rotation_error.exception.detail, "Invalid root rotation signature")
+
+    def test_node_control_snapshot_aggregates_registry_and_operator_truth(self) -> None:
+        control = load_module(
+            "node-control/node_control.py",
+            {
+                "P4P_NODE_CONTROL_REGISTRY_URLS": "http://registry-a.test,http://registry-b.test",
+                "P4P_NODE_CONTROL_OPERATOR_TOKENS": json.dumps({"dk-pizza-001": "operator-secret"}),
+            },
+        )
+        app_module = sys.modules[f"{control.__name__}_app"]
+        client = NodeControlClient(
+            {
+                "http://registry-a.test/health": (200, {"status": "ok", "registered_nodes": 1}),
+                "http://registry-a.test/registry-source": (
+                    200,
+                    {
+                        "registry_url": "http://registry-a.test",
+                        "nodes": [
+                            {
+                                "node": {
+                                    "node_id": "dk-pizza-001",
+                                    "name": "Pilot Pizza A",
+                                    "endpoint": "http://127.0.0.1:8201",
+                                    "country": "DK",
+                                    "city": "Brondby",
+                                    "categories": ["pizza"],
+                                    "open": True,
+                                    "order_mode": "live",
+                                    "modules": ["p4p.payment.cash", "p4p.order.print.backup"],
+                                },
+                                "last_seen": "2026-05-07T10:00:00Z",
+                            }
+                        ],
+                    },
+                ),
+                "http://registry-b.test/health": (200, {"status": "ok", "registered_nodes": 1}),
+                "http://registry-b.test/registry-source": (
+                    200,
+                    {
+                        "registry_url": "http://registry-b.test",
+                        "nodes": [
+                            {
+                                "node": {
+                                    "node_id": "dk-pizza-001",
+                                    "name": "Pilot Pizza A",
+                                    "endpoint": "http://127.0.0.1:8201",
+                                    "country": "DK",
+                                    "city": "Brondby",
+                                    "categories": ["pizza"],
+                                    "open": True,
+                                    "order_mode": "live",
+                                    "modules": ["p4p.payment.cash", "p4p.order.print.backup"],
+                                },
+                                "last_seen": "2026-05-07T10:00:30Z",
+                            }
+                        ],
+                    },
+                ),
+                "http://127.0.0.1:8201/health": (
+                    200,
+                    {
+                        "status": "ready",
+                        "node_id": "dk-pizza-001",
+                        "open": True,
+                        "order_mode": "live",
+                        "accepts_orders": True,
+                    },
+                ),
+                "http://127.0.0.1:8201/p4p/info": (
+                    200,
+                    {
+                        "node_id": "dk-pizza-001",
+                        "accepts_orders": True,
+                        "payment_methods": ["pay_at_pickup"],
+                    },
+                ),
+                "http://127.0.0.1:8201/operator/state": (
+                    200,
+                    {
+                        "hardware": {
+                            "profile": "box_v1_counter",
+                            "customized": False,
+                            "print": {
+                                "target": "printer",
+                                "driver": "escpos_raw",
+                                "sensor_source": "serial_status",
+                            },
+                            "backup_print": {
+                                "target": "backup_spool",
+                                "driver": "file_spool",
+                            },
+                            "alert": {
+                                "target": "counter_bell",
+                                "mode": "completed",
+                            },
+                            "pickup_board": {
+                                "target": "counter_screen",
+                            },
+                        },
+                        "enabled_modules": ["p4p.payment.cash", "p4p.order.print.backup"],
+                        "public_modules": ["p4p.payment.cash"],
+                        "undeclared_modules": ["local.printer.spool"],
+                        "active_by_lane": {"payment": "p4p.payment.cash"},
+                        "registry": {
+                            "ready": True,
+                            "registered_registries": ["http://registry-a.test", "http://registry-b.test"],
+                            "failed_registries": {},
+                        },
+                    },
+                ),
+                "http://127.0.0.1:8201/operator/modules": (
+                    200,
+                    {
+                        "active_by_lane": {"payment": "p4p.payment.cash"},
+                        "modules": [
+                            {
+                                "module_id": "p4p.payment.cash",
+                                "lane": "payment",
+                                "health": "available",
+                                "implementation": "builtin_reference",
+                            },
+                            {
+                                "module_id": "p4p.order.print.backup",
+                                "lane": "operator",
+                                "health": "available",
+                                "implementation": "builtin_hardware_probe",
+                            },
+                        ],
+                    },
+                ),
+            }
+        )
+
+        with patch.object(app_module.httpx, "Client", new=lambda *args, **kwargs: client):
+            snapshot = control.collect_control_snapshot()
+
+        self.assertEqual(snapshot["summary"]["configured_registries"], 2)
+        self.assertEqual(snapshot["summary"]["reachable_registries"], 2)
+        self.assertEqual(snapshot["summary"]["unique_nodes"], 1)
+        node = snapshot["nodes"][0]
+        self.assertEqual(node["node_id"], "dk-pizza-001")
+        self.assertEqual(node["observed_by"], 2)
+        self.assertEqual(node["public_probe"]["status"], "ready")
+        self.assertEqual(node["operator_probe"]["access"], "ok")
+        self.assertEqual(node["hardware"]["profile"], "box_v1_counter")
+        self.assertEqual(node["active_by_lane"]["payment"], "p4p.payment.cash")
+        self.assertEqual(node["module_health_counts"]["available"], 2)
+        html = control.dashboard_html(snapshot, selected_node_id="dk-pizza-001")
+        self.assertIn("P4P Node Control", html)
+        self.assertIn("Registry truth stays narrow.", html)
+        self.assertIn("box_v1_counter", html)
+        self.assertIn("Pilot Pizza A", html)
+
+    def test_node_control_reads_public_health_without_operator_token(self) -> None:
+        control = load_module(
+            "node-control/node_control.py",
+            {
+                "P4P_NODE_CONTROL_REGISTRY_URLS": "http://registry-a.test",
+            },
+        )
+        app_module = sys.modules[f"{control.__name__}_app"]
+        client = NodeControlClient(
+            {
+                "http://registry-a.test/health": (200, {"status": "ok", "registered_nodes": 1}),
+                "http://registry-a.test/registry-source": (
+                    200,
+                    {
+                        "registry_url": "http://registry-a.test",
+                        "nodes": [
+                            {
+                                "node": {
+                                    "node_id": "dk-pizza-002",
+                                    "name": "Pilot Pizza B",
+                                    "endpoint": "http://127.0.0.1:8202",
+                                    "country": "DK",
+                                    "city": "Copenhagen",
+                                    "categories": ["pizza"],
+                                    "open": False,
+                                    "order_mode": "menu_only",
+                                    "modules": ["p4p.payment.cash"],
+                                },
+                                "last_seen": "2026-05-07T10:01:00Z",
+                            }
+                        ],
+                    },
+                ),
+                "http://127.0.0.1:8202/health": (
+                    503,
+                    {
+                        "status": "not_ready",
+                        "node_id": "dk-pizza-002",
+                        "open": False,
+                        "order_mode": "menu_only",
+                        "accepts_orders": False,
+                    },
+                ),
+                "http://127.0.0.1:8202/p4p/info": (
+                    200,
+                    {
+                        "node_id": "dk-pizza-002",
+                        "accepts_orders": False,
+                        "payment_methods": ["pay_at_pickup"],
+                    },
+                ),
+            }
+        )
+
+        with patch.object(app_module.httpx, "Client", new=lambda *args, **kwargs: client):
+            snapshot = control.collect_control_snapshot()
+
+        node = snapshot["nodes"][0]
+        self.assertEqual(node["public_probe"]["status"], "not_ready")
+        self.assertEqual(node["operator_probe"]["access"], "not_configured")
+        self.assertFalse(any("/operator/" in url for url, _headers in client.calls))
 
     def test_missing_order_mode_defaults_to_disabled(self) -> None:
         registry = load_module("registry/main.py")
@@ -3055,6 +3292,145 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(missing_module.exception.detail, "Customer status module is not enabled")
             pilot.store.close()
 
+    def test_pilot_node_hardware_feedback_modules_are_executable_when_configured(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": (
+                        "p4p.payment.cash,p4p.order.print.backup,"
+                        "p4p.order.alert.basic,p4p.pickup.board.basic"
+                    ),
+                    "P4P_BACKUP_PRINT_TARGET": "backup_printer",
+                    "P4P_BACKUP_PRINT_DRIVER": "file_spool",
+                    "P4P_BACKUP_PRINT_SPOOL_DIR": str(Path(tmpdir) / "backup-spool"),
+                    "P4P_ALERT_TARGET": "counter_bell",
+                    "P4P_PICKUP_BOARD_TARGET": "counter_screen",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            modules = pilot.operator_modules(authorization="Bearer operator-secret")
+            operator_modules = {entry["module_id"]: entry for entry in modules["lanes"]["operator"]["modules"]}
+
+            backup_print = operator_modules["p4p.order.print.backup"]
+            self.assertTrue(backup_print["active"])
+            self.assertTrue(backup_print["configured"])
+            self.assertTrue(backup_print["executable"])
+            self.assertEqual(backup_print["implementation"], "builtin_hardware_probe")
+            self.assertEqual(backup_print["health"], "available")
+
+            alert = operator_modules["p4p.order.alert.basic"]
+            self.assertTrue(alert["configured"])
+            self.assertTrue(alert["executable"])
+            self.assertEqual(alert["implementation"], "builtin_hardware_probe")
+
+            pickup = operator_modules["p4p.pickup.board.basic"]
+            self.assertTrue(pickup["configured"])
+            self.assertTrue(pickup["executable"])
+            self.assertEqual(pickup["implementation"], "builtin_operator_surface")
+            self.assertEqual(pickup["configuration"]["view_url"], "/operator/pickup-board")
+            pilot.store.close()
+
+    def test_pilot_node_backup_print_module_self_test_can_write_spool_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spool_dir = Path(tmpdir) / "backup-spool"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print.backup",
+                    "P4P_BACKUP_PRINT_TARGET": "backup_printer",
+                    "P4P_BACKUP_PRINT_DRIVER": "file_spool",
+                    "P4P_BACKUP_PRINT_SPOOL_DIR": str(spool_dir),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            result = pilot.operator_module_self_test(
+                "p4p.order.print.backup",
+                authorization="Bearer operator-secret",
+            )
+
+            self.assertEqual(result["events"], ["OUTBOUND_ACTION_REQUESTED", "ACTION_COMPLETED"])
+            self.assertTrue(result["success"])
+            self.assertEqual(result["driver"], "file_spool")
+            artifact_path = Path(str(result["artifact_path"]))
+            self.assertTrue(artifact_path.exists())
+            self.assertIn("self-test-ticket", artifact_path.read_text(encoding="utf-8"))
+            pilot.store.close()
+
+    def test_pilot_node_order_alert_module_self_test_can_report_completed_action(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.alert.basic",
+                    "P4P_ALERT_TARGET": "counter_bell",
+                    "P4P_ALERT_MODE": "completed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            result = pilot.operator_module_self_test(
+                "p4p.order.alert.basic",
+                authorization="Bearer operator-secret",
+            )
+
+            self.assertEqual(result["events"], ["OUTBOUND_ACTION_REQUESTED", "ACTION_COMPLETED"])
+            self.assertTrue(result["success"])
+            self.assertEqual(result["target"], "counter_bell")
+            pilot.store.close()
+
+    def test_pilot_node_pickup_board_surface_filters_accepted_and_ready_orders(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.kitchen.screen,p4p.pickup.board.basic",
+                    "P4P_PICKUP_BOARD_TARGET": "counter_screen",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot, item_id="kebab-pita"))
+            ready = pilot.public_order(self.make_pilot_order_request(pilot, item_id="durum-kebab"))
+            pilot.operator_update_order(
+                ready.order_id,
+                pilot.OrderStatusUpdate(status="ready", status_message="Ready now."),
+                authorization="Bearer operator-secret",
+            )
+            hidden = pilot.public_order(self.make_pilot_order_request(pilot, item_id="kebab-pita"))
+            pilot.operator_update_order(
+                hidden.order_id,
+                pilot.OrderStatusUpdate(status="cancelled", status_message="Cancelled."),
+                authorization="Bearer operator-secret",
+            )
+
+            page = pilot.operator_pickup_board_page()
+            board = pilot.operator_pickup_board_data(authorization="Bearer operator-secret")
+
+            self.assertIn("Pickup board", page)
+            self.assertEqual(board["target"], "counter_screen")
+            self.assertEqual([entry["order_id"] for entry in board["orders"]], [ready.order_id, accepted.order_id])
+            self.assertEqual([entry["status"] for entry in board["orders"]], ["ready", "accepted"])
+            pilot.store.close()
+
     def test_pilot_node_catalog_editor_module_updates_menu_truth(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pilot = load_module(
@@ -3121,6 +3497,509 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(event["source_module"], "p4p.catalog.editor")
             self.assertEqual(event["metadata"]["item_count"], 2)
             self.assertEqual(event["metadata"]["active_item_count"], 1)
+            pilot.store.close()
+
+    def test_pilot_node_menu_import_preview_extracts_draft_items_without_mutating_catalog(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "menu_only",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            before_menu = pilot.operator_menu(authorization="Bearer operator-secret")
+            preview = pilot.operator_menu_import_preview(
+                pilot.MenuImportPreviewRequest(
+                    raw_text="\n".join(
+                        [
+                            "12. Margherita 75,-",
+                            "13. Vesuvio 85,00",
+                            "Durum kebab 65 kr",
+                            "Levering 30 kr",
+                            "Vælg mellem: 80,-",
+                        ]
+                    ),
+                    source_name="phone-ocr-1",
+                ),
+                authorization="Bearer operator-secret",
+            )
+            after_menu = pilot.operator_menu(authorization="Bearer operator-secret")
+
+            self.assertEqual(preview.source_kind, "ocr_text")
+            self.assertEqual(preview.source_name, "phone-ocr-1")
+            self.assertEqual([candidate.item.id for candidate in preview.candidates], ["margherita", "vesuvio", "durum-kebab"])
+            self.assertEqual([candidate.item.price for candidate in preview.candidates], [7500, 8500, 6500])
+            self.assertEqual([candidate.item.category for candidate in preview.candidates], ["pizza", "pizza", "durum"])
+            self.assertIn("Levering 30 kr", preview.ignored_lines)
+            self.assertIn("Vælg mellem: 80,-", preview.ignored_lines)
+            self.assertTrue(any("not catalog truth" in warning.lower() for warning in preview.warnings))
+            self.assertEqual(
+                [item.model_dump(mode="json") for item in before_menu.items],
+                [item.model_dump(mode="json") for item in after_menu.items],
+            )
+            self.assertEqual(
+                pilot.root_index()["endpoints"]["operator_menu_import_preview"],
+                "POST /operator/menu/import-preview",
+            )
+            pilot.store.close()
+
+    def test_pilot_node_menu_import_preview_requires_ocr_module_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            with self.assertRaises(HTTPException) as missing_module:
+                pilot.operator_menu_import_preview(
+                    pilot.MenuImportPreviewRequest(raw_text="12. Margherita 75,-"),
+                    authorization="Bearer operator-secret",
+                )
+
+            self.assertEqual(missing_module.exception.status_code, 404)
+            self.assertEqual(missing_module.exception.detail, "Catalog OCR import module is not enabled")
+            pilot.store.close()
+
+    def test_pilot_node_menu_import_preview_requires_operator_token(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            with self.assertRaises(HTTPException) as auth_error:
+                pilot.operator_menu_import_preview(
+                    pilot.MenuImportPreviewRequest(raw_text="12. Margherita 75,-"),
+                )
+
+            self.assertEqual(auth_error.exception.status_code, 401)
+            pilot.store.close()
+
+    def test_pilot_node_menu_import_preview_humanizes_glued_pizza_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            preview = pilot.operator_menu_import_preview(
+                pilot.MenuImportPreviewRequest(
+                    raw_text="\n".join(
+                        [
+                            "FamiliepizzaMargherita 135 kr",
+                            "Kebab Pizza 95 kr",
+                        ]
+                    )
+                ),
+                authorization="Bearer operator-secret",
+            )
+
+            candidates = {candidate.item.id: candidate.item for candidate in preview.candidates}
+            self.assertIn("familiepizza-margherita", candidates)
+            self.assertEqual(candidates["familiepizza-margherita"].name, "Familiepizza Margherita")
+            self.assertEqual(candidates["familiepizza-margherita"].category, "pizza")
+            self.assertEqual(candidates["kebab-pizza"].category, "pizza")
+            pilot.store.close()
+
+    def test_pilot_node_menu_import_preview_strips_glued_item_codes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            preview = pilot.operator_menu_import_preview(
+                pilot.MenuImportPreviewRequest(
+                    raw_text="\n".join(
+                        [
+                            "1M Margarita 45,-",
+                            "51K Ayko 80,-",
+                        ]
+                    )
+                ),
+                authorization="Bearer operator-secret",
+            )
+
+            candidates = {candidate.item.id: candidate.item for candidate in preview.candidates}
+            self.assertEqual(candidates["margarita"].name, "Margarita")
+            self.assertEqual(candidates["ayko"].name, "Ayko")
+            pilot.store.close()
+
+    def test_menu_import_ignores_bare_integer_tokens_when_a_name_sits_to_the_right(self) -> None:
+        menu_import = load_module("pilot_node/menu_import.py")
+
+        tokens = [
+            {
+                "text": "24",
+                "score": 0.99,
+                "center_y": 100.0,
+                "left": 800.0,
+                "right": 830.0,
+                "top": 88.0,
+                "bottom": 112.0,
+                "height": 24.0,
+            },
+            {
+                "text": "Marsala",
+                "score": 0.99,
+                "center_y": 100.0,
+                "left": 850.0,
+                "right": 980.0,
+                "top": 86.0,
+                "bottom": 114.0,
+                "height": 28.0,
+            },
+            {
+                "text": "90,-",
+                "score": 0.99,
+                "center_y": 100.0,
+                "left": 1280.0,
+                "right": 1340.0,
+                "top": 86.0,
+                "bottom": 114.0,
+                "height": 28.0,
+            },
+            {
+                "text": "41",
+                "score": 0.99,
+                "center_y": 100.0,
+                "left": 1460.0,
+                "right": 1490.0,
+                "top": 88.0,
+                "bottom": 112.0,
+                "height": 24.0,
+            },
+            {
+                "text": "Calzone",
+                "score": 0.99,
+                "center_y": 100.0,
+                "left": 1510.0,
+                "right": 1650.0,
+                "top": 86.0,
+                "bottom": 114.0,
+                "height": 28.0,
+            },
+        ]
+
+        lines = menu_import._pair_item_names_with_prices(tokens)
+
+        self.assertIn("Marsala 90,-", lines)
+        self.assertNotIn("Marsala 41", lines)
+
+    def test_menu_import_pairs_prices_with_their_own_visual_column(self) -> None:
+        menu_import = load_module("pilot_node/menu_import.py")
+
+        tokens = [
+            {
+                "text": "Torino",
+                "score": 0.99,
+                "center_y": 352.0,
+                "left": 87.0,
+                "right": 177.0,
+                "top": 334.0,
+                "bottom": 370.0,
+                "height": 36.0,
+            },
+            {
+                "text": "75,-",
+                "score": 0.99,
+                "center_y": 388.0,
+                "left": 699.0,
+                "right": 756.0,
+                "top": 370.0,
+                "bottom": 405.0,
+                "height": 35.0,
+            },
+            {
+                "text": "Bella Rosa",
+                "score": 0.99,
+                "center_y": 459.0,
+                "left": 872.0,
+                "right": 1015.0,
+                "top": 445.0,
+                "bottom": 473.0,
+                "height": 28.0,
+            },
+            {
+                "text": "90,-",
+                "score": 0.99,
+                "center_y": 496.0,
+                "left": 1488.0,
+                "right": 1541.0,
+                "top": 480.0,
+                "bottom": 511.0,
+                "height": 31.0,
+            },
+            {
+                "text": "Ciao Ciao",
+                "score": 0.99,
+                "center_y": 351.0,
+                "left": 1673.0,
+                "right": 1793.0,
+                "top": 337.0,
+                "bottom": 365.0,
+                "height": 28.0,
+            },
+            {
+                "text": "80,-",
+                "score": 0.99,
+                "center_y": 385.0,
+                "left": 2255.0,
+                "right": 2310.0,
+                "top": 368.0,
+                "bottom": 402.0,
+                "height": 34.0,
+            },
+        ]
+
+        lines = menu_import._pair_item_names_with_prices(tokens)
+
+        self.assertIn("Torino 75,-", lines)
+        self.assertIn("Bella Rosa 90,-", lines)
+        self.assertIn("Ciao Ciao 80,-", lines)
+        self.assertNotIn("Torino 90,-", lines)
+        self.assertNotIn("Bella Rosa 80,-", lines)
+
+    def test_menu_import_recovers_lower_right_items_with_offset_prices(self) -> None:
+        menu_import = load_module("pilot_node/menu_import.py")
+
+        tokens = [
+            {
+                "text": "Sandwich",
+                "score": 0.99,
+                "center_y": 853.0,
+                "left": 1672.0,
+                "right": 1794.0,
+                "top": 839.0,
+                "bottom": 867.0,
+                "height": 28.0,
+            },
+            {
+                "text": "80",
+                "score": 0.99,
+                "center_y": 953.0,
+                "left": 2259.0,
+                "right": 2304.0,
+                "top": 940.0,
+                "bottom": 966.0,
+                "height": 26.0,
+            },
+            {
+                "text": "Pitabrod",
+                "score": 0.99,
+                "center_y": 1068.0,
+                "left": 1667.0,
+                "right": 1780.0,
+                "top": 1054.0,
+                "bottom": 1082.0,
+                "height": 28.0,
+            },
+            {
+                "text": "60,-",
+                "score": 0.99,
+                "center_y": 1168.0,
+                "left": 2259.0,
+                "right": 2304.0,
+                "top": 1155.0,
+                "bottom": 1181.0,
+                "height": 26.0,
+            },
+            {
+                "text": "Durum",
+                "score": 0.99,
+                "center_y": 1283.0,
+                "left": 1668.0,
+                "right": 1758.0,
+                "top": 1271.0,
+                "bottom": 1296.0,
+                "height": 25.0,
+            },
+            {
+                "text": "85,-",
+                "score": 0.99,
+                "center_y": 1384.0,
+                "left": 2256.0,
+                "right": 2306.0,
+                "top": 1369.0,
+                "bottom": 1400.0,
+                "height": 31.0,
+            },
+            {
+                "text": "51K Ayko",
+                "score": 0.99,
+                "center_y": 1417.0,
+                "left": 1612.0,
+                "right": 1731.0,
+                "top": 1401.0,
+                "bottom": 1432.0,
+                "height": 31.0,
+            },
+            {
+                "text": "80,-",
+                "score": 0.99,
+                "center_y": 1485.0,
+                "left": 2258.0,
+                "right": 2307.0,
+                "top": 1470.0,
+                "bottom": 1501.0,
+                "height": 31.0,
+            },
+            {
+                "text": "85,-",
+                "score": 0.99,
+                "center_y": 1431.0,
+                "left": 1488.0,
+                "right": 1541.0,
+                "top": 1416.0,
+                "bottom": 1447.0,
+                "height": 31.0,
+            },
+        ]
+
+        lines = menu_import._pair_item_names_with_prices(tokens)
+
+        self.assertIn("Sandwich 80", lines)
+        self.assertIn("Pitabrod 60,-", lines)
+        self.assertIn("Durum 85,-", lines)
+        self.assertIn("51K Ayko 80,-", lines)
+        self.assertNotIn("51K Ayko 85,-", lines)
+
+    def test_pilot_node_menu_import_preview_ignores_size_and_modifier_fragments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            preview = pilot.operator_menu_import_preview(
+                pilot.MenuImportPreviewRequest(
+                    raw_text="\n".join(
+                        [
+                            "33cm 9,00",
+                            "(3pezzi) 4,00",
+                            "(rosso) 2,00",
+                            "verdurepastellate 10,00",
+                            "CHINOTTO/LIMONATA33cl 2,50",
+                        ]
+                    )
+                ),
+                authorization="Bearer operator-secret",
+            )
+
+            candidate_ids = [candidate.item.id for candidate in preview.candidates]
+            self.assertEqual(candidate_ids, ["verdure-pastellate", "chinotto-limonata-33-cl"])
+            candidates = {candidate.item.id: candidate.item for candidate in preview.candidates}
+            self.assertEqual(candidates["verdure-pastellate"].name, "verdure pastellate")
+            self.assertEqual(candidates["chinotto-limonata-33-cl"].category, "drink")
+            self.assertIn("33cm 9,00", preview.ignored_lines)
+            self.assertIn("(3pezzi) 4,00", preview.ignored_lines)
+            self.assertIn("(rosso) 2,00", preview.ignored_lines)
+            pilot.store.close()
+
+    def test_pilot_node_menu_import_image_preview_extracts_draft_items_from_fixture(self) -> None:
+        fixture_path = REPO_ROOT / "docs/examples/menu-photo-map-fixtures/copenhagen-pizza-grill-paper-menu.png"
+        if not fixture_path.exists():
+            self.skipTest("Menu photo-map fixture is missing.")
+        try:
+            import onnxruntime  # noqa: F401
+            import rapidocr  # noqa: F401
+        except ImportError:
+            self.skipTest("Local OCR dependencies are not installed.")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "menu_only",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            before_menu = pilot.operator_menu(authorization="Bearer operator-secret")
+            preview = pilot.operator_menu_import_image_preview(
+                fixture_path.read_bytes(),
+                source_name="copenhagen-pizza-grill-paper-menu.png",
+                authorization="Bearer operator-secret",
+            )
+            after_menu = pilot.operator_menu(authorization="Bearer operator-secret")
+
+            self.assertEqual(preview.source_kind, "ocr_image")
+            self.assertEqual(preview.source_name, "copenhagen-pizza-grill-paper-menu.png")
+            self.assertIsNotNone(preview.extracted_text)
+            self.assertGreater(preview.ocr_line_count or 0, 0)
+            self.assertIn("Margherita", preview.extracted_text or "")
+            candidate_ids = {candidate.item.id for candidate in preview.candidates}
+            self.assertIn("margherita", candidate_ids)
+            self.assertIn("vesuvio", candidate_ids)
+            self.assertIn("durum-kebab", candidate_ids)
+            self.assertTrue(any("image ocr is approximate" in warning.lower() for warning in preview.warnings))
+            self.assertEqual(
+                [item.model_dump(mode="json") for item in before_menu.items],
+                [item.model_dump(mode="json") for item in after_menu.items],
+            )
+            self.assertEqual(
+                pilot.root_index()["endpoints"]["operator_menu_import_image_preview"],
+                "POST /operator/menu/import-image-preview",
+            )
+            pilot.store.close()
+
+    def test_pilot_node_menu_import_image_preview_requires_operator_token(self) -> None:
+        fixture_path = REPO_ROOT / "docs/examples/menu-photo-map-fixtures/copenhagen-pizza-grill-paper-menu.png"
+        try:
+            import onnxruntime  # noqa: F401
+            import rapidocr  # noqa: F401
+        except ImportError:
+            self.skipTest("Local OCR dependencies are not installed.")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            with self.assertRaises(HTTPException) as auth_error:
+                pilot.operator_menu_import_image_preview(fixture_path.read_bytes())
+
+            self.assertEqual(auth_error.exception.status_code, 401)
             pilot.store.close()
 
     def test_pilot_node_menu_list_module_exposes_active_catalog_as_customer_surface(self) -> None:
@@ -3707,6 +4586,421 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(reloaded_modules["active_by_lane"]["payment"], "p4p.payment.godpay-mock")
             reloaded.store.close()
 
+    def test_pilot_node_operator_modules_expose_current_desired_and_available_sets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            modules = pilot.operator_modules(authorization="Bearer operator-secret")
+
+            self.assertEqual(modules["current_module_ids"], ["p4p.catalog.editor", "p4p.payment.cash"])
+            self.assertEqual(modules["desired_module_ids"], ["p4p.catalog.editor", "p4p.payment.cash"])
+            self.assertFalse(modules["restart_required"])
+            available_module_ids = [entry["module_id"] for entry in modules["available_modules"]]
+            self.assertIn("p4p.catalog.import.ocr", available_module_ids)
+            self.assertIn("p4p.menu.list", available_module_ids)
+            pilot.store.close()
+
+    def test_pilot_node_operator_module_detail_supports_enabled_and_available_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            enabled_detail = pilot.operator_module_detail(
+                "p4p.catalog.editor",
+                authorization="Bearer operator-secret",
+            )
+            available_detail = pilot.operator_module_detail(
+                "p4p.catalog.import.ocr",
+                authorization="Bearer operator-secret",
+            )
+            module_page = pilot.operator_module_view_page("p4p.catalog.editor")
+            ocr_module_page = pilot.operator_module_view_page("p4p.catalog.import.ocr")
+
+            self.assertTrue(enabled_detail["module"]["enabled_now"])
+            self.assertTrue(enabled_detail["module"]["desired_enabled"])
+            self.assertIn("CATALOG_UPDATED", enabled_detail["module"]["output_events"])
+            self.assertFalse(available_detail["module"]["enabled_now"])
+            self.assertFalse(available_detail["module"]["active"])
+            self.assertEqual(
+                available_detail["documentation"]["links"]["module_doc_url"],
+                "https://github.com/DennisHedegreen/p4p/blob/main/docs/modules/p4p.catalog.import.ocr.md",
+            )
+            self.assertIn("/operator/modules/", module_page)
+            self.assertIn("Module detail", module_page)
+            self.assertIn("OCR import surface", ocr_module_page)
+            self.assertIn("Scan photo", ocr_module_page)
+            self.assertIn("Save selected to catalog", ocr_module_page)
+            self.assertIn("/operator/menu/import-image-preview", ocr_module_page)
+
+            with self.assertRaises(HTTPException) as missing:
+                pilot.operator_module_detail("local.missing.module", authorization="Bearer operator-secret")
+
+            self.assertEqual(missing.exception.status_code, 404)
+            pilot.store.close()
+
+    def test_pilot_node_operator_module_set_persists_desired_modules_until_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.payment.cash",
+                "P4P_OPERATOR_TOKEN": "operator-secret",
+            }
+            pilot = load_module("pilot-node/pilot_node.py", env)
+
+            updated = pilot.operator_update_module_set(
+                pilot.OperatorModuleSetUpdate(
+                    module_ids=["p4p.catalog.editor", "p4p.catalog.import.ocr", "p4p.payment.cash"]
+                ),
+                authorization="Bearer operator-secret",
+            )
+
+            self.assertEqual(updated["current_module_ids"], ["p4p.catalog.editor", "p4p.payment.cash"])
+            self.assertEqual(
+                updated["desired_module_ids"],
+                ["p4p.catalog.editor", "p4p.catalog.import.ocr", "p4p.payment.cash"],
+            )
+            self.assertTrue(updated["restart_required"])
+            pilot.store.close()
+
+            reloaded = load_module("pilot-node/pilot_node.py", env)
+            reloaded_modules = reloaded.operator_modules(authorization="Bearer operator-secret")
+            self.assertEqual(
+                reloaded_modules["current_module_ids"],
+                ["p4p.catalog.editor", "p4p.catalog.import.ocr", "p4p.payment.cash"],
+            )
+            self.assertEqual(
+                reloaded_modules["desired_module_ids"],
+                ["p4p.catalog.editor", "p4p.catalog.import.ocr", "p4p.payment.cash"],
+            )
+            self.assertFalse(reloaded_modules["restart_required"])
+            reloaded.store.close()
+
+    def test_pilot_node_operator_module_set_rejects_unknown_or_paymentless_or_dependency_breaking_sets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.catalog.import.ocr,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            with self.assertRaises(HTTPException) as unknown:
+                pilot.operator_update_module_set(
+                    pilot.OperatorModuleSetUpdate(module_ids=["p4p.payment.cash", "local.unknown.module"]),
+                    authorization="Bearer operator-secret",
+                )
+            with self.assertRaises(HTTPException) as paymentless:
+                pilot.operator_update_module_set(
+                    pilot.OperatorModuleSetUpdate(module_ids=["p4p.catalog.editor"]),
+                    authorization="Bearer operator-secret",
+                )
+            with self.assertRaises(HTTPException) as missing_dependency:
+                pilot.operator_update_module_set(
+                    pilot.OperatorModuleSetUpdate(module_ids=["p4p.catalog.import.ocr", "p4p.payment.cash"]),
+                    authorization="Bearer operator-secret",
+                )
+
+            self.assertEqual(unknown.exception.status_code, 400)
+            self.assertEqual(paymentless.exception.status_code, 400)
+            self.assertEqual(missing_dependency.exception.status_code, 400)
+            self.assertIn("Unknown module_id", str(unknown.exception.detail))
+            self.assertIn("payment", str(paymentless.exception.detail).lower())
+            self.assertIn("still depend on it", str(missing_dependency.exception.detail))
+            pilot.store.close()
+
+    def test_pilot_node_operator_module_set_reassigns_payment_when_desired_set_removes_active_payment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.payment.godpay-mock",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            pilot.operator_update_payment_module(
+                pilot.OperatorPaymentModuleUpdate(module_id="p4p.payment.godpay-mock"),
+                authorization="Bearer operator-secret",
+            )
+            updated = pilot.operator_update_module_set(
+                pilot.OperatorModuleSetUpdate(module_ids=["p4p.payment.cash"]),
+                authorization="Bearer operator-secret",
+            )
+
+            self.assertEqual(updated["desired_module_ids"], ["p4p.payment.cash"])
+            self.assertEqual(updated["desired_active_by_lane"]["payment"], "p4p.payment.cash")
+            self.assertEqual(updated["active_by_lane"]["payment"], "p4p.payment.cash")
+            pilot.store.close()
+
+    def test_pilot_node_operator_setup_persists_onboarding_state_in_sqlite(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_ORDER_MODE": "menu_only",
+                "P4P_NODE_MODULES": (
+                    "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,"
+                    "p4p.kitchen.screen,p4p.payment.cash"
+                ),
+                "P4P_OPERATOR_TOKEN": "operator-secret",
+            }
+            pilot = load_module("pilot-node/pilot_node.py", env)
+
+            before = pilot.operator_setup(authorization="Bearer operator-secret")
+            self.assertIsNone(before["setup"]["started_at"])
+            self.assertEqual(before["summary"]["status"], "incomplete")
+
+            updated = pilot.operator_update_setup(
+                pilot.OperatorSetupUpdate(
+                    operator_locale="tr",
+                    hardware_base_profile="counter_box",
+                    hardware_enabled_addons=[
+                        "ticket_printer",
+                        "backup_spool",
+                        "order_alert",
+                        "pickup_board",
+                    ],
+                    catalog_ready=True,
+                    local_tests_run=True,
+                ),
+                authorization="Bearer operator-secret",
+            )
+
+            self.assertEqual(updated["setup"]["operator_locale"], "tr")
+            self.assertEqual(updated["setup"]["locale"]["current"], "tr")
+            self.assertEqual(updated["setup"]["hardware_profile"], "box_v1_counter")
+            self.assertEqual(updated["setup"]["hardware_base_profile"], "counter_box")
+            self.assertEqual(
+                updated["setup"]["hardware_enabled_addons"],
+                ["ticket_printer", "backup_spool", "order_alert", "pickup_board"],
+            )
+            self.assertTrue(updated["setup"]["catalog_ready"])
+            self.assertIn("catalog_reviewed", updated["setup"]["completed_steps"])
+            self.assertIn("local_tests_run", updated["setup"]["completed_steps"])
+            self.assertEqual(updated["setup"]["payment_module_id"], "p4p.payment.cash")
+            self.assertEqual(updated["summary"]["status"], "menu_only-ready")
+            self.assertTrue(updated["summary"]["ready_for_menu_only"])
+            self.assertIsNotNone(updated["setup"]["completed_at"])
+            pilot.store.close()
+
+            reloaded = load_module("pilot-node/pilot_node.py", env)
+            reloaded_setup = reloaded.operator_setup(authorization="Bearer operator-secret")
+            self.assertEqual(reloaded_setup["setup"]["operator_locale"], "tr")
+            self.assertEqual(reloaded_setup["setup"]["locale"]["current"], "tr")
+            self.assertEqual(reloaded_setup["setup"]["hardware_profile"], "box_v1_counter")
+            self.assertEqual(reloaded_setup["setup"]["hardware_base_profile"], "counter_box")
+            self.assertEqual(
+                reloaded_setup["setup"]["hardware_enabled_addons"],
+                ["ticket_printer", "backup_spool", "order_alert", "pickup_board"],
+            )
+            self.assertTrue(reloaded_setup["setup"]["catalog_ready"])
+            self.assertIn("local_tests_run", reloaded_setup["setup"]["completed_steps"])
+            self.assertIsNotNone(reloaded_setup["setup"]["started_at"])
+            self.assertIsNotNone(reloaded_setup["setup"]["last_reviewed_at"])
+            reloaded.store.close()
+
+    def test_pilot_node_operator_discover_and_node_rooms_share_public_catalog_truth(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_ORDER_MODE": "menu_only",
+                "P4P_NODE_MODULES": (
+                    "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,"
+                    "p4p.kitchen.screen,p4p.payment.cash"
+                ),
+                "P4P_OPERATOR_TOKEN": "operator-secret",
+            }
+            pilot = load_module("pilot-node/pilot_node.py", env)
+
+            pilot.operator_update_setup(
+                pilot.OperatorSetupUpdate(operator_locale="ar"),
+                authorization="Bearer operator-secret",
+            )
+            discover = pilot.operator_discover(authorization="Bearer operator-secret")
+            node_room = pilot.operator_node(authorization="Bearer operator-secret")
+
+            self.assertEqual(discover["locale"]["current"], "ar")
+            self.assertTrue(discover["locale"]["is_rtl"])
+            self.assertEqual(discover["family"]["id"], "shop")
+            self.assertIn("public_catalog_url", discover["links"])
+            self.assertIn("shop_family_url", discover["links"])
+            self.assertEqual(discover["links"]["modules_room_url"], "/operator/modules")
+            self.assertFalse(any("install" in entry for entry in discover["recommended_modules"]))
+            recommended_ids = [entry["module_id"] for entry in discover["recommended_modules"]]
+            self.assertIn("p4p.catalog.editor", recommended_ids)
+            self.assertIn("p4p.payment.cash", recommended_ids)
+
+            self.assertEqual(node_room["locale"]["current"], "ar")
+            self.assertIn("hardware", node_room)
+            self.assertIn("setup", node_room)
+            self.assertIn("modules", node_room)
+            self.assertIn("links", node_room)
+            self.assertEqual(node_room["links"]["discover_url"], "/operator/discover")
+            self.assertEqual(node_room["links"]["modules_url"], "/operator/modules")
+            self.assertEqual(node_room["links"]["setup_url"], "/operator/setup")
+            pilot.store.close()
+
+    def test_pilot_node_operator_import_manifest_persists_metadata_only_without_touching_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_MODULES": "p4p.payment.cash",
+                "P4P_OPERATOR_TOKEN": "operator-secret",
+            }
+            pilot = load_module("pilot-node/pilot_node.py", env)
+            payload = json.loads((REPO_ROOT / "modules/p4p.menu.list/module.json").read_text(encoding="utf-8"))
+            payload["module_id"] = "local.demo.customer.menu"
+            payload["provider_id"] = "local.demo"
+            payload["version"] = "0.2"
+            payload["public_catalog"]["title"] = {"da": "Lokal menuvisning", "en": "Local menu view"}
+            payload["public_catalog"]["summary"] = {"da": "Kun metadata på noden.", "en": "Metadata only on the node."}
+
+            imported = pilot.operator_import_module_manifest(
+                source_name="module.json",
+                content_bytes=json.dumps(payload).encode("utf-8"),
+                authorization="Bearer operator-secret",
+            )
+            self.assertFalse(imported["replaced"])
+            self.assertEqual(imported["manifest"]["module_id"], "local.demo.customer.menu")
+            self.assertEqual(imported["manifest"]["validation_status"], "validated")
+            self.assertFalse(imported["manifest"]["runnable_now"])
+            self.assertFalse(imported["manifest"]["selectable_for_desired_set"])
+
+            replaced_payload = dict(payload)
+            replaced_payload["version"] = "0.3"
+            replaced = pilot.operator_import_module_manifest(
+                source_name="module-v2.json",
+                content_bytes=json.dumps(replaced_payload).encode("utf-8"),
+                authorization="Bearer operator-secret",
+            )
+            self.assertTrue(replaced["replaced"])
+            self.assertEqual(replaced["manifest"]["version"], "0.3")
+
+            imports_room = pilot.operator_import(authorization="Bearer operator-secret")
+            modules_room = pilot.operator_modules(authorization="Bearer operator-secret")
+            self.assertEqual(imports_room["imported_manifest_count"], 1)
+            self.assertEqual(len(imports_room["imported_manifests"]), 1)
+            self.assertEqual(modules_room["imported_manifest_count"], 1)
+            self.assertEqual(len(modules_room["imported_manifests"]), 1)
+            self.assertEqual(modules_room["current_module_ids"], ["p4p.payment.cash"])
+            self.assertEqual(modules_room["desired_module_ids"], ["p4p.payment.cash"])
+            self.assertFalse(modules_room["restart_required"])
+
+            with self.assertRaises(HTTPException) as unknown_imported_module:
+                pilot.operator_update_module_set(
+                    pilot.OperatorModuleSetUpdate(
+                        module_ids=["p4p.payment.cash", "local.demo.customer.menu"]
+                    ),
+                    authorization="Bearer operator-secret",
+                )
+            self.assertEqual(unknown_imported_module.exception.status_code, 400)
+            self.assertIn("Unknown module_id", str(unknown_imported_module.exception.detail))
+
+            deleted = pilot.operator_delete_imported_module_manifest(
+                "local.demo.customer.menu",
+                authorization="Bearer operator-secret",
+            )
+            self.assertTrue(deleted["removed"])
+            self.assertEqual(deleted["imported_manifest_count"], 0)
+            pilot.store.close()
+
+    def test_pilot_node_operator_import_manifest_rejects_invalid_and_colliding_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "pilot.sqlite3"
+            external_manifest_path = Path(tmpdir) / "external-module.json"
+            external_payload = json.loads((REPO_ROOT / "modules/p4p.menu.list/module.json").read_text(encoding="utf-8"))
+            external_payload["module_id"] = "local.external.wallet"
+            external_payload["provider_id"] = "local.external"
+            external_payload["version"] = "1.0"
+            external_manifest_path.write_text(json.dumps(external_payload), encoding="utf-8")
+
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(db_path),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_MODULES": "p4p.payment.cash",
+                    "P4P_EXTERNAL_MODULE_MANIFESTS": str(external_manifest_path),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            with self.assertRaises(HTTPException) as invalid_json:
+                pilot.operator_import_module_manifest(
+                    source_name="module.json",
+                    content_bytes=b"{not-json",
+                    authorization="Bearer operator-secret",
+                )
+            with self.assertRaises(HTTPException) as non_object_json:
+                pilot.operator_import_module_manifest(
+                    source_name="module.json",
+                    content_bytes=b"[]",
+                    authorization="Bearer operator-secret",
+                )
+            with self.assertRaises(HTTPException) as invalid_schema:
+                pilot.operator_import_module_manifest(
+                    source_name="module.json",
+                    content_bytes=json.dumps({}).encode("utf-8"),
+                    authorization="Bearer operator-secret",
+                )
+
+            reference_collision_payload = json.loads(
+                (REPO_ROOT / "modules/p4p.menu.list/module.json").read_text(encoding="utf-8")
+            )
+            with self.assertRaises(HTTPException) as reference_collision:
+                pilot.operator_import_module_manifest(
+                    source_name="module.json",
+                    content_bytes=json.dumps(reference_collision_payload).encode("utf-8"),
+                    authorization="Bearer operator-secret",
+                )
+
+            external_collision_payload = dict(external_payload)
+            with self.assertRaises(HTTPException) as external_collision:
+                pilot.operator_import_module_manifest(
+                    source_name="module.json",
+                    content_bytes=json.dumps(external_collision_payload).encode("utf-8"),
+                    authorization="Bearer operator-secret",
+                )
+
+            self.assertEqual(invalid_json.exception.status_code, 400)
+            self.assertEqual(non_object_json.exception.status_code, 400)
+            self.assertEqual(invalid_schema.exception.status_code, 400)
+            self.assertEqual(reference_collision.exception.status_code, 400)
+            self.assertEqual(external_collision.exception.status_code, 400)
+            self.assertIn("valid UTF-8 JSON", str(invalid_json.exception.detail))
+            self.assertIn("one JSON object", str(non_object_json.exception.detail))
+            self.assertIn("Invalid module manifest", str(invalid_schema.exception.detail))
+            self.assertIn("shadows", str(reference_collision.exception.detail))
+            self.assertIn("shadows", str(external_collision.exception.detail))
+            pilot.store.close()
+
     def test_pilot_node_operator_payment_module_selection_rejects_invalid_modules(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pilot = load_module(
@@ -4052,6 +5346,36 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(events[-1].metadata["print_driver"], "simulated")
             self.assertEqual(events[-1].metadata["sensor_source"], "simulated")
             self.assertEqual(events[-1].metadata["delivery_surface"], "screen")
+            pilot.store.close()
+
+    def test_pilot_node_operator_state_exposes_hardware_bundle_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "menu_only",
+                    "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print,p4p.order.print.backup,p4p.order.alert.basic,p4p.pickup.board.basic",
+                    "P4P_HARDWARE_PROFILE": "box_v1_counter",
+                    "P4P_PRINT_DEVICE_PATH": str(Path(tmpdir) / "printer.bin"),
+                    "P4P_PRINT_SENSOR_SERIAL_PATH": str(Path(tmpdir) / "sensor.txt"),
+                    "P4P_BACKUP_PRINT_SPOOL_DIR": str(Path(tmpdir) / "backup-spool"),
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            state = pilot.operator_state(authorization="Bearer operator-secret")
+
+            self.assertEqual(state["hardware"]["profile"], "box_v1_counter")
+            self.assertFalse(state["hardware"]["customized"])
+            self.assertEqual(state["hardware"]["print"]["driver"], "escpos_raw")
+            self.assertEqual(state["hardware"]["print"]["target"], "printer")
+            self.assertEqual(state["hardware"]["backup_print"]["target"], "backup_spool")
+            self.assertEqual(state["hardware"]["backup_print"]["driver"], "file_spool")
+            self.assertEqual(state["hardware"]["alert"]["target"], "counter_bell")
+            self.assertEqual(state["hardware"]["pickup_board"]["target"], "counter_screen")
             pilot.store.close()
 
     def test_pilot_node_print_module_can_spool_ticket_artifact(self) -> None:
@@ -4413,11 +5737,19 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 pilot.operator_update_payment_module(
                     pilot.OperatorPaymentModuleUpdate(module_id="p4p.payment.cash"),
                 )
+            with self.assertRaises(HTTPException) as missing_module_detail_token:
+                pilot.operator_module_detail("p4p.payment.cash")
+            with self.assertRaises(HTTPException) as missing_module_set_token:
+                pilot.operator_update_module_set(
+                    pilot.OperatorModuleSetUpdate(module_ids=["p4p.payment.cash"]),
+                )
 
             self.assertEqual(missing_token.exception.status_code, 401)
             self.assertEqual(wrong_token.exception.status_code, 401)
             self.assertEqual(missing_modules_token.exception.status_code, 401)
             self.assertEqual(missing_payment_module_token.exception.status_code, 401)
+            self.assertEqual(missing_module_detail_token.exception.status_code, 401)
+            self.assertEqual(missing_module_set_token.exception.status_code, 401)
             pilot.store.close()
 
     def test_pilot_node_root_index_points_browser_to_public_endpoints(self) -> None:
@@ -4447,11 +5779,22 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(index["endpoints"]["menu_photo_map"], "GET /p4p/menu/photo-map")
             self.assertEqual(index["endpoints"]["order"], "POST /p4p/order")
             self.assertEqual(index["endpoints"]["operator_gui"], "GET /operator")
+            self.assertEqual(index["endpoints"]["operator_catalog"], "GET /operator/catalog")
+            self.assertEqual(index["endpoints"]["operator_import"], "GET /operator/import")
             self.assertEqual(index["endpoints"]["operator_modules"], "GET /operator/modules")
+            self.assertEqual(index["endpoints"]["operator_module_view"], "GET /operator/modules/view/{module_id}")
+            self.assertEqual(index["endpoints"]["operator_module_detail"], "GET /operator/modules/{module_id}")
+            self.assertEqual(index["endpoints"]["operator_module_imports"], "GET /operator/modules/imports")
+            self.assertEqual(index["endpoints"]["operator_import_manifest"], "POST /operator/modules/import-manifest")
+            self.assertEqual(
+                index["endpoints"]["operator_delete_imported_manifest"],
+                "DELETE /operator/modules/imports/{module_id}",
+            )
             self.assertEqual(index["endpoints"]["operator_payment_module"], "PATCH /operator/modules/payment")
+            self.assertEqual(index["endpoints"]["operator_module_set"], "PATCH /operator/modules/set")
             pilot.store.close()
 
-    def test_pilot_node_operator_gui_loads_module_dashboard_shell(self) -> None:
+    def test_pilot_node_operator_gui_loads_operations_shell(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pilot = load_module(
                 "pilot-node/pilot_node.py",
@@ -4464,20 +5807,77 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
             html = pilot.operator_gui()
 
-            self.assertIn("<title>P4P Pilot Operator</title>", html)
+            self.assertIn("<title>P4P Drift</title>", html)
+            self.assertIn('href="/operator/catalog"', html)
+            self.assertIn('href="/operator/modules"', html)
+            self.assertIn('href="/operator/import"', html)
             self.assertIn('request("/operator/modules")', html)
-            self.assertIn('request("/operator/modules/payment"', html)
             self.assertIn('method: "PATCH"', html)
-            self.assertIn("setActivePayment", html)
             self.assertIn('request("/operator/state")', html)
             self.assertIn('request("/operator/orders")', html)
             self.assertIn('request("/operator/menu")', html)
-            self.assertIn("renderKitchen", html)
-            self.assertIn("renderCatalog", html)
-            self.assertIn("saveCatalog", html)
+            self.assertIn("renderOrders", html)
+            self.assertIn("Backoffice", html)
+            self.assertNotIn("Running now on this node.", html)
+            self.assertNotIn("Available modules", html)
+            self.assertNotIn("saveCatalog", html)
             self.assertIn("updateOrder", html)
             self.assertIn("X-P4P-Operator-Token", html)
             self.assertIn("p4pOperatorToken", html)
+            self.assertNotIn("Category before import", html)
+            self.assertNotIn("import-preview-category", html)
+            self.assertNotIn('importSourceNameInput.value = file.name', html)
+            self.assertNotIn("slugifyImportName", html)
+            pilot.store.close()
+
+    def test_pilot_node_operator_catalog_page_loads_catalog_shell(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            html = pilot.operator_catalog_page()
+
+            self.assertIn("<title>P4P Katalog</title>", html)
+            self.assertIn('href="/operator"', html)
+            self.assertIn('href="/operator/modules"', html)
+            self.assertIn('request("/operator/modules")', html)
+            self.assertIn('request("/operator/menu")', html)
+            self.assertIn("renderCatalog", html)
+            self.assertIn("saveCatalog", html)
+            self.assertIn("Open OCR module page", html)
+            self.assertNotIn("Incoming and active pickup orders for the current shift.", html)
+            pilot.store.close()
+
+    def test_pilot_node_operator_modules_page_loads_module_control_shell(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            html = pilot.operator_modules_page()
+
+            self.assertIn("<title>P4P Moduler</title>", html)
+            self.assertIn('href="/operator/catalog"', html)
+            self.assertIn('request("/operator/modules")', html)
+            self.assertIn("/operator/modules/view/", html)
+            self.assertIn('request("/operator/state")', html)
+            self.assertIn('request("/operator/menu")', html)
+            self.assertIn("renderModuleStateSummary", html)
+            self.assertIn("Current modules", html)
+            self.assertIn("Available modules", html)
+            self.assertIn("restart required", html)
+            self.assertNotIn("saveCatalog", html)
             pilot.store.close()
 
     def test_pilot_node_dual_registers_to_primary_and_backup(self) -> None:

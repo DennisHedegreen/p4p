@@ -12,6 +12,8 @@ if str(P4P_ROOT) not in sys.path:
 
 from p4p_core import (
     Menu,
+    MenuImportPreviewRequest,
+    MenuImportPreviewResponse,
     MenuItem,
     MenuUpdate,
     ModuleResultEvent,
@@ -21,18 +23,46 @@ from p4p_core import (
     PublicOrderStatus,
 )
 
-from pilot_node.config import OperatorPaymentModuleUpdate, OperatorStateUpdate
+from pilot_node.config import (
+    OperatorModuleSetUpdate,
+    OperatorPaymentModuleUpdate,
+    OperatorSetupUpdate,
+    OperatorStateUpdate,
+)
 from pilot_node.routes import (
     build_app,
+    operator_catalog_page as _operator_catalog_page,
+    operator_discover as _operator_discover,
+    operator_discover_page as _operator_discover_page,
     operator_gui as _operator_gui,
+    operator_import as _operator_import,
+    operator_import_page as _operator_import_page,
+    operator_import_module_manifest as _operator_import_module_manifest,
+    operator_delete_imported_module_manifest as _operator_delete_imported_module_manifest,
+    operator_imported_manifests as _operator_imported_manifests,
+    operator_node as _operator_node,
+    operator_node_page as _operator_node_page,
+    operator_setup as _operator_setup,
+    operator_setup_page as _operator_setup_page,
+    operator_update_setup as _operator_update_setup,
+    operator_welcome_page as _operator_welcome_page,
+    module_detail_entry as _module_detail_entry,
     operator_menu as _operator_menu,
+    operator_menu_import_image_preview as _operator_menu_import_image_preview,
+    operator_menu_import_preview as _operator_menu_import_preview,
+    operator_module_self_test as _operator_module_self_test,
+    operator_modules_page as _operator_modules_page,
+    operator_module_view_page as _operator_module_view_page,
     operator_modules as _operator_modules,
     operator_order_events as _operator_order_events,
     operator_orders as _operator_orders,
+    operator_pickup_board_data as _operator_pickup_board_data,
+    operator_pickup_board_page as _operator_pickup_board_page,
     operator_replace_menu as _operator_replace_menu,
     operator_reannounce as _operator_reannounce,
     operator_state as _operator_state,
     operator_update_order as _operator_update_order,
+    operator_update_module_set as _operator_update_module_set,
     operator_update_payment_module as _operator_update_payment_module,
     operator_update_state as _operator_update_state,
     public_info as _public_info,
@@ -110,6 +140,111 @@ def operator_gui():
     return _operator_gui(RUNTIME)
 
 
+def operator_welcome_page() -> str:
+    return _operator_welcome_page(RUNTIME)
+
+
+def operator_setup_page() -> str:
+    return _operator_setup_page(RUNTIME)
+
+
+def operator_setup(authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_setup(RUNTIME)
+
+
+def operator_catalog_page() -> str:
+    return _operator_catalog_page(RUNTIME)
+
+
+def operator_discover_page() -> str:
+    return _operator_discover_page(RUNTIME)
+
+
+def operator_discover(authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_discover(RUNTIME)
+
+
+def operator_import_page() -> str:
+    return _operator_import_page(RUNTIME)
+
+
+def operator_import(authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_import(RUNTIME)
+
+
+def operator_imported_manifests(authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_imported_manifests(RUNTIME)
+
+
+def operator_import_module_manifest(
+    *,
+    source_name: str,
+    content_bytes: bytes,
+    authorization=None,
+    x_p4p_operator_token=None,
+):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_import_module_manifest(
+        RUNTIME,
+        source_name=source_name,
+        content_bytes=content_bytes,
+    )
+
+
+def operator_delete_imported_module_manifest(module_id: str, authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_delete_imported_module_manifest(RUNTIME, module_id)
+
+
+def operator_node_page() -> str:
+    return _operator_node_page(RUNTIME)
+
+
+def operator_node(authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_node(RUNTIME)
+
+
+def operator_module_view_page(module_id: str) -> str:
+    return _operator_module_view_page(RUNTIME, module_id)
+
+
+def operator_modules_page() -> str:
+    return _operator_modules_page(RUNTIME)
+
+
 def operator_modules(authorization=None, x_p4p_operator_token=None):
     _require_operator_token(
         RUNTIME,
@@ -117,6 +252,15 @@ def operator_modules(authorization=None, x_p4p_operator_token=None):
         x_p4p_operator_token=x_p4p_operator_token,
     )
     return _operator_modules(RUNTIME)
+
+
+def operator_module_detail(module_id: str, authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _module_detail_entry(RUNTIME, module_id)
 
 
 def operator_menu(authorization=None, x_p4p_operator_token=None) -> Menu:
@@ -128,6 +272,19 @@ def operator_menu(authorization=None, x_p4p_operator_token=None) -> Menu:
     return _operator_menu(RUNTIME)
 
 
+def operator_pickup_board_page() -> str:
+    return _operator_pickup_board_page(RUNTIME)
+
+
+def operator_pickup_board_data(authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_pickup_board_data(RUNTIME)
+
+
 def operator_replace_menu(payload: MenuUpdate, authorization=None, x_p4p_operator_token=None) -> Menu:
     _require_operator_token(
         RUNTIME,
@@ -137,6 +294,34 @@ def operator_replace_menu(payload: MenuUpdate, authorization=None, x_p4p_operato
     return _operator_replace_menu(RUNTIME, payload)
 
 
+def operator_menu_import_preview(
+    payload: MenuImportPreviewRequest,
+    authorization=None,
+    x_p4p_operator_token=None,
+) -> MenuImportPreviewResponse:
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_menu_import_preview(RUNTIME, payload)
+
+
+def operator_menu_import_image_preview(
+    image_bytes: bytes,
+    *,
+    source_name: str = "",
+    authorization=None,
+    x_p4p_operator_token=None,
+) -> MenuImportPreviewResponse:
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_menu_import_image_preview(RUNTIME, image_bytes=image_bytes, source_name=source_name)
+
+
 async def operator_update_state(payload: OperatorStateUpdate, authorization=None, x_p4p_operator_token=None):
     _require_operator_token(
         RUNTIME,
@@ -144,6 +329,19 @@ async def operator_update_state(payload: OperatorStateUpdate, authorization=None
         x_p4p_operator_token=x_p4p_operator_token,
     )
     return await _operator_update_state(RUNTIME, payload)
+
+
+def operator_update_setup(
+    payload: OperatorSetupUpdate,
+    authorization=None,
+    x_p4p_operator_token=None,
+):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_update_setup(RUNTIME, payload)
 
 
 def operator_update_payment_module(
@@ -157,6 +355,19 @@ def operator_update_payment_module(
         x_p4p_operator_token=x_p4p_operator_token,
     )
     return _operator_update_payment_module(RUNTIME, payload)
+
+
+def operator_update_module_set(
+    payload: OperatorModuleSetUpdate,
+    authorization=None,
+    x_p4p_operator_token=None,
+):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_update_module_set(RUNTIME, payload)
 
 
 def operator_orders(authorization=None, x_p4p_operator_token=None):
@@ -181,6 +392,15 @@ def operator_order_events(
     return _operator_order_events(RUNTIME, order_id)
 
 
+def operator_module_self_test(module_id: str, authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_module_self_test(RUNTIME, module_id)
+
+
 def operator_update_order(order_id: str, payload: OrderStatusUpdate, authorization=None, x_p4p_operator_token=None):
     _require_operator_token(
         RUNTIME,
@@ -201,26 +421,53 @@ async def operator_reannounce(authorization=None, x_p4p_operator_token=None):
 
 __all__ = [
     "Menu",
+    "MenuImportPreviewRequest",
+    "MenuImportPreviewResponse",
     "MenuItem",
     "MenuUpdate",
     "OrderItem",
     "OrderRequest",
     "OrderStatusUpdate",
     "ModuleResultEvent",
+    "OperatorModuleSetUpdate",
     "OperatorPaymentModuleUpdate",
+    "OperatorSetupUpdate",
     "PublicOrderStatus",
     "REGISTRATION",
     "app",
     "httpx",
     "node_state",
+    "operator_catalog_page",
+    "operator_discover",
+    "operator_discover_page",
     "operator_gui",
+    "operator_import",
+    "operator_import_page",
+    "operator_imported_manifests",
+    "operator_import_module_manifest",
+    "operator_delete_imported_module_manifest",
+    "operator_node",
+    "operator_node_page",
+    "operator_setup",
+    "operator_setup_page",
+    "operator_welcome_page",
+    "operator_module_detail",
     "operator_menu",
+    "operator_menu_import_image_preview",
+    "operator_menu_import_preview",
+    "operator_module_self_test",
+    "operator_modules_page",
+    "operator_module_view_page",
     "operator_modules",
     "operator_order_events",
     "operator_orders",
+    "operator_pickup_board_data",
+    "operator_pickup_board_page",
     "operator_replace_menu",
     "operator_reannounce",
     "operator_state",
+    "operator_update_setup",
+    "operator_update_module_set",
     "operator_update_order",
     "operator_update_payment_module",
     "operator_update_state",

@@ -28,6 +28,7 @@ from pilot_node.runtime import PilotRuntime, effective_flow_module_ids, effectiv
 
 ORDER_RECEIVER_MODULE_ID = "p4p.order.receiver"
 CATALOG_EDITOR_MODULE_ID = "p4p.catalog.editor"
+CATALOG_IMPORT_OCR_MODULE_ID = "p4p.catalog.import.ocr"
 CUSTOMER_STATUS_MODULE_ID = "p4p.customer.status"
 KITCHEN_SCREEN_MODULE_ID = "p4p.kitchen.screen"
 MENU_LIST_MODULE_ID = "p4p.menu.list"

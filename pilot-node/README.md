@@ -18,11 +18,15 @@ It is the smallest real node shape for one restaurant:
 - pay at pickup
 - optional stock validation lane
 - optional catalog editor operator surface
+- optional OCR/scanned-menu draft import helper beside the catalog editor
 - optional customer list-menu surface
 - optional customer photo-map menu surface
 - optional pay-at-pickup payment-mode lane
 - optional kitchen-screen operator surface
 - optional customer order-status surface
+- optional backup print self-test lane
+- optional local alert self-test lane
+- optional pickup-board counter surface
 
 Start it in `menu_only`.
 
@@ -33,6 +37,7 @@ Move to `live` only through explicit operator action.
 ```bash
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
+./.venv/bin/python -m pip install -r requirements-ocr.txt  # optional image OCR preview
 P4P_PILOT_NODE_DB_PATH=/tmp/p4p-pilot-node.sqlite3 \
 P4P_OPERATOR_TOKEN=change-this \
 P4P_REGISTRY_URLS=http://127.0.0.1:8000,http://127.0.0.1:8002 \
@@ -44,9 +49,14 @@ P4P_NODE_ORDER_MODE=menu_only \
 The SQLite path is the pilot node's source of truth for menu, operator state,
 active payment-module selection, and order history.
 
+For the first five hardware-pilot variants and the security baseline around them,
+read `docs/FIVE-PLACE-PILOT-PACK.md`, `docs/HARDWARE-STATE-MODEL.md`, and `deploy/pilot-node.five-place-presets.env.example`.
+
 Enable the small reference runtime lanes with `P4P_NODE_MODULES`:
 
 - `p4p.catalog.editor` exposes the built-in operator catalog editor for item ids, prices, categories, active availability, and optional item image URLs.
+- `p4p.catalog.import.ocr` exposes the built-in operator draft OCR text/image import preview on its own dedicated module page beside the catalog editor.
+- install `requirements-ocr.txt` if `p4p.catalog.import.ocr` should preview draft catalog lines from a photographed or scanned paper menu
 - `p4p.menu.list` exposes the built-in customer list-menu page from active catalog items and renders optional item images.
 - `p4p.menu.photo-map` exposes the built-in customer paper-menu style page from active catalog items and renders optional item images.
 - `p4p.stock.basic` emits `ORDER_VALIDATED`, or `ITEM_NOT_POSSIBLE` when a configured item is unavailable.
@@ -56,6 +66,9 @@ Enable the small reference runtime lanes with `P4P_NODE_MODULES`:
 - `p4p.payment.godpay-mock` emits a random internal test payment success/failure based on `P4P_GODPAY_SUCCESS_THRESHOLD`.
 - `p4p.payment.chaospay-mock` is declared as a planned internal chaos-payment mock, but its scenario executor is intentionally not enabled yet.
 - `p4p.order.print` emits the operator print/screen lane.
+- `p4p.order.print.backup` exposes a builtin operator self-test for a backup printer/spool target.
+- `p4p.order.alert.basic` exposes a builtin operator self-test for a bell/light target.
+- `p4p.pickup.board.basic` exposes a builtin local `/operator/pickup-board` surface for accepted/ready orders.
 
 These lanes do not add online payment, card handling, real wallet handling, settlement, or registry access to order contents.
 
@@ -63,7 +76,11 @@ Homebuilt or external module IDs can also be listed in `P4P_NODE_MODULES`.
 If a module has no reference manifest, the pilot node keeps it as `undeclared_modules`
 in operator state and does not execute or publish it as a P4P reference module.
 
-External modules become declared only when the operator imports a local module manifest.
+The operator can now import a local `module.json` into node-local SQLite metadata from
+`GET /operator/import`, but phase 1 keeps imported manifests as metadata only.
+They are visible on the node, but are not runnable, do not enter `available_modules`,
+and do not become selectable for the desired runtime set yet.
+
 The first test path is `local.pizzacoin.wallet`, which remains outside `P4P/`.
 
 Example local Pizzacoin payment startup default:
@@ -79,6 +96,27 @@ P4P_PAYMENT_EXTERNAL_CUSTOMER_USER_ID=usr_from_pizzacoin_gui \
 `P4P_PAYMENT_MODULE_ID` is only the startup default. The operator dashboard can
 switch the active payment module later with `PATCH /operator/modules/payment`,
 and that choice persists in the node SQLite database.
+
+The enabled module set also has a node-local source of truth in SQLite.
+
+- `P4P_NODE_MODULES` is the bootstrap fallback
+- the operator can persist a desired module set with `PATCH /operator/modules/set`
+- that desired set applies on the next node restart
+- the running runtime and the desired-after-restart set are shown separately in the operator
+
+This keeps module selection honest across local dev, systemd, and simple hosted launch modes.
+
+The setup/onboarding layer also has a node-local source of truth in SQLite.
+
+- `GET /operator/setup` returns the computed setup summary as JSON for the operator shell
+- `PATCH /operator/setup` persists the small onboarding record beside runtime state
+- the remembered onboarding state also stores one operator locale so the tablet can stay in Danish, Swedish, Turkish, Arabic, or Kurdish between refreshes
+- setup state is not the source of truth for menu, modules, or orders; it is a remembered owner-facing checklist layer on top of them
+- hardware setup state now persists a richer owner-facing shape beside the legacy bundle id:
+  - `hardware_profile` remains as a compatibility bundle field when the chosen base shape and add-ons still match a known reference profile
+  - `hardware_base_profile` stores the chosen node shape such as `screen_only`, `printer_box`, or `counter_box`
+  - `hardware_enabled_addons` stores the chosen extra local hardware capabilities such as `ticket_printer`, `backup_spool`, `order_alert`, or `pickup_board`
+  - detected devices and richer hardware test results still belong to the next pass documented in `docs/HARDWARE-STATE-MODEL.md`
 
 In that mode the payment lane posts to the manifest `entrypoint`, auto-confirms
 the fake payment by default, and emits `PAYMENT_REQUIRED -> PAYMENT_MODE_CHANGED`
@@ -137,20 +175,64 @@ All operator endpoints require either:
 
 Endpoints:
 
+- `GET /operator/welcome`
+- `GET /operator/setup`
+- `PATCH /operator/setup`
 - `GET /operator`
+- `GET /operator/catalog`
+- `GET /operator/discover`
+- `GET /operator/import`
+- `GET /operator/modules/view/{module_id}`
+- `GET /operator/node`
+- `GET /operator/pickup-board`
+- `GET /operator/pickup-board/data`
 - `GET /operator/state`
 - `PATCH /operator/state`
-- `GET /operator/modules`
+- `GET /operator/modules` (HTML page in the browser, JSON for operator fetches)
+- `GET /operator/modules/imports`
+- `POST /operator/modules/import-manifest`
+- `DELETE /operator/modules/imports/{module_id}`
+- `GET /operator/modules/{module_id}`
+- `POST /operator/modules/{module_id}/self-test`
 - `PATCH /operator/modules/payment`
+- `PATCH /operator/modules/set`
 - `GET /operator/menu`
+- `POST /operator/menu/import-preview`
+- `POST /operator/menu/import-image-preview`
 - `PUT /operator/menu`
 - `GET /operator/orders`
 - `GET /operator/orders/{order_id}/events`
 - `PATCH /operator/orders/{order_id}`
 - `POST /operator/reannounce`
 
-`GET /operator` serves the local browser dashboard. The HTML shell is readable
-without a token, but all operator data requests still require the operator token.
+`GET /operator/welcome` is the owner-first intro room, and
+`GET /operator/setup` is the first computed setup-checklist room.
+`PATCH /operator/setup` persists the small onboarding state for that room
+(such as chosen operator language, chosen base hardware shape, chosen extra hardware, menu reviewed, and local tests run).
+`GET /operator` now serves the local operations room.
+`GET /operator/catalog` serves the dedicated catalog room, and
+`GET /operator/modules` serves the dedicated module-control room.
+`GET /operator/discover` is the read-only bridge into the public module catalog on `protocols4people.com/modules`,
+`GET /operator/import` is the metadata-only room for uploading a local module manifest onto this node,
+and `GET /operator/node` keeps local node identity, setup truth, and restart state in one room.
+The HTML shells are readable without a token, but all operator data requests
+still require the operator token.
+
+The operator module panel is owner-first:
+
+- operations, catalog work, and module control no longer live on one long mixed page
+- current modules and available modules are shown separately
+- each module has a dedicated operator page at `GET /operator/modules/view/{module_id}`
+- `GET /operator/modules/{module_id}` returns the JSON detail for that page
+- `PATCH /operator/modules/set` updates the desired module set in SQLite
+- general module changes are restart-applied, not silently hot-swapped in-process
+- imported manifests live in a separate node-local metadata lane until a later phase makes imported modules runnable
+
+When `p4p.catalog.import.ocr` is enabled and OCR dependencies are installed, the
+dedicated module page at `GET /operator/modules/view/p4p.catalog.import.ocr`
+can upload a menu photo, preview draft items, and save selected draft items into
+the catalog. If the module is not enabled, the OCR preview routes return `404`
+and the generic operator shell does not show photo-import controls.
 
 ## Local Dry Run
 

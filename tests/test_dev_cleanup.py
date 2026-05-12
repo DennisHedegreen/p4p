@@ -165,29 +165,340 @@ class P4PDevCleanupTests(unittest.TestCase):
         builder.build()
 
         modules_payload = json.loads((WORKSPACE_ROOT / "public/www/pizza4people/modules.json").read_text(encoding="utf-8"))
+        providers_payload = json.loads((WORKSPACE_ROOT / "public/www/pizza4people/providers.json").read_text(encoding="utf-8"))
+        protocols_modules_payload = json.loads(
+            (WORKSPACE_ROOT / "public/www/protocols4people/modules.json").read_text(encoding="utf-8")
+        )
         homepage = (WORKSPACE_ROOT / "public/www/pizza4people/index.html").read_text(encoding="utf-8")
+        modules_page = (WORKSPACE_ROOT / "public/www/pizza4people/modules/index.html").read_text(encoding="utf-8")
+        providers_page = (WORKSPACE_ROOT / "public/www/pizza4people/providers/index.html").read_text(encoding="utf-8")
+        module_page = (WORKSPACE_ROOT / "public/www/pizza4people/modules/p4p.menu.list/index.html").read_text(encoding="utf-8")
+        provider_detail_page = (WORKSPACE_ROOT / "public/www/pizza4people/providers/p4p.reference/index.html").read_text(encoding="utf-8")
         press_kit_en = (WORKSPACE_ROOT / "public/www/pizza4people/press-kit/en.html").read_text(encoding="utf-8")
+        protocols_modules_page = (
+            WORKSPACE_ROOT / "public/www/protocols4people/modules/index.html"
+        ).read_text(encoding="utf-8")
+        protocols_shop_page = (
+            WORKSPACE_ROOT / "public/www/protocols4people/modules/shop/index.html"
+        ).read_text(encoding="utf-8")
 
         module_ids = [entry["module_id"] for entry in modules_payload["modules"]]
         self.assertEqual(
             module_ids,
             [
                 "p4p.catalog.editor",
+                "p4p.catalog.import.ocr",
                 "p4p.customer.status",
                 "p4p.kitchen.screen",
                 "p4p.menu.list",
                 "p4p.menu.photo-map",
                 "p4p.notify.email",
+                "p4p.notify.sms",
+                "p4p.order.alert.basic",
                 "p4p.order.print",
+                "p4p.order.print.backup",
                 "p4p.payment.cash",
                 "p4p.payment.chaospay-mock",
                 "p4p.payment.godpay-mock",
+                "p4p.payment.mobilepay",
+                "p4p.pickup.board.basic",
                 "p4p.stock.basic",
                 "p4p.trust.cvr-basic",
             ],
         )
+        first_module = modules_payload["modules"][0]
+        self.assertIn("module_page_url", first_module)
+        self.assertIn("provider_page_url", first_module)
+        self.assertIn("module_doc_url", first_module)
+        self.assertIn("module_manifest_url", first_module)
+        self.assertIn("provider_doc_url", first_module)
+        self.assertIn("pizza4people.com/modules/p4p.catalog.editor/", first_module["module_page_url"])
+        self.assertIn("pizza4people.com/providers/p4p.reference/", first_module["provider_page_url"])
+        self.assertIn("docs/modules/p4p.catalog.editor.md", first_module["module_doc_url"])
+        self.assertIn("modules/p4p.catalog.editor/module.json", first_module["module_manifest_url"])
+        self.assertIn("docs/providers/p4p.reference.md", first_module["provider_doc_url"])
+        self.assertEqual(protocols_modules_payload["default_locale"], "da")
+        self.assertEqual(protocols_modules_payload["supported_locales"], ["da", "sv", "tr", "ar", "ku"])
+        self.assertEqual(protocols_modules_payload["families"][0]["id"], "shop")
+        self.assertIn("p4p.catalog.editor", protocols_modules_payload["families"][0]["recommended_module_ids"])
+        self.assertTrue(protocols_modules_payload["modules"])
+        self.assertIn("A pizza shop should be able to keep its menu and take orders direct.", homepage)
+        self.assertIn("Public proof now", homepage)
+        self.assertIn("Not a marketplace app", homepage)
+        self.assertIn("Open full module page", homepage)
+        self.assertIn("Open provider page", homepage)
+        self.assertIn("Open manifest", homepage)
+        self.assertIn("open provider catalog", homepage)
+        self.assertIn('href="modules/"', homepage)
+        self.assertIn('href="modules/#new-here"', homepage)
+        self.assertIn("If you run a pizzeria", homepage)
+        self.assertIn('details class="module-item', homepage)
+        self.assertIn("Simple online menu", homepage)
+        self.assertIn("Which module matters first?", modules_page)
+        self.assertIn("Start with the simple idea, not the raw ids.", modules_page)
+        self.assertIn("P4P core is the road. Modules are optional tools around the road.", modules_page)
+        self.assertIn("If you run a shop", modules_page)
+        self.assertIn("If you build software", modules_page)
+        self.assertIn("If you are skeptical", modules_page)
+        self.assertIn("Open simple module guide", modules_page)
+        self.assertIn("Three practical ways into the module stack.", modules_page)
+        self.assertIn("Open the current stack by role, not by raw id.", modules_page)
+        self.assertIn("Start with the customer side", modules_page)
+        self.assertIn('href="p4p.menu.list/"', modules_page)
+        self.assertIn("Open module page", press_kit_en)
+        self.assertIn("provider catalog", press_kit_en)
+        self.assertIn("The shop keeps menu and prices", press_kit_en)
+        self.assertIn("Full local reading path", press_kit_en)
         self.assertIn("HTML kits are the maintained source", homepage)
         self.assertIn("Open base first. Commercial services on top.", press_kit_en)
+        self.assertIn("Protocols4People", protocols_modules_page)
+        self.assertIn("module-catalog-payload", protocols_modules_page)
+        self.assertIn("/modules/shop/", protocols_modules_page)
+        self.assertIn("Protocols4People Shop Modules", protocols_shop_page)
+        self.assertIn("module-catalog-payload", protocols_shop_page)
+        self.assertEqual([entry["provider_id"] for entry in providers_payload["providers"]], ["p4p.reference"])
+        first_provider = providers_payload["providers"][0]
+        self.assertEqual(first_provider["module_count"], len(module_ids))
+        self.assertIn("provider_page_url", first_provider)
+        self.assertIn("provider_doc_url", first_provider)
+        self.assertIn("provider_manifest_url", first_provider)
+        self.assertIn("pizza4people.com/providers/p4p.reference/", first_provider["provider_page_url"])
+        self.assertIn("docs/providers/p4p.reference.md", first_provider["provider_doc_url"])
+        self.assertIn("modules/p4p.catalog.editor/provider.json", first_provider["provider_manifest_url"])
+        self.assertIn("Who stands behind the current Pizza4People tools?", providers_page)
+        self.assertIn("Current tool source", providers_page)
+        self.assertIn("Good first pages for a shop", providers_page)
+        self.assertIn('details class="module-item provider-item', providers_page)
+        self.assertIn("../modules/p4p.menu.list/", providers_page)
+        self.assertIn("Simple online menu", module_page)
+        self.assertIn("For a pizzeria", module_page)
+        self.assertIn("Back to module catalog", module_page)
+        self.assertIn("Do not stop at one module page.", module_page)
+        self.assertIn("See what happens after the order", module_page)
+        self.assertIn('href="../p4p.customer.status/"', module_page)
+        self.assertIn("Open provider page", module_page)
+        self.assertIn("Open GitHub module reference", module_page)
+        self.assertIn("P4P Reference Modules", provider_detail_page)
+        self.assertIn("What this covers right now", provider_detail_page)
+        self.assertIn("Good first pages for a shop", provider_detail_page)
+        self.assertIn("Module catalog", provider_detail_page)
+        self.assertIn("Technical record", provider_detail_page)
+        self.assertIn("Simple online menu", provider_detail_page)
+        self.assertIn("Open raw provider manifest", provider_detail_page)
+
+    def test_protocols4people_surface_stays_human_readable_but_narrow(self) -> None:
+        protocols_site = (WORKSPACE_ROOT / "public/www/protocols4people/index.html").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "A shop, venue, or local service should be able to keep direct contact with people.",
+            protocols_site,
+        )
+        self.assertIn("Three clean ways into the project.", protocols_site)
+        self.assertIn("What this site is, and what it is not.", protocols_site)
+        self.assertIn("I want the exact protocol language", protocols_site)
+        self.assertIn("The umbrella idea in ordinary examples.", protocols_site)
+        self.assertIn("GitHub keeps the exact protocol language.", protocols_site)
+        self.assertIn("If you want the concrete proof, start with Pizza4People.", protocols_site)
+        self.assertIn("What is real now, what comes next, and what is not claimed.", protocols_site)
+        self.assertIn("No broad restaurant rollout yet", protocols_site)
+
+    def test_node_control_docs_and_dashboard_keep_registry_boundary_clear(self) -> None:
+        node_control_readme = (REPO_ROOT / "node-control/README.md").read_text(encoding="utf-8")
+        control = load_module("node-control/node_control.py")
+
+        html = control.dashboard_html(
+            {
+                "checked_at": "2026-05-07T12:00:00Z",
+                "summary": {
+                    "configured_registries": 1,
+                    "reachable_registries": 1,
+                    "unique_nodes": 1,
+                    "ready_nodes": 1,
+                    "operator_visible_nodes": 1,
+                },
+                "registries": [
+                    {
+                        "registry_url": "http://registry-a.test",
+                        "health": "up",
+                        "health_reason": "ok",
+                        "node_count": 1,
+                        "snapshot": {"nodes": []},
+                    }
+                ],
+                "nodes": [
+                    {
+                        "node_id": "dk-test-001",
+                        "name": "Test Node",
+                        "endpoint": "http://127.0.0.1:8201",
+                        "country": "DK",
+                        "city": "Brondby",
+                        "categories": ["pizza"],
+                        "last_seen": "2026-05-07T11:59:00Z",
+                        "freshness": "fresh",
+                        "open": True,
+                        "order_mode": "live",
+                        "registry_observations": [
+                            {
+                                "registry_url": "http://registry-a.test",
+                                "last_seen": "2026-05-07T11:59:00Z",
+                                "open": True,
+                                "order_mode": "live",
+                            }
+                        ],
+                        "observed_by": 1,
+                        "announced_modules": ["p4p.payment.cash"],
+                        "public_probe": {
+                            "status": "ready",
+                            "health": {"status": "ready", "accepts_orders": True},
+                            "info": {"accepts_orders": True},
+                        },
+                        "operator_probe": {
+                            "access": "ok",
+                            "state": {},
+                            "modules": {},
+                        },
+                        "enabled_modules": ["p4p.payment.cash"],
+                        "public_modules": ["p4p.payment.cash"],
+                        "undeclared_modules": [],
+                        "active_by_lane": {"payment": "p4p.payment.cash"},
+                        "module_health_counts": {"available": 1},
+                        "module_entries": [
+                            {
+                                "module_id": "p4p.payment.cash",
+                                "lane": "payment",
+                                "health": "available",
+                                "implementation": "builtin_reference",
+                            }
+                        ],
+                        "registry_state": {
+                            "ready": True,
+                            "registered_registries": ["http://registry-a.test"],
+                            "failed_registries": {},
+                        },
+                    }
+                ],
+            },
+            selected_node_id="dk-test-001",
+        )
+
+        self.assertIn("This is not a registry feature.", node_control_readme)
+        self.assertIn("GET /api/overview", node_control_readme)
+        self.assertIn("P4P Node Control", html)
+        self.assertIn("Registry truth stays narrow.", html)
+        self.assertIn("Test Node", html)
+
+    def test_five_place_pilot_pack_keeps_hardware_and_security_boundary_explicit(self) -> None:
+        pilot_pack = (REPO_ROOT / "docs/FIVE-PLACE-PILOT-PACK.md").read_text(encoding="utf-8")
+        preset_env = (REPO_ROOT / "deploy/pilot-node.five-place-presets.env.example").read_text(encoding="utf-8")
+        pilot_env = (REPO_ROOT / "deploy/pilot-node.env.example").read_text(encoding="utf-8")
+
+        self.assertIn("Version 5: Counter Full", pilot_pack)
+        self.assertIn("Do not expose `/operator` on the public internet.", pilot_pack)
+        self.assertIn("Use pickup and pay at pickup only for the first month.", pilot_pack)
+        self.assertIn("box_v1_counter", pilot_pack)
+        self.assertIn("Version 3: Screen + Bell", preset_env)
+        self.assertIn("P4P_HARDWARE_PROFILE=box_v1_counter", preset_env)
+        self.assertIn("deploy/pilot-node.five-place-presets.env.example", pilot_env)
+
+    def test_catalog_editor_menu_import_preview_stays_draft_only(self) -> None:
+        catalog_doc = (REPO_ROOT / "docs/modules/p4p.catalog.editor.md").read_text(encoding="utf-8")
+        import_doc = (REPO_ROOT / "docs/modules/p4p.catalog.import.ocr.md").read_text(encoding="utf-8")
+        pilot_readme = (REPO_ROOT / "pilot-node/README.md").read_text(encoding="utf-8")
+        operator_html = (REPO_ROOT / "pilot-node/operator.html").read_text(encoding="utf-8")
+        welcome_html = (REPO_ROOT / "pilot-node/operator-welcome.html").read_text(encoding="utf-8")
+        setup_html = (REPO_ROOT / "pilot-node/operator-setup.html").read_text(encoding="utf-8")
+        catalog_html = (REPO_ROOT / "pilot-node/operator-catalog.html").read_text(encoding="utf-8")
+        modules_html = (REPO_ROOT / "pilot-node/operator-modules.html").read_text(encoding="utf-8")
+        import_html = (REPO_ROOT / "pilot-node/operator-import.html").read_text(encoding="utf-8")
+        node_html = (REPO_ROOT / "pilot-node/operator-node.html").read_text(encoding="utf-8")
+        module_html = (REPO_ROOT / "pilot-node/module.html").read_text(encoding="utf-8")
+        fixture_readme = (REPO_ROOT / "docs/examples/menu-photo-map-fixtures/README.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("p4p.catalog.import.ocr", catalog_doc)
+        self.assertIn("draft-only", import_doc)
+        self.assertIn("catalog truth", import_doc)
+        self.assertIn("POST /operator/menu/import-preview", import_doc)
+        self.assertIn("POST /operator/menu/import-image-preview", import_doc)
+        self.assertIn("404", import_doc)
+        self.assertIn("p4p.catalog.import.ocr", pilot_readme)
+        self.assertIn("docs/HARDWARE-STATE-MODEL.md", pilot_readme)
+        self.assertIn("POST /operator/menu/import-preview", pilot_readme)
+        self.assertIn("POST /operator/menu/import-image-preview", pilot_readme)
+        self.assertIn("requirements-ocr.txt", pilot_readme)
+        self.assertIn("GET /operator/welcome", pilot_readme)
+        self.assertIn("GET /operator/setup", pilot_readme)
+        self.assertIn("PATCH /operator/setup", pilot_readme)
+        self.assertIn("GET /operator/discover", pilot_readme)
+        self.assertIn("GET /operator/import", pilot_readme)
+        self.assertIn("GET /operator/node", pilot_readme)
+        self.assertIn("PATCH /operator/modules/set", pilot_readme)
+        self.assertIn("GET /operator/modules/imports", pilot_readme)
+        self.assertIn("POST /operator/modules/import-manifest", pilot_readme)
+        self.assertIn("DELETE /operator/modules/imports/{module_id}", pilot_readme)
+        self.assertIn("GET /operator/modules/{module_id}", pilot_readme)
+        self.assertIn('/operator/assets/operator-shell.css', welcome_html)
+        self.assertIn('/operator/assets/operator-shell.css', setup_html)
+        self.assertIn('/operator/assets/operator-shell.css', operator_html)
+        self.assertIn('/operator/assets/operator-shell.css', catalog_html)
+        self.assertIn('/operator/assets/operator-shell.css', modules_html)
+        self.assertIn('/operator/assets/operator-shell.css', import_html)
+        self.assertIn('/operator/assets/operator-shell.css', module_html)
+        self.assertIn('href="/operator/welcome"', operator_html)
+        self.assertIn('href="/operator/setup"', operator_html)
+        self.assertIn('href="/operator/discover"', operator_html)
+        self.assertIn('href="/operator/import"', operator_html)
+        self.assertIn('href="/operator/node"', operator_html)
+        self.assertIn("{{page_title}}", welcome_html)
+        self.assertIn("{{page_title}}", setup_html)
+        self.assertIn("{{page_title}}", import_html)
+        self.assertIn("Start here", welcome_html)
+        self.assertIn("Next rooms", welcome_html)
+        self.assertIn("Open discover", welcome_html)
+        self.assertIn("Open import", welcome_html)
+        self.assertIn("Setup checklist", setup_html)
+        self.assertIn("Recorded setup state", setup_html)
+        self.assertIn("Use these rooms", setup_html)
+        self.assertIn("Base hardware shape", setup_html)
+        self.assertIn("Extra hardware on this node", setup_html)
+        self.assertIn("Operator language", setup_html)
+        self.assertIn('id="save-setup"', setup_html)
+        self.assertIn('request("/operator/setup"', setup_html)
+        self.assertIn('"Accept": "application/json"', setup_html)
+        self.assertIn('"Accept": "application/json"', welcome_html)
+        self.assertNotIn("Scan photo", operator_html)
+        self.assertNotIn("OCR_IMPORT_MODULE_ID", operator_html)
+        self.assertNotIn("Photo OCR import is not enabled on this node.", operator_html)
+        self.assertNotIn("Add selected to catalog", operator_html)
+        self.assertNotIn("Catalog editor", operator_html)
+        self.assertIn('href="/operator/catalog"', operator_html)
+        self.assertIn("Backoffice", operator_html)
+        self.assertIn("Open OCR module page", catalog_html)
+        self.assertIn("renderCatalog", catalog_html)
+        self.assertIn("Current modules", modules_html)
+        self.assertIn("Available modules", modules_html)
+        self.assertIn("Imported manifests", modules_html)
+        self.assertIn('href="/operator/import"', modules_html)
+        self.assertIn("Open Discover", modules_html)
+        self.assertIn("Read public catalog", modules_html)
+        self.assertIn("renderModuleStateSummary", modules_html)
+        self.assertNotIn('request("/operator/menu"', modules_html)
+        self.assertIn("/operator/modules/view/", modules_html)
+        self.assertIn("Import local manifest", import_html)
+        self.assertIn("/operator/modules/import-manifest", import_html)
+        self.assertIn("/operator/modules/imports/", import_html)
+        self.assertIn("/operator/modules/", module_html)
+        self.assertIn("/operator/modules/set", module_html)
+        self.assertIn("Runtime", node_html)
+        self.assertIn("Setup truth", node_html)
+        self.assertIn("Open import", node_html)
+        self.assertIn("OCR import surface", module_html)
+        self.assertIn("Scan photo", module_html)
+        self.assertIn("Save selected to catalog", module_html)
+        self.assertIn("Category before save", module_html)
+        self.assertIn("/operator/menu/import-image-preview", module_html)
+        self.assertIn("/operator/menu/import-image-preview", fixture_readme)
 
     def test_lab_gui_is_scenario_config_driven(self) -> None:
         lab = load_module("lab/app.py")
@@ -395,6 +706,7 @@ class P4PDevCleanupTests(unittest.TestCase):
             "P4P does not hold funds, process payments, store payment credentials, "
             "settle money, or act as merchant of record."
         )
+        self.assertIn("Every current module manifest under `modules/` should have exactly one human-readable page in this directory.", index)
 
         for module_dir in sorted(path for path in module_root.iterdir() if path.is_dir()):
             module_payload = json.loads((module_dir / "module.json").read_text(encoding="utf-8"))
@@ -411,6 +723,7 @@ class P4PDevCleanupTests(unittest.TestCase):
             self.assertIn("## What It Does Not Own", text)
             self.assertIn("## Data Access", text)
             self.assertIn("## Events", text)
+            self.assertIn("## Current Readiness", text)
             self.assertIn(f"({module_id}.md)", index)
 
             if module_payload["module_class"] == "payment":
@@ -419,6 +732,29 @@ class P4PDevCleanupTests(unittest.TestCase):
             if "mock" in module_id:
                 self.assertIn("not real money", text)
                 self.assertIn("not real settlement", text)
+
+    def test_reference_provider_docs_cover_every_unique_provider(self) -> None:
+        docs_root = REPO_ROOT / "docs/providers"
+        index = (docs_root / "README.md").read_text(encoding="utf-8")
+        providers = load_reference_provider_catalog()
+
+        self.assertIn(
+            "Every unique `provider_id` represented in the current reference manifest catalog should have exactly one human-readable page in this directory.",
+            index,
+        )
+
+        for provider_id, provider in sorted(providers.items()):
+            provider_doc = docs_root / f"{provider_id}.md"
+            self.assertTrue(provider_doc.exists(), provider_id)
+
+            text = provider_doc.read_text(encoding="utf-8")
+            self.assertIn(f"# {provider_id}", text)
+            self.assertIn(f"Status: `{provider.status}`", text)
+            self.assertIn("../../modules/", text)
+            self.assertIn("## Purpose", text)
+            self.assertIn("## Declared Modules", text)
+            self.assertIn("## Current Readiness", text)
+            self.assertIn(f"({provider_id}.md)", index)
 
     def test_whitepaper_keeps_public_claim_boundaries(self) -> None:
         whitepaper = (REPO_ROOT / "docs/WHITEPAPER-v0.1.md").read_text(encoding="utf-8")

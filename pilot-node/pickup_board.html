@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>P4P Pickup Board</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #11161a;
+        --surface: #171e24;
+        --line: #2b3640;
+        --ink: #f6f7f8;
+        --muted: #9fafba;
+        --accent: #7be495;
+        --warn: #ffcf66;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at top right, rgba(123, 228, 149, 0.08), transparent 30%), var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 24px 16px 56px;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      h1, p { margin: 0; }
+      h1 { font-size: clamp(1.6rem, 4vw, 2.8rem); }
+      .muted { color: var(--muted); }
+
+      .status {
+        margin: 14px 0 20px;
+        color: var(--muted);
+        min-height: 22px;
+      }
+
+      .board {
+        display: grid;
+        gap: 14px;
+      }
+
+      .card {
+        display: grid;
+        gap: 8px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+      }
+
+      .card.ready {
+        border-color: rgba(123, 228, 149, 0.55);
+        box-shadow: 0 0 0 1px rgba(123, 228, 149, 0.16) inset;
+      }
+
+      .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .order-id {
+        font-size: 1.4rem;
+        font-weight: 760;
+        letter-spacing: 0.02em;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        border-radius: 999px;
+        padding: 0 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .badge.ready {
+        background: rgba(123, 228, 149, 0.14);
+        color: var(--accent);
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        color: var(--muted);
+        font-size: 0.94rem;
+      }
+
+      .empty {
+        padding: 34px 20px;
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+        text-align: center;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="muted">Local counter surface</p>
+          <h1>Pickup board</h1>
+        </div>
+        <p class="muted" id="target-label">waiting...</p>
+      </header>
+      <div class="status" id="status-line">Waiting for operator token in local browser storage.</div>
+      <section class="board" id="board"></section>
+    </main>
+    <script>
+      const boardEl = document.getElementById("board");
+      const statusLine = document.getElementById("status-line");
+      const targetLabel = document.getElementById("target-label");
+
+      function setStatus(message) {
+        statusLine.textContent = message;
+      }
+
+      function token() {
+        return localStorage.getItem("p4pOperatorToken") || "";
+      }
+
+      async function requestBoard() {
+        const savedToken = token().trim();
+        if (!savedToken) {
+          setStatus("Open /operator first and save the operator token.");
+          return;
+        }
+        const response = await fetch("/operator/pickup-board/data", {
+          headers: {
+            "X-P4P-Operator-Token": savedToken
+          }
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function timeLabel(value) {
+        if (!value) return "No ready time";
+        return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function renderBoard(payload) {
+        targetLabel.textContent = payload.target || "pickup board";
+        boardEl.innerHTML = "";
+        const orders = payload.orders || [];
+        if (!orders.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No accepted or ready pickup orders right now.";
+          boardEl.appendChild(empty);
+          return;
+        }
+        for (const order of orders) {
+          const card = document.createElement("article");
+          card.className = `card ${order.status === "ready" ? "ready" : ""}`;
+          const top = document.createElement("div");
+          top.className = "top";
+          const id = document.createElement("div");
+          id.className = "order-id";
+          id.textContent = order.order_id;
+          const badge = document.createElement("span");
+          badge.className = `badge ${order.status === "ready" ? "ready" : ""}`;
+          badge.textContent = order.status;
+          top.appendChild(id);
+          top.appendChild(badge);
+          card.appendChild(top);
+          if (order.status_message) {
+            const line = document.createElement("p");
+            line.textContent = order.status_message;
+            card.appendChild(line);
+          }
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.innerHTML = `
+            <span>Payment: ${order.payment_method || "-"}</span>
+            <span>Ready: ${timeLabel(order.estimated_ready)}</span>
+            <span>Updated: ${timeLabel(order.updated_at)}</span>
+          `;
+          card.appendChild(meta);
+          boardEl.appendChild(card);
+        }
+      }
+
+      async function refresh() {
+        try {
+          setStatus("Loading pickup board...");
+          const payload = await requestBoard();
+          renderBoard(payload);
+          setStatus(`Showing ${payload.orders.length} counter orders.`);
+        } catch (error) {
+          setStatus(error.message);
+        }
+      }
+
+      refresh();
+      setInterval(refresh, 10000);
+    </script>
+  </body>
+</html>

@@ -6,21 +6,12 @@
     <title>{{page_title}}</title>
     <link rel="stylesheet" href="/operator/assets/operator-shell.css">
     <style>
-      .order-list {
+      .catalog-list {
         display: grid;
         gap: 12px;
       }
 
-      .order-title,
-      .order-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-      }
-
-      .order-row,
-      .route-card {
+      .catalog-row {
         display: grid;
         gap: 12px;
         padding: 13px;
@@ -28,21 +19,34 @@
         border-radius: 8px;
         background: #fff;
       }
-
-      @media (min-width: 760px) {
-        .order-row {
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: start;
+      .catalog-fields {
+        display: grid;
+        gap: 10px;
+      }
+      @media (min-width: 860px) {
+        .catalog-fields {
+          grid-template-columns: minmax(120px, 0.8fr) minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(110px, 0.7fr) 100px 96px;
         }
       }
-
-      .order-id {
-        font-weight: 750;
-        word-break: break-word;
+      .field {
+        gap: 5px;
       }
 
-      .meta {
-        margin-top: 8px;
+      .check-field span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 650;
+      }
+
+      .check-field {
+        display: flex;
+        gap: 8px;
+        align-items: end;
+        min-height: 67px;
+      }
+      .check-field input {
+        width: 18px;
+        min-height: 18px;
       }
     </style>
   </head>
@@ -70,68 +74,66 @@
       <nav class="operator-nav" aria-label="Operator navigation">
         <a class="nav-link" href="/operator/welcome">{{nav_welcome}}</a>
         <a class="nav-link" href="/operator/setup">{{nav_setup}}</a>
-        <a class="nav-link active" href="/operator">{{nav_operations}}</a>
-        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link active" href="/operator/catalog">{{nav_catalog}}</a>
         <a class="nav-link" href="/operator/modules">{{nav_modules}}</a>
         <a class="nav-link" href="/operator/discover">{{nav_discover}}</a>
         <a class="nav-link" href="/operator/import">{{nav_import}}</a>
         <a class="nav-link" href="/operator/node">{{nav_node}}</a>
       </nav>
 
-      <section class="summary" aria-label="Operations summary">
+      <section class="summary" aria-label="Catalog summary">
         <div class="metric">
           <span>Node</span>
           <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Catalog items</span>
+          <strong id="metric-items">-</strong>
         </div>
         <div class="metric">
           <span>Mode</span>
           <strong id="metric-mode">-</strong>
         </div>
         <div class="metric">
-          <span>Payment</span>
-          <strong id="metric-payment">-</strong>
-        </div>
-        <div class="metric">
-          <span>Orders</span>
-          <strong id="metric-orders">-</strong>
+          <span>Restart</span>
+          <strong id="metric-restart">-</strong>
         </div>
       </section>
 
       <div id="restart-banner" class="restart-banner" role="status" aria-live="polite">
         <strong>Restart required</strong>
-        <p>The desired module set differs from the running node. Apply changes by restarting the node process after finishing today’s work.</p>
+        <p>The desired module set differs from the running node. Apply module changes by restarting the node after finishing your catalog work.</p>
       </div>
 
       <div class="layout">
         <div class="stack">
           <section class="panel">
             <div class="panel-head">
-              <h2>Kitchen</h2>
-              <p class="muted">Incoming and active pickup orders for the current shift.</p>
+              <h2>Catalog editor</h2>
+              <p class="muted">Edit the structured menu here. Keep live order handling in Operations, not on this page.</p>
+              <div class="actions">
+                <button id="add-catalog-item" class="secondary" type="button">Add item</button>
+                <button id="save-catalog" type="button">Save catalog</button>
+              </div>
             </div>
             <div class="panel-body">
-              <div id="orders" class="order-list"></div>
+              <div id="catalog" class="catalog-list"></div>
             </div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Backoffice</h2>
-              <p class="muted">Use separate rooms for menu work and system changes. Don’t edit the catalog on the same page where you watch incoming orders.</p>
+              <h2>Photo import</h2>
+              <p class="muted">OCR import is module-owned. Open the OCR module page when that module is enabled on this node.</p>
             </div>
             <div class="panel-body">
               <div class="route-list">
                 <article class="route-card">
-                  <h3>Catalog</h3>
-                  <p class="muted">Edit menu items, prices, categories, and import help from the dedicated catalog room.</p>
+                  <h3>Catalog OCR import</h3>
+                  <p class="muted" id="ocr-status-copy">Check the OCR module status in Modules before opening the dedicated import surface.</p>
                   <div class="actions">
-                    <a class="button-link secondary" href="/operator/catalog">Open catalog</a>
-                  </div>
-                </article>
-                <article class="route-card">
-                  <h3>Modules</h3>
-                  <p class="muted">Review module health, desired after restart, and optional capabilities in the dedicated modules room.</p>
-                  <div class="actions">
+                    <a class="button-link secondary" href="/operator/modules/view/p4p.catalog.import.ocr">Open OCR module page</a>
                     <a class="button-link secondary" href="/operator/modules">Open modules</a>
                   </div>
                 </article>
@@ -163,20 +165,20 @@
     <script>
       const tokenInput = document.getElementById("token");
       const statusLine = document.getElementById("status-line");
-      const ordersEl = document.getElementById("orders");
+      const catalogEl = document.getElementById("catalog");
       const rawEl = document.getElementById("raw");
       const nodeLabel = document.getElementById("node-label");
       const metricNode = document.getElementById("metric-node");
+      const metricItems = document.getElementById("metric-items");
       const metricMode = document.getElementById("metric-mode");
-      const metricPayment = document.getElementById("metric-payment");
-      const metricOrders = document.getElementById("metric-orders");
+      const metricRestart = document.getElementById("metric-restart");
       const nodeDetails = document.getElementById("node-details");
       const restartBanner = document.getElementById("restart-banner");
+      const ocrStatusCopy = document.getElementById("ocr-status-copy");
 
       const state = {
         modules: null,
         node: null,
-        orders: [],
         menu: null
       };
 
@@ -212,24 +214,6 @@
         return response.json();
       }
 
-      function badge(text, tone = "") {
-        const el = document.createElement("span");
-        el.className = `badge ${tone}`.trim();
-        el.textContent = text;
-        return el;
-      }
-
-      function statusTone(value) {
-        if (value === "ready" || value === "completed") return "ok";
-        if (value === "rejected" || value === "cancelled") return "bad";
-        if (value === "accepted") return "dark";
-        return "warn";
-      }
-
-      function orderItemsText(order) {
-        return (order.items || []).map((item) => `${item.quantity} x ${item.id}`).join(", ");
-      }
-
       function renderPairs(target, pairs) {
         target.innerHTML = "";
         for (const [key, value] of pairs) {
@@ -242,109 +226,150 @@
         }
       }
 
-      function orderAction(order, label, nextStatus, message) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = ["accepted", "ready", "completed"].includes(nextStatus) ? "" : "secondary";
-        button.textContent = label;
-        button.disabled = order.status === nextStatus || order.status === "completed" || order.status === "cancelled";
-        button.addEventListener("click", () => {
-          updateOrder(order.order_id, nextStatus, message).catch((error) => setStatus(error.message, "bad"));
-        });
-        return button;
+      function catalogInput(labelText, name, value, type = "text") {
+        const field = document.createElement("div");
+        field.className = "field";
+        const label = document.createElement("label");
+        label.textContent = labelText;
+        const input = document.createElement("input");
+        input.name = name;
+        input.type = type;
+        input.value = value ?? "";
+        if (name === "price") {
+          input.min = "0";
+          input.step = "1";
+        }
+        field.appendChild(label);
+        field.appendChild(input);
+        return field;
       }
 
-      function renderOrders() {
-        ordersEl.innerHTML = "";
-        const orders = state.orders || [];
-        if (!orders.length) {
+      function renderCatalog() {
+        catalogEl.innerHTML = "";
+        const items = state.menu?.items || [];
+        if (!items.length) {
           const empty = document.createElement("div");
           empty.className = "empty";
-          empty.textContent = "No orders";
-          ordersEl.appendChild(empty);
+          empty.textContent = "No catalog items";
+          catalogEl.appendChild(empty);
           return;
         }
-
-        for (const order of orders) {
+        for (const item of items) {
           const row = document.createElement("article");
-          row.className = "order-row";
+          row.className = "catalog-row";
+          const fields = document.createElement("div");
+          fields.className = "catalog-fields";
+          fields.appendChild(catalogInput("ID", "id", item.id));
+          fields.appendChild(catalogInput("Name", "name", item.name));
+          fields.appendChild(catalogInput("Description", "description", item.description));
+          fields.appendChild(catalogInput("Category", "category", item.category));
+          fields.appendChild(catalogInput("Price (minor units)", "price", item.price, "number"));
+          fields.appendChild(catalogInput("Image URL", "image_url", item.image_url));
 
-          const main = document.createElement("div");
-          const title = document.createElement("div");
-          title.className = "order-title";
-          const id = document.createElement("span");
-          id.className = "order-id";
-          id.textContent = order.order_id;
-          title.appendChild(id);
-          title.appendChild(badge(order.status, statusTone(order.status)));
-          title.appendChild(badge(order.payment_method || "payment unknown"));
-          main.appendChild(title);
-
-          const meta = document.createElement("div");
-          meta.className = "meta";
-          meta.appendChild(document.createTextNode(`${order.customer_name} / ${order.customer_contact}`));
-          meta.appendChild(document.createTextNode(orderItemsText(order)));
-          if (order.note) {
-            meta.appendChild(document.createTextNode(order.note));
-          }
-          main.appendChild(meta);
-
-          if (order.status_message) {
-            const message = document.createElement("div");
-            message.className = "meta";
-            message.textContent = order.status_message;
-            main.appendChild(message);
-          }
+          const activeField = document.createElement("label");
+          activeField.className = "check-field";
+          const active = document.createElement("input");
+          active.name = "active";
+          active.type = "checkbox";
+          active.checked = item.active !== false;
+          const activeText = document.createElement("span");
+          activeText.textContent = "Active";
+          activeField.appendChild(active);
+          activeField.appendChild(activeText);
+          fields.appendChild(activeField);
+          row.appendChild(fields);
 
           const actions = document.createElement("div");
-          actions.className = "order-actions";
-          actions.appendChild(orderAction(order, "Accept", "accepted", "Accepted in kitchen."));
-          actions.appendChild(orderAction(order, "Ready", "ready", "Ready for pickup."));
-          actions.appendChild(orderAction(order, "Complete", "completed", "Completed."));
-          actions.appendChild(orderAction(order, "Reject", "rejected", "Rejected by kitchen."));
-          actions.appendChild(orderAction(order, "Cancel", "cancelled", "Cancelled by kitchen."));
-
-          row.appendChild(main);
+          actions.className = "actions";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "secondary";
+          remove.textContent = "Remove";
+          remove.addEventListener("click", () => row.remove());
+          actions.appendChild(remove);
           row.appendChild(actions);
-          ordersEl.appendChild(row);
+          catalogEl.appendChild(row);
         }
+      }
+
+      function addCatalogItem() {
+        const items = state.menu?.items ? [...state.menu.items] : [];
+        items.push({
+          id: `item-${Date.now().toString(36)}`,
+          name: "New item",
+          description: "",
+          price: 0,
+          category: "pizza",
+          active: true,
+          image_url: ""
+        });
+        state.menu = {
+          currency: state.menu?.currency || "DKK",
+          updated_at: state.menu?.updated_at || new Date().toISOString(),
+          items
+        };
+        renderCatalog();
+      }
+
+      function readCatalogItems() {
+        return Array.from(catalogEl.querySelectorAll(".catalog-row")).map((row) => {
+          const value = (name) => row.querySelector(`[name="${name}"]`)?.value.trim() || "";
+          return {
+            id: value("id"),
+            name: value("name"),
+            description: value("description"),
+            price: Number.parseInt(value("price") || "0", 10),
+            category: value("category"),
+            active: Boolean(row.querySelector('[name="active"]')?.checked),
+            image_url: value("image_url") || null
+          };
+        });
       }
 
       function renderSummary() {
         const modules = state.modules;
         const node = state.node;
-        const activePayment = modules?.active_by_lane?.payment || "-";
-        nodeLabel.textContent = `${location.origin}/operator`;
+        const currentModuleIds = modules?.current_module_ids || [];
+        const desiredModuleIds = modules?.desired_module_ids || [];
+        const ocrEnabled = currentModuleIds.includes("p4p.catalog.import.ocr");
+        nodeLabel.textContent = `${location.origin}/operator/catalog`;
         metricNode.textContent = node?.node?.node_id || modules?.node_id || "-";
+        metricItems.textContent = String(state.menu?.items?.length || 0);
         metricMode.textContent = node?.node?.order_mode || "-";
-        metricPayment.textContent = activePayment;
-        metricOrders.textContent = String(state.orders?.length || 0);
+        metricRestart.textContent = modules?.restart_required ? "Required" : "No";
         restartBanner.classList.toggle("visible", Boolean(modules?.restart_required));
+        ocrStatusCopy.textContent = ocrEnabled
+          ? "The OCR module is enabled now. Use the dedicated OCR module page for photo-import review."
+          : "The OCR module is not enabled now. Enable it from Modules and restart the node before using photo import.";
         renderPairs(nodeDetails, [
           ["Open", node?.node?.open],
           ["Accepts orders", node?.accepts_orders],
-          ["Current modules", modules?.current_module_ids || []],
-          ["Desired after restart", modules?.desired_module_ids || []],
+          ["Running now", currentModuleIds],
+          ["Desired after restart", desiredModuleIds],
           ["Restart required", modules?.restart_required],
-          ["Catalog items", state.menu?.items?.length || 0],
           ["Checked", modules?.checked_at]
         ]);
       }
 
       function render() {
-        renderOrders();
+        renderCatalog();
         renderSummary();
-        rawEl.textContent = JSON.stringify({ modules: state.modules, state: state.node, orders: state.orders, menu: state.menu }, null, 2);
+        rawEl.textContent = JSON.stringify({ modules: state.modules, state: state.node, menu: state.menu }, null, 2);
       }
 
-      async function updateOrder(orderId, nextStatus, message) {
-        setStatus(`Updating ${orderId}.`);
-        await request(`/operator/orders/${encodeURIComponent(orderId)}`, {
-          method: "PATCH",
-          body: { status: nextStatus, status_message: message }
+      async function saveCatalog() {
+        const items = readCatalogItems();
+        if (!items.length) {
+          setStatus("Catalog needs at least one item.", "bad");
+          return;
+        }
+        setStatus("Saving catalog.");
+        state.menu = await request("/operator/menu", {
+          method: "PUT",
+          body: { items }
         });
         await refresh();
-        setStatus("Order updated.", "ok");
+        setStatus("Catalog saved.", "ok");
       }
 
       async function refresh() {
@@ -353,15 +378,13 @@
           return;
         }
         setStatus("Loading.");
-        const [modules, node, orders, menu] = await Promise.all([
+        const [modules, node, menu] = await Promise.all([
           request("/operator/modules"),
           request("/operator/state"),
-          request("/operator/orders"),
           request("/operator/menu")
         ]);
         state.modules = modules;
         state.node = node;
-        state.orders = orders;
         state.menu = menu;
         render();
         setStatus("Updated.", "ok");
@@ -380,6 +403,11 @@
 
       document.getElementById("refresh").addEventListener("click", () => {
         refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("add-catalog-item").addEventListener("click", addCatalogItem);
+      document.getElementById("save-catalog").addEventListener("click", () => {
+        saveCatalog().catch((error) => setStatus(error.message, "bad"));
       });
 
       document.getElementById("copy-json").addEventListener("click", () => {

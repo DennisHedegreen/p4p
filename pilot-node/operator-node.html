@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="{{page_lang}}" dir="{{page_dir}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{page_title}}</title>
+    <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>{{page_title}}</h1>
+          <p class="muted" id="node-label">127.0.0.1</p>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="{{toolbar_token_placeholder}}">
+            <button id="save-token" type="button">{{toolbar_use_token}}</button>
+            <button id="clear-token" class="secondary" type="button">{{toolbar_clear}}</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">{{toolbar_refresh}}</button>
+            <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
+          </div>
+          <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+        </div>
+      </header>
+
+      <nav class="operator-nav" aria-label="Operator navigation">
+        <a class="nav-link" href="/operator/welcome">{{nav_welcome}}</a>
+        <a class="nav-link" href="/operator/setup">{{nav_setup}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link" href="/operator/modules">{{nav_modules}}</a>
+        <a class="nav-link" href="/operator/discover">{{nav_discover}}</a>
+        <a class="nav-link" href="/operator/import">{{nav_import}}</a>
+        <a class="nav-link active" href="/operator/node">{{nav_node}}</a>
+      </nav>
+
+      <section class="summary" aria-label="Node summary">
+        <div class="metric">
+          <span>Node</span>
+          <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Mode</span>
+          <strong id="metric-mode">-</strong>
+        </div>
+        <div class="metric">
+          <span>Registry</span>
+          <strong id="metric-registry">-</strong>
+        </div>
+        <div class="metric">
+          <span>Restart</span>
+          <strong id="metric-restart">-</strong>
+        </div>
+      </section>
+
+      <div id="restart-banner" class="restart-banner" hidden></div>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Runtime</h2>
+              <p class="muted">What this local node is actually running and announcing now.</p>
+            </div>
+            <div class="panel-body">
+              <dl id="node-details"></dl>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Setup truth</h2>
+              <p class="muted">Confirmed hardware, local checks, and setup memory for this node.</p>
+            </div>
+            <div class="panel-body">
+              <dl id="hardware-details"></dl>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Next rooms</h2>
+            </div>
+            <div class="panel-body">
+              <div class="route-list" id="next-links"></div>
+            </div>
+          </section>
+
+          <details class="panel">
+            <summary>Debug JSON</summary>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const rawEl = document.getElementById("raw");
+      const nodeLabel = document.getElementById("node-label");
+      const metricNode = document.getElementById("metric-node");
+      const metricMode = document.getElementById("metric-mode");
+      const metricRegistry = document.getElementById("metric-registry");
+      const metricRestart = document.getElementById("metric-restart");
+      const restartBanner = document.getElementById("restart-banner");
+      const nodeDetails = document.getElementById("node-details");
+      const hardwareDetails = document.getElementById("hardware-details");
+      const nextLinks = document.getElementById("next-links");
+
+      const state = { payload: null };
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function headers() {
+        return {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-P4P-Operator-Token": token()
+        };
+      }
+
+      async function request(path) {
+        const response = await fetch(path, { headers: headers() });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function renderPairs(target, pairs) {
+        target.innerHTML = "";
+        for (const [key, value] of pairs) {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = Array.isArray(value) ? value.join(", ") : String(value ?? "-");
+          target.appendChild(dt);
+          target.appendChild(dd);
+        }
+      }
+
+      function renderRestartBanner(payload) {
+        if (!payload?.modules?.restart_required) {
+          restartBanner.hidden = true;
+          restartBanner.textContent = "";
+          return;
+        }
+        restartBanner.hidden = false;
+        restartBanner.innerHTML = "<strong>Restart required.</strong><p>The desired module set differs from the running node. Finish local review, then restart the node process before trusting the runtime as final.</p>";
+      }
+
+      function renderLinks(payload) {
+        nextLinks.innerHTML = "";
+        [
+          ["Open setup", payload?.links?.setup_room_url],
+          ["Open modules", payload?.links?.modules_room_url],
+          ["Open discover", payload?.links?.discover_room_url],
+          ["/operator/import", "Open import"],
+          ["Open public catalog", payload?.links?.public_catalog_url]
+        ].forEach(([label, href]) => {
+          if (!href) return;
+          const card = document.createElement("article");
+          card.className = "route-card";
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = href;
+          if (href.startsWith("http")) {
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+          }
+          link.textContent = label;
+          card.appendChild(link);
+          nextLinks.appendChild(card);
+        });
+      }
+
+      function render() {
+        const payload = state.payload || {};
+        const node = payload.state || {};
+        const setup = payload.setup || {};
+        const hardware = payload.hardware || {};
+        const modules = payload.modules || {};
+        const registry = node.registry || {};
+
+        nodeLabel.textContent = `${location.origin}/operator/node`;
+        metricNode.textContent = payload.node_id || node?.node?.node_id || "-";
+        metricMode.textContent = node?.node?.order_mode || "-";
+        metricRegistry.textContent = registry.ready ? "ready" : (registry.status || "not_ready");
+        metricRestart.textContent = modules.restart_required ? "Yes" : "No";
+
+        renderPairs(nodeDetails, [
+          ["Node id", payload.node_id],
+          ["Open", node?.node?.open],
+          ["Accepts orders", node?.accepts_orders],
+          ["Current modules", modules.current_module_ids || []],
+          ["Desired after restart", modules.desired_module_ids || []],
+          ["Registry URLs", registry.registry_urls || []],
+          ["Checked", payload.checked_at]
+        ]);
+        renderPairs(hardwareDetails, [
+          ["Runtime bundle", hardware.runtime_profile],
+          ["Runtime base", hardware.runtime_base_profile],
+          ["Runtime add-ons", hardware.runtime_enabled_addons || []],
+          ["Confirmed bundle", hardware.confirmed_bundle_profile],
+          ["Confirmed base", hardware.confirmed_base_profile],
+          ["Confirmed add-ons", hardware.confirmed_enabled_addons || []],
+          ["Setup completed", setup.completed],
+          ["Catalog reviewed", setup.catalog_ready],
+          ["Local tests run", setup.local_tests_run],
+          ["Operator locale", payload?.locale?.current || "-"],
+          ["Started", setup.started_at],
+          ["Last reviewed", setup.last_reviewed_at]
+        ]);
+        renderRestartBanner(payload);
+        renderLinks(payload);
+        rawEl.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function refresh() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Loading.");
+        state.payload = await request("/operator/node");
+        render();
+        setStatus("Updated.", "ok");
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(rawEl.textContent);
+          setStatus("Copied JSON.", "ok");
+        } catch (error) {
+          setStatus(error.message || "Could not copy JSON.", "bad");
+        }
+      });
+
+      if (token()) {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

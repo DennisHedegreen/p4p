@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="{{page_lang}}" dir="{{page_dir}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{page_title}}</title>
+    <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <style>
+      .setup-list,
+      .checklist {
+        display: grid;
+        gap: 12px;
+      }
+
+      .setup-row {
+        display: grid;
+        gap: 10px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      @media (min-width: 820px) {
+        .setup-row {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: start;
+        }
+      }
+
+      .setup-main {
+        display: grid;
+        gap: 8px;
+      }
+
+      .setup-title {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .setup-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (min-width: 820px) {
+        .form-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 0.9rem;
+        font-weight: 650;
+        color: var(--ink);
+      }
+
+      .field select {
+        min-height: 42px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        font: inherit;
+      }
+
+      .inline-check {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        color: var(--muted);
+      }
+
+      .inline-check input {
+        margin-top: 3px;
+      }
+
+      .addon-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      @media (min-width: 820px) {
+        .addon-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>{{page_title}}</h1>
+          <p class="muted" id="node-label">127.0.0.1</p>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="{{toolbar_token_placeholder}}">
+            <button id="save-token" type="button">{{toolbar_use_token}}</button>
+            <button id="clear-token" class="secondary" type="button">{{toolbar_clear}}</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">{{toolbar_refresh}}</button>
+            <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
+          </div>
+          <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+        </div>
+      </header>
+
+      <nav class="operator-nav" aria-label="Operator navigation">
+        <a class="nav-link" href="/operator/welcome">{{nav_welcome}}</a>
+        <a class="nav-link active" href="/operator/setup">{{nav_setup}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link" href="/operator/modules">{{nav_modules}}</a>
+        <a class="nav-link" href="/operator/discover">{{nav_discover}}</a>
+        <a class="nav-link" href="/operator/import">{{nav_import}}</a>
+        <a class="nav-link" href="/operator/node">{{nav_node}}</a>
+      </nav>
+
+      <section class="summary" aria-label="Setup summary">
+        <div class="metric">
+          <span>Node</span>
+          <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Checklist</span>
+          <strong id="metric-checklist">-</strong>
+        </div>
+        <div class="metric">
+          <span>Menu items</span>
+          <strong id="metric-menu">-</strong>
+        </div>
+        <div class="metric">
+          <span>Status</span>
+          <strong id="metric-status">-</strong>
+        </div>
+      </section>
+
+      <div id="restart-banner" class="restart-banner" hidden></div>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Setup checklist</h2>
+              <p class="muted">Use this to get the node safely into `menu_only` first.</p>
+            </div>
+            <div class="panel-body">
+              <div id="setup-checklist" class="checklist"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Recorded setup state</h2>
+              <p class="muted">Small local notes for this node. Runtime truth still lives in the real rooms.</p>
+            </div>
+            <div class="panel-body">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="operator-locale">Operator language</label>
+                  <select id="operator-locale"></select>
+                </div>
+                <div class="field">
+                  <label for="hardware-profile">Base hardware shape</label>
+                  <select id="hardware-profile"></select>
+                </div>
+                <div class="field">
+                  <label>Extra hardware on this node</label>
+                  <div id="hardware-addons" class="addon-grid"></div>
+                </div>
+              </div>
+              <div class="setup-list" style="margin-top: 14px;">
+                <label class="inline-check">
+                  <input id="catalog-reviewed" type="checkbox">
+                  <span>I reviewed the first real menu on this node.</span>
+                </label>
+                <label class="inline-check">
+                  <input id="local-tests-run" type="checkbox">
+                  <span>I ran local tests or hardware checks for this node.</span>
+                </label>
+              </div>
+              <div class="setup-actions" style="margin-top: 14px;">
+                <button id="save-setup" type="button">Save setup state</button>
+              </div>
+              <p class="muted" id="setup-meta" style="margin-top: 10px;">No setup state saved yet.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Use these rooms</h2>
+            </div>
+            <div class="panel-body">
+              <div class="setup-list">
+                <article class="setup-row">
+                  <div class="setup-main">
+                    <div class="setup-title"><h3>Modules sets the node shape</h3></div>
+                    <p class="muted">Pick the runtime set there, not here.</p>
+                  </div>
+                  <div class="setup-actions"><a class="button-link secondary" href="/operator/modules">Open</a></div>
+                </article>
+                <article class="setup-row">
+                  <div class="setup-main">
+                    <div class="setup-title"><h3>Catalog holds the first real menu</h3></div>
+                    <p class="muted">Add or import real items there before testing the flow.</p>
+                  </div>
+                  <div class="setup-actions"><a class="button-link secondary" href="/operator/catalog">Open</a></div>
+                </article>
+                <article class="setup-row">
+                  <div class="setup-main">
+                    <div class="setup-title"><h3>Operations holds the real runtime</h3></div>
+                    <p class="muted">Keep the node in `menu_only` there while you test locally.</p>
+                  </div>
+                  <div class="setup-actions"><a class="button-link secondary" href="/operator">Open</a></div>
+                </article>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Node</h2>
+            </div>
+            <div class="panel-body">
+              <dl id="node-details"></dl>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Quick links</h2>
+            </div>
+            <div class="panel-body">
+              <div class="setup-actions" id="quick-links"></div>
+            </div>
+          </section>
+
+          <details class="panel">
+            <summary>Debug JSON</summary>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const rawEl = document.getElementById("raw");
+      const nodeLabel = document.getElementById("node-label");
+      const metricNode = document.getElementById("metric-node");
+      const metricChecklist = document.getElementById("metric-checklist");
+      const metricMenu = document.getElementById("metric-menu");
+      const metricStatus = document.getElementById("metric-status");
+      const nodeDetails = document.getElementById("node-details");
+      const restartBanner = document.getElementById("restart-banner");
+      const checklistEl = document.getElementById("setup-checklist");
+      const quickLinks = document.getElementById("quick-links");
+      const operatorLocaleSelect = document.getElementById("operator-locale");
+      const hardwareProfileSelect = document.getElementById("hardware-profile");
+      const hardwareAddons = document.getElementById("hardware-addons");
+      const catalogReviewedInput = document.getElementById("catalog-reviewed");
+      const localTestsRunInput = document.getElementById("local-tests-run");
+      const setupMeta = document.getElementById("setup-meta");
+
+      const state = { payload: null };
+
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function headers(extra = {}) {
+        const result = {
+          "Accept": "application/json",
+          "X-P4P-Operator-Token": token(),
+          ...extra
+        };
+        return result;
+      }
+
+      async function request(path, options = {}) {
+        const init = {
+          method: options.method || "GET",
+          headers: headers(options.headers || {})
+        };
+        if (options.body !== undefined) {
+          init.body = options.body;
+          if (!init.headers["Content-Type"]) {
+            init.headers["Content-Type"] = "application/json";
+          }
+        }
+        const response = await fetch(path, init);
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function renderPairs(target, pairs) {
+        target.innerHTML = "";
+        for (const [key, value] of pairs) {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = Array.isArray(value) ? value.join(", ") : String(value ?? "-");
+          target.appendChild(dt);
+          target.appendChild(dd);
+        }
+      }
+
+      function renderQuickLinks() {
+        quickLinks.innerHTML = "";
+        [
+          ["/operator/modules", "Open modules"],
+          ["/operator/catalog", "Open catalog"],
+          ["/operator", "Open operations"],
+          ["/operator/discover", "Open discover"],
+          ["/operator/import", "Open import"],
+          ["/operator/welcome", "Back to welcome"]
+        ].forEach(([href, text]) => {
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = href;
+          link.textContent = text;
+          quickLinks.appendChild(link);
+        });
+      }
+
+      function renderRestartBanner(modules) {
+        if (!modules?.restart_required) {
+          restartBanner.hidden = true;
+          restartBanner.textContent = "";
+          return;
+        }
+        restartBanner.hidden = false;
+        restartBanner.className = "restart-banner";
+        restartBanner.innerHTML = "<strong>Restart required.</strong><p>The desired module set is saved, but the runtime still needs a restart. Finish that before trusting the checklist.</p>";
+      }
+
+      function boolBadge(done) {
+        const span = document.createElement("span");
+        span.className = `badge ${done ? "ok" : "warn"}`;
+        span.textContent = done ? "done" : "next";
+        return span;
+      }
+
+      function renderChecklist(items) {
+        checklistEl.innerHTML = "";
+        items.forEach((item) => {
+          const article = document.createElement("article");
+          article.className = "setup-row";
+          const main = document.createElement("div");
+          main.className = "setup-main";
+          const title = document.createElement("div");
+          title.className = "setup-title";
+          const h3 = document.createElement("h3");
+          h3.textContent = item.title;
+          title.appendChild(h3);
+          title.appendChild(boolBadge(item.done));
+          const detail = document.createElement("p");
+          detail.className = "muted";
+          detail.textContent = item.detail;
+          main.appendChild(title);
+          main.appendChild(detail);
+          article.appendChild(main);
+          const actions = document.createElement("div");
+          actions.className = "setup-actions";
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = item.href;
+          link.textContent = "Open";
+          actions.appendChild(link);
+          article.appendChild(actions);
+          checklistEl.appendChild(article);
+        });
+      }
+
+      function renderSetupControls(payload) {
+        const setup = payload?.setup || {};
+        const localePayload = payload?.locale || {};
+        const hardwareProfiles = payload?.hardware_base_profiles || [];
+        const hardwareAddonsPayload = payload?.hardware_addons || [];
+        const selectedOperatorLocale = setup.operator_locale || localePayload.current || "da";
+        const selectedHardwareProfile = setup.hardware_base_profile || "";
+        const runtimeHardwareProfile = setup.runtime_hardware_base_profile || "";
+        const selectedAddons = new Set(setup.hardware_enabled_addons || []);
+
+        operatorLocaleSelect.innerHTML = "";
+        (localePayload.choices || []).forEach((choice) => {
+          const option = document.createElement("option");
+          option.value = choice.id;
+          option.textContent = choice.native_label || choice.label || choice.id;
+          operatorLocaleSelect.appendChild(option);
+        });
+        operatorLocaleSelect.value = selectedOperatorLocale;
+
+        hardwareProfileSelect.innerHTML = "";
+        const blankOption = document.createElement("option");
+        blankOption.value = "";
+        blankOption.textContent = "Not confirmed yet";
+        hardwareProfileSelect.appendChild(blankOption);
+        hardwareProfiles.forEach((profile) => {
+          const option = document.createElement("option");
+          option.value = profile.id;
+          option.textContent = profile.id === runtimeHardwareProfile
+            ? `${profile.label} (running now)`
+            : profile.label;
+          hardwareProfileSelect.appendChild(option);
+        });
+        hardwareProfileSelect.value = selectedHardwareProfile;
+
+        hardwareAddons.innerHTML = "";
+        hardwareAddonsPayload.forEach((addon) => {
+          const label = document.createElement("label");
+          label.className = "inline-check";
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.value = addon.id;
+          input.checked = selectedAddons.has(addon.id);
+          const text = document.createElement("span");
+          text.textContent = addon.label;
+          label.appendChild(input);
+          label.appendChild(text);
+          hardwareAddons.appendChild(label);
+        });
+
+        catalogReviewedInput.checked = Boolean(setup.catalog_ready);
+        localTestsRunInput.checked = (setup.completed_steps || []).includes("local_tests_run");
+        setupMeta.textContent = [
+          setup.started_at ? `Started ${setup.started_at}` : "Not started yet",
+          setup.runtime_hardware_profile ? `runtime bundle ${setup.runtime_hardware_profile}` : null,
+          setup.last_reviewed_at ? `last reviewed ${setup.last_reviewed_at}` : null,
+          setup.completed_at ? `completed ${setup.completed_at}` : null
+        ].filter(Boolean).join(" · ");
+      }
+
+      function render() {
+        const payload = state.payload;
+        const modules = payload?.modules || {};
+        const node = payload?.state || {};
+        const menu = payload?.menu || {};
+        const summary = payload?.summary || {};
+        const checklist = payload?.checklist || [];
+
+        nodeLabel.textContent = `${location.origin}/operator/setup`;
+        metricNode.textContent = payload?.node_id || node?.node?.node_id || "-";
+        metricChecklist.textContent = `${summary.done_count || 0} / ${summary.total_steps || checklist.length || 0}`;
+        metricMenu.textContent = String(menu?.items?.length || 0);
+        metricStatus.textContent = summary.status || "incomplete";
+
+        renderPairs(nodeDetails, [
+          ["Mode", node?.node?.order_mode],
+          ["Accepts orders", node?.accepts_orders],
+          ["Active payment", modules?.active_by_lane?.payment || "-"],
+          ["Running now", modules?.current_module_ids || []],
+          ["Desired after restart", modules?.desired_module_ids || []],
+          ["Hardware bundle", payload?.setup?.runtime_hardware_profile || "-"],
+          ["Base shape", payload?.setup?.hardware_base_profile || "-"],
+          ["Extra hardware", payload?.setup?.hardware_enabled_addons || []],
+          ["Checked", modules?.checked_at]
+        ]);
+        renderRestartBanner(modules);
+        renderChecklist(checklist);
+        renderQuickLinks();
+        renderSetupControls(payload);
+        rawEl.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function refresh() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Loading.");
+        const payload = await request("/operator/setup");
+        state.payload = payload;
+        render();
+        setStatus("Updated.", "ok");
+      }
+
+      async function saveSetupState() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Saving setup state.");
+        const previousLocale = state.payload?.locale?.current || "da";
+        const payload = await request("/operator/setup", {
+          method: "PATCH",
+          body: JSON.stringify({
+            operator_locale: operatorLocaleSelect.value,
+            hardware_base_profile: hardwareProfileSelect.value,
+            hardware_enabled_addons: Array.from(
+              hardwareAddons.querySelectorAll('input[type="checkbox"]:checked')
+            ).map((input) => input.value),
+            catalog_ready: catalogReviewedInput.checked,
+            local_tests_run: localTestsRunInput.checked
+          })
+        });
+        state.payload = payload;
+        render();
+        setStatus("Saved setup state.", "ok");
+        if ((payload?.locale?.current || previousLocale) !== previousLocale) {
+          window.location.reload();
+        }
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("save-setup").addEventListener("click", () => {
+        saveSetupState().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(rawEl.textContent);
+          setStatus("Copied JSON.", "ok");
+        } catch (error) {
+          setStatus(error.message || "Could not copy JSON.", "bad");
+        }
+      });
+
+      if (token()) {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

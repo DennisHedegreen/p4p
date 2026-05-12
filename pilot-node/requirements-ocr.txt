@@ -1,0 +1,4 @@
+rapidocr==3.8.1
+onnxruntime==1.26.0
+pillow==12.2.0
+numpy==2.4.4

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="{{page_lang}}" dir="{{page_dir}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{page_title}}</title>
+    <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <style>
+      .import-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .import-card {
+        display: grid;
+        gap: 10px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .import-head,
+      .import-actions,
+      .inline-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .upload-form {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (min-width: 760px) {
+        .upload-form {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: end;
+        }
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>{{page_title}}</h1>
+          <p class="muted" id="node-label">127.0.0.1</p>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="{{toolbar_token_placeholder}}">
+            <button id="save-token" type="button">{{toolbar_use_token}}</button>
+            <button id="clear-token" class="secondary" type="button">{{toolbar_clear}}</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">{{toolbar_refresh}}</button>
+            <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
+          </div>
+          <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+        </div>
+      </header>
+
+      <nav class="operator-nav" aria-label="Operator navigation">
+        <a class="nav-link" href="/operator/welcome">{{nav_welcome}}</a>
+        <a class="nav-link" href="/operator/setup">{{nav_setup}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link" href="/operator/modules">{{nav_modules}}</a>
+        <a class="nav-link" href="/operator/discover">{{nav_discover}}</a>
+        <a class="nav-link active" href="/operator/import">{{nav_import}}</a>
+        <a class="nav-link" href="/operator/node">{{nav_node}}</a>
+      </nav>
+
+      <section class="summary" aria-label="Import summary">
+        <div class="metric">
+          <span>Node</span>
+          <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Imported</span>
+          <strong id="metric-imported">-</strong>
+        </div>
+        <div class="metric">
+          <span>Running now</span>
+          <strong id="metric-current">-</strong>
+        </div>
+        <div class="metric">
+          <span>Restart</span>
+          <strong id="metric-restart">-</strong>
+        </div>
+      </section>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Import local manifest</h2>
+              <p class="muted">Upload one local <code>module.json</code>. This phase stores metadata on the node only. Imported manifests are not runnable and do not enter the desired runtime set yet.</p>
+            </div>
+            <div class="panel-body">
+              <div class="upload-form">
+                <label class="field" for="manifest-file">
+                  <span>Local manifest file</span>
+                  <input id="manifest-file" type="file" accept=".json,application/json">
+                </label>
+                <button id="upload-manifest" type="button">Import manifest</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Imported manifests</h2>
+              <p class="muted">These manifests live only on this node for review. Use Modules later when a future phase makes imported manifests runnable.</p>
+            </div>
+            <div class="panel-body">
+              <div id="imported-manifests" class="import-list"></div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Next rooms</h2>
+            </div>
+            <div class="panel-body">
+              <div class="route-list" id="next-links"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Current modules</h2>
+            </div>
+            <div class="panel-body">
+              <div id="current-modules" class="inline-list"></div>
+            </div>
+          </section>
+
+          <details class="panel">
+            <summary>Debug JSON</summary>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const nodeLabel = document.getElementById("node-label");
+      const metricNode = document.getElementById("metric-node");
+      const metricImported = document.getElementById("metric-imported");
+      const metricCurrent = document.getElementById("metric-current");
+      const metricRestart = document.getElementById("metric-restart");
+      const manifestFileInput = document.getElementById("manifest-file");
+      const importedManifests = document.getElementById("imported-manifests");
+      const currentModules = document.getElementById("current-modules");
+      const nextLinks = document.getElementById("next-links");
+      const rawEl = document.getElementById("raw");
+
+      const state = { payload: null };
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function requestHeaders() {
+        return {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-P4P-Operator-Token": token()
+        };
+      }
+
+      async function request(path, options = {}) {
+        const response = await fetch(path, {
+          method: options.method || "GET",
+          headers: requestHeaders(),
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function badge(text, tone = "") {
+        const el = document.createElement("span");
+        el.className = `badge ${tone}`.trim();
+        el.textContent = text;
+        return el;
+      }
+
+      function renderCurrentModules(list) {
+        currentModules.innerHTML = "";
+        if (!list.length) {
+          currentModules.appendChild(badge("none"));
+          return;
+        }
+        list.forEach((moduleId) => currentModules.appendChild(badge(moduleId, "dark")));
+      }
+
+      function renderNextLinks(payload) {
+        nextLinks.innerHTML = "";
+        [
+          ["Read public catalog", payload?.links?.public_catalog_url],
+          ["Open Discover", payload?.links?.discover_url],
+          ["Open Modules", payload?.links?.modules_url]
+        ].forEach(([label, href]) => {
+          if (!href) return;
+          const card = document.createElement("article");
+          card.className = "route-card";
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = href;
+          if (href.startsWith("http")) {
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+          }
+          link.textContent = label;
+          card.appendChild(link);
+          nextLinks.appendChild(card);
+        });
+      }
+
+      function renderImportedManifest(entry) {
+        const article = document.createElement("article");
+        article.className = "import-card";
+
+        const head = document.createElement("div");
+        head.className = "import-head";
+        const title = document.createElement("h3");
+        title.textContent = entry.title || entry.module_id;
+        head.appendChild(title);
+        head.appendChild(badge("Imported", "ok"));
+        head.appendChild(badge(entry.validation_status || "validated", "dark"));
+        head.appendChild(badge("Not runnable yet", "warn"));
+
+        const summary = document.createElement("p");
+        summary.className = "muted";
+        summary.textContent = entry.short_description || "No summary in manifest.";
+
+        const meta = document.createElement("div");
+        meta.className = "inline-meta muted";
+        meta.textContent = `id: ${entry.module_id} · provider: ${entry.provider_id} · version: ${entry.version} · source: ${entry.source_name}`;
+
+        const timing = document.createElement("div");
+        timing.className = "inline-meta muted";
+        timing.textContent = `Imported ${entry.imported_at} · Updated ${entry.updated_at}`;
+
+        const actions = document.createElement("div");
+        actions.className = "import-actions";
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "secondary";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", async () => {
+          try {
+            await request(`/operator/modules/imports/${encodeURIComponent(entry.module_id)}`, { method: "DELETE" });
+            await refresh();
+            setStatus(`Removed ${entry.module_id}.`, "ok");
+          } catch (error) {
+            setStatus(error.message || "Could not remove manifest.", "bad");
+          }
+        });
+        actions.appendChild(remove);
+
+        if (entry.validation_error) {
+          const error = document.createElement("p");
+          error.className = "muted";
+          error.textContent = entry.validation_error;
+          article.appendChild(error);
+        }
+
+        article.appendChild(head);
+        article.appendChild(summary);
+        article.appendChild(meta);
+        article.appendChild(timing);
+        article.appendChild(actions);
+        return article;
+      }
+
+      function renderImportedList(list) {
+        importedManifests.innerHTML = "";
+        if (!list.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No imported manifests on this node yet.";
+          importedManifests.appendChild(empty);
+          return;
+        }
+        list.forEach((entry) => importedManifests.appendChild(renderImportedManifest(entry)));
+      }
+
+      function render() {
+        const payload = state.payload || {};
+        nodeLabel.textContent = `${location.origin}/operator/import`;
+        metricNode.textContent = payload.node_id || "-";
+        metricImported.textContent = String(payload.imported_manifest_count || 0);
+        metricCurrent.textContent = String((payload.current_module_ids || []).length);
+        metricRestart.textContent = payload.restart_required ? "Required" : "No";
+        renderImportedList(payload.imported_manifests || []);
+        renderCurrentModules(payload.current_module_ids || []);
+        renderNextLinks(payload);
+        rawEl.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function refresh() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Loading.");
+        state.payload = await request("/operator/import");
+        render();
+        setStatus("Updated.", "ok");
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(rawEl.textContent);
+          setStatus("Copied JSON.", "ok");
+        } catch (error) {
+          setStatus(error.message || "Could not copy JSON.", "bad");
+        }
+      });
+
+      document.getElementById("upload-manifest").addEventListener("click", async () => {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        const file = manifestFileInput.files && manifestFileInput.files[0];
+        if (!file) {
+          setStatus("Choose a local module.json first.", "bad");
+          return;
+        }
+        try {
+          setStatus("Importing.");
+          const result = await request("/operator/modules/import-manifest", {
+            method: "POST",
+            body: {
+              source_name: file.name,
+              manifest_json: await file.text()
+            }
+          });
+          manifestFileInput.value = "";
+          await refresh();
+          setStatus(`${result.replaced ? "Replaced" : "Imported"} ${result.manifest.module_id}.`, "ok");
+        } catch (error) {
+          setStatus(error.message || "Could not import manifest.", "bad");
+        }
+      });
+
+      if (token()) {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

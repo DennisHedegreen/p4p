@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="{{page_lang}}" dir="{{page_dir}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{page_title}}</title>
+    <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <style>
+      .filters,
+      .module-list,
+      .module-state,
+      .room-links {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (min-width: 720px) {
+        .filters { grid-template-columns: minmax(0, 1fr) 190px 190px; }
+      }
+
+      .module-title,
+      .module-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .module-state-card {
+        display: grid;
+        gap: 12px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface-2);
+      }
+      .module-state-grid {
+        display: grid;
+        gap: 10px;
+      }
+      @media (min-width: 820px) {
+        .module-state-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .module-state-block {
+        display: grid;
+        gap: 8px;
+      }
+      .module-state-block span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 650;
+        text-transform: uppercase;
+      }
+      .module-group {
+        display: grid;
+        gap: 10px;
+      }
+      .module-group + .module-group {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+      .module-row {
+        display: grid;
+        gap: 12px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+      @media (min-width: 760px) {
+        .module-row {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: start;
+        }
+      }
+      a.module-row {
+        color: inherit;
+        text-decoration: none;
+      }
+      a.module-row:hover,
+      a.module-row:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(0, 121, 107, 0.08);
+        outline: none;
+      }
+      .module-id {
+        font-weight: 750;
+        word-break: break-word;
+      }
+      .room-links {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>{{page_title}}</h1>
+          <p class="muted" id="node-label">127.0.0.1</p>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="{{toolbar_token_placeholder}}">
+            <button id="save-token" type="button">{{toolbar_use_token}}</button>
+            <button id="clear-token" class="secondary" type="button">{{toolbar_clear}}</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">{{toolbar_refresh}}</button>
+            <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
+          </div>
+          <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+        </div>
+      </header>
+
+      <nav class="operator-nav" aria-label="Operator navigation">
+        <a class="nav-link" href="/operator/welcome">{{nav_welcome}}</a>
+        <a class="nav-link" href="/operator/setup">{{nav_setup}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link active" href="/operator/modules">{{nav_modules}}</a>
+        <a class="nav-link" href="/operator/discover">{{nav_discover}}</a>
+        <a class="nav-link" href="/operator/import">{{nav_import}}</a>
+        <a class="nav-link" href="/operator/node">{{nav_node}}</a>
+      </nav>
+
+      <section class="summary" aria-label="Module summary">
+        <div class="metric">
+          <span>Node</span>
+          <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Running now</span>
+          <strong id="metric-current">-</strong>
+        </div>
+        <div class="metric">
+          <span>Available</span>
+          <strong id="metric-available">-</strong>
+        </div>
+        <div class="metric">
+          <span>Restart</span>
+          <strong id="metric-restart">-</strong>
+        </div>
+      </section>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Module control</h2>
+              <p class="muted">Choose what should run on this node. Use Discover for public reading and Import for node-local manifest intake.</p>
+              <div id="room-links" class="room-links"></div>
+              <div class="filters">
+                <input id="search" type="search" placeholder="Search module id, provider, lane">
+                <select id="lane-filter">
+                  <option value="">All lanes</option>
+                </select>
+                <select id="health-filter">
+                  <option value="">All health</option>
+                  <option value="up">up</option>
+                  <option value="available">available</option>
+                  <option value="down">down</option>
+                  <option value="not_configured">not_configured</option>
+                  <option value="undeclared">undeclared</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div id="module-state-summary" class="module-state"></div>
+              <section class="module-group" aria-labelledby="current-modules-title">
+                <div class="module-group-head">
+                  <h3 id="current-modules-title">Current modules</h3>
+                  <p class="muted">Running now on this node.</p>
+                </div>
+                <div id="current-modules" class="module-list"></div>
+              </section>
+              <section class="module-group" aria-labelledby="available-modules-title">
+                <div class="module-group-head">
+                  <h3 id="available-modules-title">Available modules</h3>
+                  <p class="muted">Known to this node, but not running yet.</p>
+                </div>
+                <div id="available-modules" class="module-list"></div>
+              </section>
+              <section class="module-group" aria-labelledby="imported-modules-title">
+                <div class="module-group-head">
+                  <h3 id="imported-modules-title">Imported manifests</h3>
+                  <p class="muted">Stored on this node only. Not runnable in this phase.</p>
+                  <p><a class="button-link secondary" href="/operator/import">Open Import room</a></p>
+                </div>
+                <div id="imported-modules" class="module-list"></div>
+              </section>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Next rooms</h2>
+            </div>
+            <div class="panel-body">
+              <div id="side-links" class="room-links"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Node</h2>
+            </div>
+            <div class="panel-body">
+              <dl id="node-details"></dl>
+            </div>
+          </section>
+
+          <details class="panel">
+            <summary>Debug JSON</summary>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const moduleStateSummaryEl = document.getElementById("module-state-summary");
+      const currentModulesEl = document.getElementById("current-modules");
+      const availableModulesEl = document.getElementById("available-modules");
+      const importedModulesEl = document.getElementById("imported-modules");
+      const roomLinksEl = document.getElementById("room-links");
+      const sideLinksEl = document.getElementById("side-links");
+      const rawEl = document.getElementById("raw");
+      const searchInput = document.getElementById("search");
+      const laneFilter = document.getElementById("lane-filter");
+      const healthFilter = document.getElementById("health-filter");
+      const nodeLabel = document.getElementById("node-label");
+      const metricNode = document.getElementById("metric-node");
+      const metricCurrent = document.getElementById("metric-current");
+      const metricAvailable = document.getElementById("metric-available");
+      const metricRestart = document.getElementById("metric-restart");
+      const nodeDetails = document.getElementById("node-details");
+
+      const state = {
+        modules: null,
+        node: null
+      };
+
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function headers() {
+        return {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-P4P-Operator-Token": token()
+        };
+      }
+
+      async function request(path, options = {}) {
+        const response = await fetch(path, {
+          method: options.method || "GET",
+          headers: headers(),
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function badge(text, tone = "") {
+        const el = document.createElement("span");
+        el.className = `badge ${tone}`.trim();
+        el.textContent = text;
+        return el;
+      }
+
+      function healthTone(value) {
+        if (value === "up" || value === "available") return "ok";
+        if (value === "down" || value === "not_configured" || value === "undeclared") return "bad";
+        if (value === "degraded") return "warn";
+        return "";
+      }
+
+      function boolTone(value) {
+        return value ? "ok" : "warn";
+      }
+
+      function renderPairs(target, pairs) {
+        target.innerHTML = "";
+        for (const [key, value] of pairs) {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = Array.isArray(value) ? value.join(", ") : String(value ?? "-");
+          target.appendChild(dt);
+          target.appendChild(dd);
+        }
+      }
+
+      function filterModuleEntries(entries) {
+        const query = searchInput.value.trim().toLowerCase();
+        const lane = laneFilter.value;
+        const health = healthFilter.value;
+        return entries.filter((entry) => {
+          const haystack = [
+            entry.module_id,
+            entry.provider_id,
+            entry.lane,
+            entry.health,
+            entry.implementation,
+            entry.operator_status,
+            entry.description,
+            entry.owner_function
+          ].join(" ").toLowerCase();
+          return (!query || haystack.includes(query)) &&
+            (!lane || entry.lane === lane) &&
+            (!health || entry.health === health);
+        });
+      }
+
+      function renderLaneOptions(payload) {
+        const current = laneFilter.value;
+        const lanes = Array.from(new Set([...(payload.modules || []), ...(payload.available_modules || [])].map((entry) => entry.lane))).sort();
+        laneFilter.innerHTML = '<option value="">All lanes</option>';
+        for (const lane of lanes) {
+          const option = document.createElement("option");
+          option.value = lane;
+          option.textContent = lane;
+          option.selected = lane === current;
+          laneFilter.appendChild(option);
+        }
+      }
+
+      function renderRoomLinks(payload) {
+        const targets = [roomLinksEl, sideLinksEl];
+        targets.forEach((target) => {
+          target.innerHTML = "";
+        });
+        [
+          ["Open Discover", payload?.discover?.operator_discover_url || "/operator/discover"],
+          ["Open Import", payload?.discover?.operator_import_url || "/operator/import"],
+          ["Read public catalog", payload?.discover?.public_catalog_url]
+        ].forEach(([label, href]) => {
+          if (!href) return;
+          targets.forEach((target) => {
+            const card = document.createElement("article");
+            card.className = "route-card";
+            const link = document.createElement("a");
+            link.className = "button-link secondary";
+            link.href = href;
+            if (href.startsWith("http")) {
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+            }
+            link.textContent = label;
+            card.appendChild(link);
+            target.appendChild(card);
+          });
+        });
+      }
+
+      function renderModule(entry) {
+        const row = document.createElement("a");
+        row.className = "module-row";
+        row.href = `/operator/modules/view/${encodeURIComponent(entry.module_id)}`;
+
+        const main = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "module-title";
+        const id = document.createElement("span");
+        id.className = "module-id";
+        id.textContent = entry.module_id;
+        title.appendChild(id);
+        title.appendChild(badge(entry.health, healthTone(entry.health)));
+        if (entry.active) title.appendChild(badge("active now", "dark"));
+        if (entry.enabled_now && !entry.desired_enabled) title.appendChild(badge("remove after restart", "warn"));
+        if (!entry.enabled_now && entry.desired_enabled) title.appendChild(badge("enable after restart", "ok"));
+        if (!entry.declared) title.appendChild(badge("undeclared", "bad"));
+        if (!entry.configured) title.appendChild(badge("config", "warn"));
+        main.appendChild(title);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.appendChild(document.createTextNode(`${entry.provider_id || "no provider"} / ${entry.lane}`));
+        meta.appendChild(document.createTextNode(entry.implementation));
+        meta.appendChild(document.createTextNode(entry.operator_status || entry.status || ""));
+        main.appendChild(meta);
+
+        const summary = document.createElement("div");
+        summary.className = "meta";
+        summary.textContent = entry.owner_function || entry.description || "Open module page";
+        main.appendChild(summary);
+
+        const side = document.createElement("div");
+        side.className = "badges";
+        side.appendChild(badge(entry.configured ? "configured" : "missing", boolTone(entry.configured)));
+        side.appendChild(badge(entry.executable ? "executable" : "not executable", boolTone(entry.executable)));
+        side.appendChild(badge(entry.readiness || "unknown"));
+        side.appendChild(badge(entry.desired_enabled ? "wanted after restart" : "not wanted after restart", entry.desired_enabled ? "ok" : "warn"));
+        side.appendChild(badge("open", "dark"));
+
+        row.appendChild(main);
+        row.appendChild(side);
+        return row;
+      }
+
+      function renderImportedManifest(entry) {
+        const row = document.createElement("article");
+        row.className = "module-row";
+
+        const main = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "module-title";
+        const id = document.createElement("span");
+        id.className = "module-id";
+        id.textContent = entry.module_id;
+        title.appendChild(id);
+        title.appendChild(badge("imported", "ok"));
+        title.appendChild(badge(entry.validation_status || "validated", "dark"));
+        title.appendChild(badge("not runnable yet", "warn"));
+        main.appendChild(title);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.appendChild(document.createTextNode(`${entry.provider_id || "no provider"} / ${entry.version || "no version"}`));
+        meta.appendChild(document.createTextNode(entry.source_name || "local_upload"));
+        main.appendChild(meta);
+
+        const summary = document.createElement("div");
+        summary.className = "meta";
+        summary.textContent = entry.short_description || entry.title || "Imported module metadata";
+        main.appendChild(summary);
+
+        const side = document.createElement("div");
+        side.className = "badges";
+        side.appendChild(badge("metadata only", "warn"));
+        side.appendChild(badge("use Import room", "dark"));
+
+        row.appendChild(main);
+        row.appendChild(side);
+        return row;
+      }
+
+      function renderModuleChipRow(target, moduleIds, tone = "") {
+        target.innerHTML = "";
+        if (!moduleIds.length) {
+          target.appendChild(badge("none"));
+          return;
+        }
+        moduleIds.forEach((moduleId) => target.appendChild(badge(moduleId, tone)));
+      }
+
+      function renderModuleStateSummary() {
+        moduleStateSummaryEl.innerHTML = "";
+        const payload = state.modules;
+        if (!payload) return;
+
+        const card = document.createElement("section");
+        card.className = "module-state-card";
+
+        const title = document.createElement("h3");
+        title.textContent = "Module set state";
+        card.appendChild(title);
+
+        const intro = document.createElement("p");
+        intro.className = "muted";
+        intro.textContent = payload.restart_required
+          ? "Desired set differs from running runtime."
+          : "Runtime matches desired set.";
+        card.appendChild(intro);
+
+        const badges = document.createElement("div");
+        badges.className = "badges";
+        badges.appendChild(badge(payload.restart_required ? "restart required" : "runtime in sync", payload.restart_required ? "warn" : "ok"));
+        if (payload.desired_module_ids_updated_at) {
+          badges.appendChild(badge(`desired updated ${payload.desired_module_ids_updated_at}`, "dark"));
+        }
+        const desiredPayment = payload.desired_active_by_lane?.payment || "none";
+        badges.appendChild(badge(`desired payment ${desiredPayment}`, "dark"));
+        card.appendChild(badges);
+
+        const grid = document.createElement("div");
+        grid.className = "module-state-grid";
+
+        const currentBlock = document.createElement("div");
+        currentBlock.className = "module-state-block";
+        const currentLabel = document.createElement("span");
+        currentLabel.textContent = "Running now";
+        const currentRow = document.createElement("div");
+        currentRow.className = "module-chip-row";
+        renderModuleChipRow(currentRow, payload.current_module_ids || [], "dark");
+        currentBlock.appendChild(currentLabel);
+        currentBlock.appendChild(currentRow);
+        grid.appendChild(currentBlock);
+
+        const desiredBlock = document.createElement("div");
+        desiredBlock.className = "module-state-block";
+        const desiredLabel = document.createElement("span");
+        desiredLabel.textContent = "Desired after restart";
+        const desiredRow = document.createElement("div");
+        desiredRow.className = "module-chip-row";
+        renderModuleChipRow(desiredRow, payload.desired_module_ids || [], payload.restart_required ? "warn" : "ok");
+        desiredBlock.appendChild(desiredLabel);
+        desiredBlock.appendChild(desiredRow);
+        grid.appendChild(desiredBlock);
+
+        card.appendChild(grid);
+        moduleStateSummaryEl.appendChild(card);
+      }
+
+      function renderModuleSection(target, entries, emptyText) {
+        target.innerHTML = "";
+        if (!entries.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = emptyText;
+          target.appendChild(empty);
+          return;
+        }
+        entries.forEach((entry) => target.appendChild(renderModule(entry)));
+      }
+
+      function renderModules() {
+        const payload = state.modules;
+        currentModulesEl.innerHTML = "";
+        availableModulesEl.innerHTML = "";
+        importedModulesEl.innerHTML = "";
+        renderModuleStateSummary();
+        if (!payload) return;
+        renderLaneOptions(payload);
+        const currentModules = filterModuleEntries(payload.modules || []);
+        const availableModules = filterModuleEntries(payload.available_modules || []);
+        renderModuleSection(currentModulesEl, currentModules, "No current modules match the active filters.");
+        renderModuleSection(availableModulesEl, availableModules, "No available modules match the active filters.");
+        const imported = payload.imported_manifests || [];
+        if (!imported.length) {
+          renderModuleSection(importedModulesEl, [], "No imported manifests on this node yet.");
+        } else {
+          imported.forEach((entry) => importedModulesEl.appendChild(renderImportedManifest(entry)));
+        }
+      }
+
+      function renderSummary() {
+        const modules = state.modules;
+        const node = state.node;
+        nodeLabel.textContent = `${location.origin}/operator/modules`;
+        metricNode.textContent = node?.node?.node_id || modules?.node_id || "-";
+        metricCurrent.textContent = String(modules?.current_module_ids?.length || 0);
+        metricAvailable.textContent = String(modules?.available_modules?.length || 0);
+        metricRestart.textContent = modules?.restart_required ? "Required" : "No";
+        renderPairs(nodeDetails, [
+          ["Open", node?.node?.open],
+          ["Mode", node?.node?.order_mode],
+          ["Public modules", node?.public_modules],
+          ["Current modules", modules?.current_module_ids || []],
+          ["Desired after restart", modules?.desired_module_ids || []],
+          ["Imported manifests", modules?.imported_manifest_count || 0],
+          ["Restart required", modules?.restart_required],
+          ["Checked", modules?.checked_at]
+        ]);
+      }
+
+      function render() {
+        renderModules();
+        renderRoomLinks(state.modules);
+        renderSummary();
+        rawEl.textContent = JSON.stringify({ modules: state.modules, state: state.node }, null, 2);
+      }
+
+      async function refresh() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Loading.");
+        const [modules, node] = await Promise.all([
+          request("/operator/modules"),
+          request("/operator/state")
+        ]);
+        state.modules = modules;
+        state.node = node;
+        render();
+        setStatus("Updated.", "ok");
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", () => {
+        navigator.clipboard.writeText(rawEl.textContent)
+          .then(() => setStatus("Copied JSON.", "ok"))
+          .catch((error) => setStatus(error.message, "bad"));
+      });
+
+      searchInput.addEventListener("input", renderModules);
+      laneFilter.addEventListener("change", renderModules);
+      healthFilter.addEventListener("change", renderModules);
+
+      if (token()) {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

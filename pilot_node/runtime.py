@@ -29,9 +29,30 @@ from p4p_core import (
 from p4p_identity import sign_payload
 
 from pilot_node.config import PilotConfig, build_pilot_config
-
-
-ACTIVE_PAYMENT_MODULE_STATE_KEY = "payment_module_id"
+from pilot_node.hardware_profiles import (
+    hardware_profile_state,
+    list_hardware_addons,
+    list_hardware_base_profiles,
+    list_hardware_profiles,
+    profile_id_from_state,
+)
+from module_catalog import DEFAULT_LOCALE, normalize_locale, operator_locale_payload
+from pilot_node.state_keys import (
+    ACTIVE_PAYMENT_MODULE_STATE_KEY,
+    DESIRED_MODULE_IDS_STATE_KEY,
+    DESIRED_MODULE_IDS_UPDATED_AT_STATE_KEY,
+    SETUP_CATALOG_READY_STATE_KEY,
+    SETUP_COMPLETED_AT_STATE_KEY,
+    SETUP_COMPLETED_STEPS_STATE_KEY,
+    SETUP_HARDWARE_BASE_PROFILE_STATE_KEY,
+    SETUP_HARDWARE_ENABLED_ADDONS_STATE_KEY,
+    SETUP_HARDWARE_PROFILE_STATE_KEY,
+    SETUP_LAST_REVIEWED_AT_STATE_KEY,
+    SETUP_OPERATOR_LOCALE_STATE_KEY,
+    SETUP_PAYMENT_MODULE_STATE_KEY,
+    SETUP_SELF_TEST_RESULTS_STATE_KEY,
+    SETUP_STARTED_AT_STATE_KEY,
+)
 
 
 class PilotStore:
@@ -96,6 +117,22 @@ class PilotStore:
                     source_module TEXT NOT NULL,
                     event_json TEXT NOT NULL,
                     recorded_at TEXT NOT NULL
+                )
+                """
+            )
+            self._connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS imported_module_manifests (
+                    module_id TEXT PRIMARY KEY,
+                    provider_id TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    source_type TEXT NOT NULL,
+                    source_name TEXT NOT NULL,
+                    manifest_json TEXT NOT NULL,
+                    imported_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    validation_status TEXT NOT NULL,
+                    validation_error TEXT NOT NULL
                 )
                 """
             )
@@ -350,6 +387,126 @@ class PilotStore:
             assert updated is not None
             return updated
 
+    def list_imported_module_manifest_records(self) -> list[dict[str, str]]:
+        with self._lock:
+            rows = self._connection.execute(
+                """
+                SELECT
+                    module_id,
+                    provider_id,
+                    version,
+                    source_type,
+                    source_name,
+                    manifest_json,
+                    imported_at,
+                    updated_at,
+                    validation_status,
+                    validation_error
+                FROM imported_module_manifests
+                ORDER BY updated_at DESC, module_id ASC
+                """
+            ).fetchall()
+            return [self._row_to_imported_module_manifest_record(row) for row in rows]
+
+    def get_imported_module_manifest_record(self, module_id: str) -> dict[str, str] | None:
+        normalized_module_id = module_id.strip()
+        if not normalized_module_id:
+            return None
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT
+                    module_id,
+                    provider_id,
+                    version,
+                    source_type,
+                    source_name,
+                    manifest_json,
+                    imported_at,
+                    updated_at,
+                    validation_status,
+                    validation_error
+                FROM imported_module_manifests
+                WHERE module_id = ?
+                """,
+                (normalized_module_id,),
+            ).fetchone()
+            return self._row_to_imported_module_manifest_record(row) if row else None
+
+    def upsert_imported_module_manifest_record(
+        self,
+        *,
+        module_id: str,
+        provider_id: str,
+        version: str,
+        source_name: str,
+        manifest_json: str,
+        validation_status: str,
+        validation_error: str,
+    ) -> dict[str, str]:
+        normalized_module_id = module_id.strip()
+        normalized_provider_id = provider_id.strip()
+        normalized_version = version.strip()
+        normalized_source_name = source_name.strip()
+        normalized_manifest_json = manifest_json.strip()
+        normalized_validation_status = validation_status.strip()
+        normalized_validation_error = validation_error.strip()
+        now = utc_now().isoformat()
+        with self._lock, self._connection:
+            existing = self.get_imported_module_manifest_record(normalized_module_id)
+            imported_at = existing["imported_at"] if existing else now
+            self._connection.execute(
+                """
+                INSERT INTO imported_module_manifests(
+                    module_id,
+                    provider_id,
+                    version,
+                    source_type,
+                    source_name,
+                    manifest_json,
+                    imported_at,
+                    updated_at,
+                    validation_status,
+                    validation_error
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(module_id) DO UPDATE SET
+                    provider_id=excluded.provider_id,
+                    version=excluded.version,
+                    source_type=excluded.source_type,
+                    source_name=excluded.source_name,
+                    manifest_json=excluded.manifest_json,
+                    updated_at=excluded.updated_at,
+                    validation_status=excluded.validation_status,
+                    validation_error=excluded.validation_error
+                """,
+                (
+                    normalized_module_id,
+                    normalized_provider_id,
+                    normalized_version,
+                    "local_upload",
+                    normalized_source_name,
+                    normalized_manifest_json,
+                    imported_at,
+                    now,
+                    normalized_validation_status,
+                    normalized_validation_error,
+                ),
+            )
+        record = self.get_imported_module_manifest_record(normalized_module_id)
+        assert record is not None
+        return record
+
+    def delete_imported_module_manifest_record(self, module_id: str) -> bool:
+        normalized_module_id = module_id.strip()
+        if not normalized_module_id:
+            return False
+        with self._lock, self._connection:
+            result = self._connection.execute(
+                "DELETE FROM imported_module_manifests WHERE module_id = ?",
+                (normalized_module_id,),
+            )
+            return result.rowcount > 0
+
     def _row_to_order(self, row: sqlite3.Row) -> StoredOrder:
         return StoredOrder(
             order_id=row["order_id"],
@@ -366,6 +523,20 @@ class PilotStore:
             updated_at=parse_datetime(row["updated_at"]) or utc_now(),
             estimated_ready=parse_datetime(row["estimated_ready"]),
         )
+
+    def _row_to_imported_module_manifest_record(self, row: sqlite3.Row) -> dict[str, str]:
+        return {
+            "module_id": str(row["module_id"]),
+            "provider_id": str(row["provider_id"]),
+            "version": str(row["version"]),
+            "source_type": str(row["source_type"]),
+            "source_name": str(row["source_name"]),
+            "manifest_json": str(row["manifest_json"]),
+            "imported_at": str(row["imported_at"]),
+            "updated_at": str(row["updated_at"]),
+            "validation_status": str(row["validation_status"]),
+            "validation_error": str(row["validation_error"]),
+        }
 
 
 @dataclass
@@ -399,6 +570,252 @@ def effective_payment_module_id(runtime: PilotRuntime) -> str:
     if _payment_module_manifest(runtime, configured_module_id) is not None:
         return configured_module_id
     return ""
+
+
+def desired_module_ids(runtime: PilotRuntime) -> list[str]:
+    raw_value = runtime.store.get_state(DESIRED_MODULE_IDS_STATE_KEY, "").strip()
+    if raw_value:
+        try:
+            payload = json.loads(raw_value)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, list):
+            normalized: list[str] = []
+            seen: set[str] = set()
+            for value in payload:
+                module_id = str(value).strip()
+                if not module_id or module_id in seen:
+                    continue
+                normalized.append(module_id)
+                seen.add(module_id)
+            if normalized:
+                return normalized
+    return list(runtime.config.node_modules)
+
+
+def desired_module_ids_updated_at(runtime: PilotRuntime) -> str | None:
+    value = runtime.store.get_state(DESIRED_MODULE_IDS_UPDATED_AT_STATE_KEY, "").strip()
+    return value or None
+
+
+def set_desired_module_ids(runtime: PilotRuntime, module_ids: list[str]) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw_module_id in module_ids:
+        module_id = str(raw_module_id).strip()
+        if not module_id or module_id in seen:
+            continue
+        normalized.append(module_id)
+        seen.add(module_id)
+    runtime.store.set_state(DESIRED_MODULE_IDS_STATE_KEY, json.dumps(normalized))
+    runtime.store.set_state(DESIRED_MODULE_IDS_UPDATED_AT_STATE_KEY, utc_now().isoformat())
+    return normalized
+
+
+def module_restart_required(runtime: PilotRuntime) -> bool:
+    return desired_module_ids(runtime) != list(runtime.config.node_modules)
+
+
+def _state_json_list(runtime: PilotRuntime, key: str) -> list[str]:
+    raw_value = runtime.store.get_state(key, "").strip()
+    if not raw_value:
+        return []
+    try:
+        payload = json.loads(raw_value)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(payload, list):
+        return []
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in payload:
+        item = str(value).strip()
+        if not item or item in seen:
+            continue
+        normalized.append(item)
+        seen.add(item)
+    return normalized
+
+
+def _state_json_object(runtime: PilotRuntime, key: str) -> dict[str, bool]:
+    raw_value = runtime.store.get_state(key, "").strip()
+    if not raw_value:
+        return {}
+    try:
+        payload = json.loads(raw_value)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    normalized: dict[str, bool] = {}
+    for raw_key, raw_value in payload.items():
+        key_text = str(raw_key).strip()
+        if not key_text:
+            continue
+        normalized[key_text] = bool(raw_value)
+    return normalized
+
+
+def setup_completed_steps(runtime: PilotRuntime) -> list[str]:
+    return _state_json_list(runtime, SETUP_COMPLETED_STEPS_STATE_KEY)
+
+
+def setup_state(runtime: PilotRuntime) -> dict[str, object]:
+    payment_module_id = effective_payment_module_id(runtime)
+    configured_profile_ids = [profile.profile_id for profile in list_hardware_profiles()]
+    runtime_hardware = hardware_profile_state(runtime.config.hardware_profile)
+    stored_operator_locale = normalize_locale(
+        runtime.store.get_state(SETUP_OPERATOR_LOCALE_STATE_KEY, DEFAULT_LOCALE).strip() or DEFAULT_LOCALE
+    )
+    stored_hardware_profile = runtime.store.get_state(SETUP_HARDWARE_PROFILE_STATE_KEY, "").strip() or None
+    stored_hardware_base_profile = runtime.store.get_state(
+        SETUP_HARDWARE_BASE_PROFILE_STATE_KEY, ""
+    ).strip() or None
+    stored_hardware_enabled_addons = _state_json_list(runtime, SETUP_HARDWARE_ENABLED_ADDONS_STATE_KEY)
+    derived_hardware_profile = (
+        profile_id_from_state(stored_hardware_base_profile or "", stored_hardware_enabled_addons)
+        if stored_hardware_base_profile
+        else None
+    )
+    return {
+        "started_at": runtime.store.get_state(SETUP_STARTED_AT_STATE_KEY, "").strip() or None,
+        "completed_at": runtime.store.get_state(SETUP_COMPLETED_AT_STATE_KEY, "").strip() or None,
+        "last_reviewed_at": runtime.store.get_state(SETUP_LAST_REVIEWED_AT_STATE_KEY, "").strip() or None,
+        "operator_locale": stored_operator_locale,
+        "locale": operator_locale_payload(stored_operator_locale),
+        "hardware_profile": stored_hardware_profile or derived_hardware_profile,
+        "runtime_hardware_profile": runtime.config.hardware_profile,
+        "hardware_base_profile": stored_hardware_base_profile,
+        "runtime_hardware_base_profile": str(runtime_hardware["base_profile"]),
+        "hardware_enabled_addons": stored_hardware_enabled_addons,
+        "runtime_hardware_enabled_addons": list(runtime_hardware["enabled_addons"]),
+        "available_hardware_profiles": configured_profile_ids,
+        "hardware_base_profiles": list_hardware_base_profiles(),
+        "hardware_addons": list_hardware_addons(),
+        "payment_module_id": runtime.store.get_state(SETUP_PAYMENT_MODULE_STATE_KEY, "").strip() or payment_module_id or None,
+        "catalog_ready": runtime.store.get_state(SETUP_CATALOG_READY_STATE_KEY, "").strip() == "true",
+        "completed_steps": setup_completed_steps(runtime),
+        "self_test_results": _state_json_object(runtime, SETUP_SELF_TEST_RESULTS_STATE_KEY),
+    }
+
+
+def _set_setup_completed_step(runtime: PilotRuntime, step_id: str, enabled: bool) -> list[str]:
+    normalized_step_id = step_id.strip()
+    steps = setup_completed_steps(runtime)
+    if enabled:
+        if normalized_step_id and normalized_step_id not in steps:
+            steps.append(normalized_step_id)
+    else:
+        steps = [step for step in steps if step != normalized_step_id]
+    runtime.store.set_state(SETUP_COMPLETED_STEPS_STATE_KEY, json.dumps(steps))
+    return steps
+
+
+def set_setup_state(
+    runtime: PilotRuntime,
+    *,
+    operator_locale: str | None = None,
+    hardware_profile: str | None = None,
+    hardware_base_profile: str | None = None,
+    hardware_enabled_addons: list[str] | None = None,
+    catalog_ready: bool | None = None,
+    local_tests_run: bool | None = None,
+    completed: bool | None = None,
+) -> dict[str, object]:
+    now = utc_now().isoformat()
+    if not runtime.store.get_state(SETUP_STARTED_AT_STATE_KEY, "").strip():
+        runtime.store.set_state(SETUP_STARTED_AT_STATE_KEY, now)
+    runtime.store.set_state(SETUP_LAST_REVIEWED_AT_STATE_KEY, now)
+
+    if operator_locale is not None:
+        runtime.store.set_state(
+            SETUP_OPERATOR_LOCALE_STATE_KEY,
+            normalize_locale(operator_locale),
+        )
+
+    normalized_hardware_base_profile: str | None = None
+    normalized_hardware_enabled_addons: list[str] | None = None
+
+    if hardware_profile is not None:
+        normalized_hardware_profile = hardware_profile.strip()
+        available_profile_ids = {profile.profile_id for profile in list_hardware_profiles()}
+        if normalized_hardware_profile and normalized_hardware_profile not in available_profile_ids:
+            raise HTTPException(status_code=400, detail=f"Unknown hardware_profile: {normalized_hardware_profile}")
+        runtime.store.set_state(SETUP_HARDWARE_PROFILE_STATE_KEY, normalized_hardware_profile)
+        if normalized_hardware_profile:
+            profile_state = hardware_profile_state(normalized_hardware_profile)
+            if hardware_base_profile is None:
+                normalized_hardware_base_profile = str(profile_state["base_profile"])
+            if hardware_enabled_addons is None:
+                normalized_hardware_enabled_addons = list(profile_state["enabled_addons"])
+        else:
+            if hardware_base_profile is None:
+                normalized_hardware_base_profile = ""
+            if hardware_enabled_addons is None:
+                normalized_hardware_enabled_addons = []
+
+    if hardware_base_profile is not None:
+        normalized_hardware_base_profile = hardware_base_profile.strip()
+
+    if normalized_hardware_base_profile is not None:
+        available_base_profile_ids = {
+            str(item["id"]).strip() for item in list_hardware_base_profiles()
+        }
+        if normalized_hardware_base_profile and normalized_hardware_base_profile not in available_base_profile_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown hardware_base_profile: {normalized_hardware_base_profile}",
+            )
+        runtime.store.set_state(SETUP_HARDWARE_BASE_PROFILE_STATE_KEY, normalized_hardware_base_profile)
+        _set_setup_completed_step(
+            runtime,
+            "hardware_profile_confirmed",
+            bool(normalized_hardware_base_profile),
+        )
+
+    if hardware_enabled_addons is not None:
+        normalized_hardware_enabled_addons = []
+        seen_addons: set[str] = set()
+        allowed_addon_ids = {str(item["id"]).strip() for item in list_hardware_addons()}
+        for raw_addon_id in hardware_enabled_addons:
+            addon_id = str(raw_addon_id).strip()
+            if not addon_id or addon_id in seen_addons:
+                continue
+            if addon_id not in allowed_addon_ids:
+                raise HTTPException(status_code=400, detail=f"Unknown hardware_addon: {addon_id}")
+            normalized_hardware_enabled_addons.append(addon_id)
+            seen_addons.add(addon_id)
+
+    if normalized_hardware_enabled_addons is not None:
+        runtime.store.set_state(
+            SETUP_HARDWARE_ENABLED_ADDONS_STATE_KEY,
+            json.dumps(normalized_hardware_enabled_addons),
+        )
+
+    if normalized_hardware_base_profile is not None or normalized_hardware_enabled_addons is not None:
+        current_base_profile = runtime.store.get_state(SETUP_HARDWARE_BASE_PROFILE_STATE_KEY, "").strip()
+        current_addons = _state_json_list(runtime, SETUP_HARDWARE_ENABLED_ADDONS_STATE_KEY)
+        derived_profile_id = (
+            profile_id_from_state(current_base_profile, current_addons) if current_base_profile else None
+        )
+        runtime.store.set_state(SETUP_HARDWARE_PROFILE_STATE_KEY, derived_profile_id or "")
+
+    if catalog_ready is not None:
+        runtime.store.set_state(SETUP_CATALOG_READY_STATE_KEY, "true" if catalog_ready else "false")
+        _set_setup_completed_step(runtime, "catalog_reviewed", bool(catalog_ready))
+
+    if local_tests_run is not None:
+        _set_setup_completed_step(runtime, "local_tests_run", bool(local_tests_run))
+
+    payment_module_id = effective_payment_module_id(runtime)
+    runtime.store.set_state(SETUP_PAYMENT_MODULE_STATE_KEY, payment_module_id)
+
+    if completed is True:
+        runtime.store.set_state(SETUP_COMPLETED_AT_STATE_KEY, now)
+    elif completed is False:
+        runtime.store.set_state(SETUP_COMPLETED_AT_STATE_KEY, "")
+
+    return setup_state(runtime)
 
 
 def effective_flow_module_ids(runtime: PilotRuntime) -> tuple[str, ...]:
@@ -515,15 +932,19 @@ __all__ = [
     "PilotRuntime",
     "PilotStore",
     "build_pilot_runtime",
+    "desired_module_ids",
+    "desired_module_ids_updated_at",
     "effective_flow_module_ids",
     "effective_payment_module_id",
     "enabled_module_declarations",
+    "module_restart_required",
     "module_is_payment",
     "node_accepts_orders",
     "node_state",
     "public_module_projection",
     "public_module_declarations",
     "registration_payload",
+    "set_desired_module_ids",
     "set_effective_payment_module_id",
     "sign_node_announcement",
     "signed_heartbeat_payload",

@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="{{page_lang}}" dir="{{page_dir}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{page_title}}</title>
+    <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <style>
+      .hero-grid,
+      .welcome-list,
+      .quick-links {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (min-width: 920px) {
+        .hero-grid {
+          grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+          align-items: start;
+        }
+      }
+
+      .welcome-card {
+        display: grid;
+        gap: 10px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .welcome-step {
+        display: grid;
+        gap: 6px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .quick-links a {
+        justify-content: flex-start;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>{{page_title}}</h1>
+          <p class="muted" id="node-label">127.0.0.1</p>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="{{toolbar_token_placeholder}}">
+            <button id="save-token" type="button">{{toolbar_use_token}}</button>
+            <button id="clear-token" class="secondary" type="button">{{toolbar_clear}}</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">{{toolbar_refresh}}</button>
+            <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
+          </div>
+          <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+        </div>
+      </header>
+
+      <nav class="operator-nav" aria-label="Operator navigation">
+        <a class="nav-link active" href="/operator/welcome">{{nav_welcome}}</a>
+        <a class="nav-link" href="/operator/setup">{{nav_setup}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link" href="/operator/modules">{{nav_modules}}</a>
+        <a class="nav-link" href="/operator/discover">{{nav_discover}}</a>
+        <a class="nav-link" href="/operator/import">{{nav_import}}</a>
+        <a class="nav-link" href="/operator/node">{{nav_node}}</a>
+      </nav>
+
+      <section class="summary" aria-label="Welcome summary">
+        <div class="metric">
+          <span>Node</span>
+          <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Mode</span>
+          <strong id="metric-mode">-</strong>
+        </div>
+        <div class="metric">
+          <span>Payment</span>
+          <strong id="metric-payment">-</strong>
+        </div>
+        <div class="metric">
+          <span>Next</span>
+          <strong id="metric-next">-</strong>
+        </div>
+      </section>
+
+      <div id="restart-banner" class="restart-banner" hidden></div>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>This node</h2>
+              <p class="muted">Local menu, local order flow, local operator surfaces.</p>
+            </div>
+            <div class="panel-body">
+              <div class="hero-grid">
+                <div class="welcome-list">
+                  <article class="welcome-card">
+                    <h3>Menu work lives in Catalog</h3>
+                    <p class="muted">Items, prices, images, and menu import.</p>
+                  </article>
+                  <article class="welcome-card">
+                    <h3>Daily flow lives in Operations</h3>
+                    <p class="muted">Incoming orders, kitchen work, and runtime state.</p>
+                  </article>
+                  <article class="welcome-card">
+                    <h3>System shape lives in Modules</h3>
+                    <p class="muted">Running now, desired after restart, and explicit module changes.</p>
+                  </article>
+                </div>
+                <aside class="panel">
+                  <div class="panel-head">
+                    <h2>Current reading</h2>
+                  </div>
+                  <div class="panel-body">
+                    <dl id="node-details"></dl>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Start here</h2>
+              <p class="muted">Follow the next real step. The rest can wait.</p>
+            </div>
+            <div class="panel-body">
+              <div class="welcome-list" id="start-here"></div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Next rooms</h2>
+            </div>
+            <div class="panel-body">
+              <div class="quick-links" id="quick-links"></div>
+            </div>
+          </section>
+
+          <details class="panel">
+            <summary>Debug JSON</summary>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const rawEl = document.getElementById("raw");
+      const nodeLabel = document.getElementById("node-label");
+      const metricNode = document.getElementById("metric-node");
+      const metricMode = document.getElementById("metric-mode");
+      const metricPayment = document.getElementById("metric-payment");
+      const metricNext = document.getElementById("metric-next");
+      const nodeDetails = document.getElementById("node-details");
+      const restartBanner = document.getElementById("restart-banner");
+      const startHere = document.getElementById("start-here");
+      const quickLinks = document.getElementById("quick-links");
+
+      const state = { setup: null };
+
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function headers() {
+        return {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-P4P-Operator-Token": token()
+        };
+      }
+
+      async function request(path) {
+        const response = await fetch(path, { headers: headers() });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function renderPairs(target, pairs) {
+        target.innerHTML = "";
+        for (const [key, value] of pairs) {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = Array.isArray(value) ? value.join(", ") : String(value ?? "-");
+          target.appendChild(dt);
+          target.appendChild(dd);
+        }
+      }
+
+      function renderQuickLinks(payload) {
+        quickLinks.innerHTML = "";
+        [
+          ["/operator/setup", "Open setup"],
+          ["/operator/catalog", "Open catalog"],
+          ["/operator/modules", "Open modules"],
+          ["/operator", "Open operations"],
+          [payload?.modules?.discover?.operator_discover_url || "/operator/discover", "Open discover"],
+          [payload?.modules?.discover?.operator_import_url || "/operator/import", "Open import"],
+          [payload?.modules?.discover?.public_catalog_url, "Read public catalog"]
+        ].forEach(([href, text]) => {
+          if (!href) return;
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = href;
+          if (href.startsWith("http")) {
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+          }
+          link.textContent = text;
+          quickLinks.appendChild(link);
+        });
+      }
+
+      function renderRestartBanner(modules) {
+        if (!modules?.restart_required) {
+          restartBanner.hidden = true;
+          restartBanner.textContent = "";
+          return;
+        }
+        restartBanner.hidden = false;
+        restartBanner.className = "restart-banner";
+        restartBanner.innerHTML = "<strong>Restart required.</strong><p>The desired module set differs from the running node. Restart after finishing setup or backoffice changes.</p>";
+      }
+
+      function nextAction(payload) {
+        const modules = payload?.modules;
+        const node = payload?.state;
+        const menu = payload?.menu;
+        const setup = payload?.setup;
+        const summary = payload?.summary;
+        const desired = new Set(modules?.desired_module_ids || []);
+        const current = new Set(modules?.current_module_ids || []);
+        const itemCount = menu?.items?.length || 0;
+        const payment = modules?.active_by_lane?.payment || "-";
+        if (modules?.restart_required) {
+          return {
+            label: "Restart node",
+            detail: "The desired module set is saved, but the runtime is still on the old set.",
+            href: "/operator/modules"
+          };
+        }
+        if (REQUIRED_MODULES.some((moduleId) => !desired.has(moduleId))) {
+          return {
+            label: "Choose baseline modules",
+            detail: "The pilot baseline is not selected yet.",
+            href: "/operator/modules"
+          };
+        }
+        if (!payment || payment === "-") {
+          return {
+            label: "Choose payment lane",
+            detail: "A pickup payment lane should be active before testing.",
+            href: "/operator/modules"
+          };
+        }
+        if (itemCount === 0) {
+          return {
+            label: "Add first menu",
+            detail: "This node does not have a menu yet.",
+            href: "/operator/catalog"
+          };
+        }
+        if (!setup?.hardware_profile) {
+          return {
+            label: "Confirm hardware profile",
+            detail: "Record which hardware shape this node is meant to run on before pilot use.",
+            href: "/operator/setup"
+          };
+        }
+        if (!setup?.catalog_ready) {
+          return {
+            label: "Review the menu",
+            detail: "The menu exists, but setup has not marked it as reviewed yet.",
+            href: "/operator/catalog"
+          };
+        }
+        if (!(setup?.completed_steps || []).includes("local_tests_run")) {
+          return {
+            label: "Run local tests",
+            detail: "Finish the local checks before trusting the node in a real shop.",
+            href: "/operator/setup"
+          };
+        }
+        if (node?.node?.order_mode !== "menu_only" && node?.node?.order_mode !== "live") {
+          return {
+            label: "Set menu_only",
+            detail: "Keep the node in menu_only while you finish setup.",
+            href: "/operator"
+          };
+        }
+        if (!current.has("p4p.kitchen.screen")) {
+          return {
+            label: "Review operations surface",
+            detail: "The node can already hold a menu, but kitchen handling is not active in the running set.",
+            href: "/operator/modules"
+          };
+        }
+        return {
+          label: "Open operations",
+          detail: summary?.ready_for_menu_only
+            ? "The node is now menu_only-ready. Use operations for day-to-day testing."
+            : "The basic pilot shape is there. Use operations for day-to-day testing.",
+          href: "/operator"
+        };
+      }
+
+      function renderStartHere(payload) {
+        const modules = payload?.modules;
+        const menu = payload?.menu;
+        startHere.innerHTML = "";
+        const action = nextAction(payload);
+        const cards = [
+          action,
+          {
+            label: "Catalog is where menu work happens",
+            detail: `This node currently has ${menu?.items?.length || 0} catalog item(s).`,
+            href: "/operator/catalog"
+          },
+          {
+            label: "Modules is where system shape happens",
+            detail: `Running now: ${(modules?.current_module_ids || []).length} module(s). Desired after restart: ${(modules?.desired_module_ids || []).length}.`,
+            href: "/operator/modules"
+          }
+        ];
+        cards.forEach((card) => {
+          const article = document.createElement("article");
+          article.className = "welcome-step";
+          const title = document.createElement("h3");
+          title.textContent = card.label;
+          const detail = document.createElement("p");
+          detail.className = "muted";
+          detail.textContent = card.detail;
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = card.href;
+          link.textContent = "Open";
+          article.appendChild(title);
+          article.appendChild(detail);
+          article.appendChild(link);
+          startHere.appendChild(article);
+        });
+      }
+
+      function render() {
+        const payload = state.setup;
+        const modules = payload?.modules;
+        const node = payload?.state;
+        const menu = payload?.menu;
+        const action = nextAction(payload);
+        nodeLabel.textContent = `${location.origin}/operator/welcome`;
+        metricNode.textContent = node?.node?.node_id || modules?.node_id || "-";
+        metricMode.textContent = node?.node?.order_mode || "-";
+        metricPayment.textContent = modules?.active_by_lane?.payment || "-";
+        metricNext.textContent = action.label;
+        renderPairs(nodeDetails, [
+          ["Open", node?.node?.open],
+          ["Accepts orders", node?.accepts_orders],
+          ["Catalog items", menu?.items?.length || 0],
+          ["Running now", modules?.current_module_ids || []],
+          ["Desired after restart", modules?.desired_module_ids || []],
+          ["Setup status", payload?.summary?.status || "-"],
+          ["Checked", modules?.checked_at]
+        ]);
+        renderRestartBanner(modules);
+        renderStartHere(payload);
+        renderQuickLinks(payload);
+        rawEl.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function refresh() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Loading.");
+        state.setup = await request("/operator/setup");
+        render();
+        setStatus("Updated.", "ok");
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(rawEl.textContent);
+          setStatus("Copied JSON.", "ok");
+        } catch (error) {
+          setStatus(error.message || "Could not copy JSON.", "bad");
+        }
+      });
+
+      if (token()) {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

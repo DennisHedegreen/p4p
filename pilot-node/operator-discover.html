@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="{{page_lang}}" dir="{{page_dir}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{page_title}}</title>
+    <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <style>
+      .discover-list,
+      .discover-categories,
+      .discover-module-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .discover-card,
+      .category-card,
+      .module-card {
+        display: grid;
+        gap: 10px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .discover-head,
+      .module-title {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .module-card .actions,
+      .discover-card .actions,
+      .inline-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>{{page_title}}</h1>
+          <p class="muted" id="node-label">127.0.0.1</p>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="{{toolbar_token_placeholder}}">
+            <button id="save-token" type="button">{{toolbar_use_token}}</button>
+            <button id="clear-token" class="secondary" type="button">{{toolbar_clear}}</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">{{toolbar_refresh}}</button>
+            <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
+          </div>
+          <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+        </div>
+      </header>
+
+      <nav class="operator-nav" aria-label="Operator navigation">
+        <a class="nav-link" href="/operator/welcome">{{nav_welcome}}</a>
+        <a class="nav-link" href="/operator/setup">{{nav_setup}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link" href="/operator/modules">{{nav_modules}}</a>
+        <a class="nav-link active" href="/operator/discover">{{nav_discover}}</a>
+        <a class="nav-link" href="/operator/import">{{nav_import}}</a>
+        <a class="nav-link" href="/operator/node">{{nav_node}}</a>
+      </nav>
+
+      <section class="summary" aria-label="Discover summary">
+        <div class="metric">
+          <span>Node</span>
+          <strong id="metric-node">-</strong>
+        </div>
+        <div class="metric">
+          <span>Running now</span>
+          <strong id="metric-current">-</strong>
+        </div>
+        <div class="metric">
+          <span>Family</span>
+          <strong id="metric-family">-</strong>
+        </div>
+        <div class="metric">
+          <span>Restart</span>
+          <strong id="metric-restart">-</strong>
+        </div>
+      </section>
+
+      <div id="restart-banner" class="restart-banner" hidden></div>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Recommended for this kind of shop</h2>
+              <p class="muted" id="family-summary">The first public family is the generic shop family, not a pizza-only frame.</p>
+            </div>
+            <div class="panel-body">
+              <div id="recommended-modules" class="discover-list"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Browse module groups</h2>
+              <p class="muted">Read the public module catalog here, then use Modules to change the desired local set or Import to bring in a local manifest file.</p>
+            </div>
+            <div class="panel-body">
+              <div id="discover-categories" class="discover-categories"></div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Current modules</h2>
+            </div>
+            <div class="panel-body">
+              <div id="current-modules" class="inline-list"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Public reading</h2>
+            </div>
+            <div class="panel-body">
+              <div class="route-list" id="public-links"></div>
+            </div>
+          </section>
+
+          <details class="panel">
+            <summary>Debug JSON</summary>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const rawEl = document.getElementById("raw");
+      const nodeLabel = document.getElementById("node-label");
+      const metricNode = document.getElementById("metric-node");
+      const metricCurrent = document.getElementById("metric-current");
+      const metricFamily = document.getElementById("metric-family");
+      const metricRestart = document.getElementById("metric-restart");
+      const restartBanner = document.getElementById("restart-banner");
+      const familySummary = document.getElementById("family-summary");
+      const recommendedModules = document.getElementById("recommended-modules");
+      const discoverCategories = document.getElementById("discover-categories");
+      const currentModules = document.getElementById("current-modules");
+      const publicLinks = document.getElementById("public-links");
+
+      const state = { payload: null };
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function headers() {
+        return {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-P4P-Operator-Token": token()
+        };
+      }
+
+      async function request(path) {
+        const response = await fetch(path, { headers: headers() });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function badge(text, tone = "") {
+        const el = document.createElement("span");
+        el.className = `badge ${tone}`.trim();
+        el.textContent = text;
+        return el;
+      }
+
+      function healthTone(value) {
+        if (value === "up" || value === "available") return "ok";
+        if (value === "down" || value === "not_configured" || value === "undeclared") return "warn";
+        return "";
+      }
+
+      function renderRestartBanner(payload) {
+        if (!payload?.restart_required) {
+          restartBanner.hidden = true;
+          restartBanner.textContent = "";
+          return;
+        }
+        restartBanner.hidden = false;
+        restartBanner.innerHTML = "<strong>Restart required.</strong><p>The desired module set differs from the running node. Keep discovery read-only here, then apply changes from Modules and restart when the shop is ready.</p>";
+      }
+
+      function renderModuleCard(entry) {
+        const article = document.createElement("article");
+        article.className = "module-card";
+        const title = document.createElement("div");
+        title.className = "module-title";
+        const h3 = document.createElement("h3");
+        h3.textContent = entry.title;
+        title.appendChild(h3);
+        title.appendChild(badge(entry.category_title));
+        title.appendChild(badge(entry.readiness));
+        title.appendChild(badge(entry.health || "available", healthTone(entry.health)));
+        if (entry.enabled_now) {
+          title.appendChild(badge("running now", "ok"));
+        } else if (entry.desired_enabled) {
+          title.appendChild(badge("desired", "warn"));
+        }
+        const p = document.createElement("p");
+        p.className = "muted";
+        p.textContent = entry.summary;
+        const meta = document.createElement("div");
+        meta.className = "inline-meta muted";
+        meta.textContent = `id: ${entry.module_id}`;
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const openModule = document.createElement("a");
+        openModule.className = "button-link secondary";
+        openModule.href = entry.open_module_url;
+        openModule.textContent = "Open module";
+        actions.appendChild(openModule);
+
+        const publicDoc = document.createElement("a");
+        publicDoc.className = "button-link secondary";
+        publicDoc.href = entry.proof_page_url;
+        publicDoc.target = "_blank";
+        publicDoc.rel = "noopener noreferrer";
+        publicDoc.textContent = "Open public page";
+        actions.appendChild(publicDoc);
+
+        article.appendChild(title);
+        article.appendChild(p);
+        article.appendChild(meta);
+        article.appendChild(actions);
+        return article;
+      }
+
+      function renderRecommended(list) {
+        recommendedModules.innerHTML = "";
+        list.forEach((entry) => recommendedModules.appendChild(renderModuleCard(entry)));
+      }
+
+      function renderCategories(list) {
+        discoverCategories.innerHTML = "";
+        list.forEach((category) => {
+          const article = document.createElement("article");
+          article.className = "category-card";
+          const head = document.createElement("div");
+          head.className = "discover-head";
+          const h3 = document.createElement("h3");
+          h3.textContent = category.title;
+          head.appendChild(h3);
+          head.appendChild(badge(`${category.module_count} modules`));
+          const summary = document.createElement("p");
+          summary.className = "muted";
+          summary.textContent = category.summary;
+          const modules = document.createElement("div");
+          modules.className = "discover-module-list";
+          category.modules.forEach((entry) => modules.appendChild(renderModuleCard(entry)));
+          article.appendChild(head);
+          article.appendChild(summary);
+          article.appendChild(modules);
+          discoverCategories.appendChild(article);
+        });
+      }
+
+      function renderCurrentModules(list) {
+        currentModules.innerHTML = "";
+        list.forEach((entry) => currentModules.appendChild(badge(entry.module_id, entry.enabled_now ? "ok" : "")));
+      }
+
+      function renderPublicLinks(payload) {
+        publicLinks.innerHTML = "";
+        [
+          ["Public module catalog", payload?.links?.public_catalog_url],
+          ["Shop family", payload?.links?.shop_family_url],
+          ["Open local Modules room", payload?.links?.modules_room_url],
+          ["Import your own manifest", payload?.links?.import_room_url]
+        ].forEach(([label, href]) => {
+          if (!href) return;
+          const card = document.createElement("article");
+          card.className = "route-card";
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = href;
+          if (href.startsWith("http")) {
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+          }
+          link.textContent = label;
+          card.appendChild(link);
+          publicLinks.appendChild(card);
+        });
+      }
+
+      function render() {
+        const payload = state.payload || {};
+        nodeLabel.textContent = `${location.origin}/operator/discover`;
+        metricNode.textContent = payload.node_id || "-";
+        metricCurrent.textContent = String((payload.current_module_ids || []).length);
+        metricFamily.textContent = payload.family?.title || "-";
+        metricRestart.textContent = payload.restart_required ? "Yes" : "No";
+        familySummary.textContent = payload.family?.summary || "";
+        renderRestartBanner(payload);
+        renderRecommended(payload.recommended_modules || []);
+        renderCategories(payload.categories || []);
+        renderCurrentModules(payload.current_modules || []);
+        renderPublicLinks(payload);
+        rawEl.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      async function refresh() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus("Loading.");
+        state.payload = await request("/operator/discover");
+        render();
+        setStatus("Updated.", "ok");
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(rawEl.textContent);
+          setStatus("Copied JSON.", "ok");
+        } catch (error) {
+          setStatus(error.message || "Could not copy JSON.", "bad");
+        }
+      });
+
+      if (token()) {
+        refresh().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="{{page_lang}}" dir="{{page_dir}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{page_title}}</title>
+    <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <style>
+      .card-grid,
+      .action-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (min-width: 1260px) {
+        .card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      .doc-blocks {
+        display: grid;
+        gap: 12px;
+      }
+
+      .doc-section {
+        display: grid;
+        gap: 10px;
+      }
+
+      .doc-section[hidden] {
+        display: none;
+      }
+
+      .doc-content {
+        display: grid;
+        gap: 10px;
+      }
+
+      .doc-content ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .catalog-import,
+      .catalog-import-row,
+      .import-preview,
+      .import-preview-head,
+      .import-preview-list,
+      .import-preview-main,
+      .import-preview-editors {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (min-width: 760px) {
+        .catalog-import-row {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+          align-items: center;
+        }
+
+        .import-preview-row {
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          align-items: start;
+        }
+
+        .import-preview-editors {
+          grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr) minmax(160px, 0.35fr);
+        }
+
+        .import-preview-head {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: start;
+        }
+      }
+
+      .catalog-import input[type="file"] {
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 8px 10px;
+        background: #fff;
+      }
+
+      .import-preview {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        background: var(--surface-2);
+      }
+
+      .import-preview-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .import-preview-row {
+        display: grid;
+        gap: 12px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .import-preview-row input[type="checkbox"] {
+        width: 18px;
+        min-height: 18px;
+      }
+
+      .import-preview-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .import-preview-id {
+        font-weight: 700;
+      }
+
+      .import-preview-meta {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .import-preview-text summary {
+        cursor: pointer;
+        font-weight: 650;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="stack">
+          <div class="stack">
+            <h1 id="module-title">P4P Module</h1>
+            <p class="muted" id="module-subtitle">Loading module detail.</p>
+            <div class="badges" id="module-badges"></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="token-row">
+            <input id="token" type="password" autocomplete="current-password" placeholder="{{toolbar_token_placeholder}}">
+            <button id="save-token" type="button">{{toolbar_use_token}}</button>
+            <button id="clear-token" class="secondary" type="button">{{toolbar_clear}}</button>
+          </div>
+          <div class="actions">
+            <button id="refresh" type="button">{{toolbar_refresh}}</button>
+            <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
+          </div>
+          <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+        </div>
+      </header>
+
+      <nav class="operator-nav" aria-label="Operator navigation">
+        <a class="nav-link" href="/operator/welcome">{{nav_welcome}}</a>
+        <a class="nav-link" href="/operator/setup">{{nav_setup}}</a>
+        <a class="nav-link" href="/operator">{{nav_operations}}</a>
+        <a class="nav-link" href="/operator/catalog">{{nav_catalog}}</a>
+        <a class="nav-link active" href="/operator/modules">{{nav_modules}}</a>
+        <a class="nav-link" href="/operator/discover">{{nav_discover}}</a>
+        <a class="nav-link" href="/operator/import">{{nav_import}}</a>
+        <a class="nav-link" href="/operator/node">{{nav_node}}</a>
+      </nav>
+
+      <section class="summary" aria-label="Module summary">
+        <div class="metric">
+          <span>Enabled Now</span>
+          <strong id="metric-enabled-now">-</strong>
+        </div>
+        <div class="metric">
+          <span>Desired After Restart</span>
+          <strong id="metric-desired">-</strong>
+        </div>
+        <div class="metric">
+          <span>Health</span>
+          <strong id="metric-health">-</strong>
+        </div>
+        <div class="metric">
+          <span>Lane</span>
+          <strong id="metric-lane">-</strong>
+        </div>
+      </section>
+
+      <div id="restart-banner" class="restart-banner" hidden></div>
+
+      <div class="layout">
+        <div class="stack">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Owner reading</h2>
+              <p class="muted">Start here before technical detail.</p>
+            </div>
+            <div class="panel-body">
+              <div class="doc-blocks">
+                <section id="payment-boundary-section" class="doc-section" hidden>
+                  <h3>Boundary</h3>
+                  <div id="payment-boundary" class="doc-content"></div>
+                </section>
+                <section id="purpose-section" class="doc-section" hidden>
+                  <h3>Purpose</h3>
+                  <div id="purpose" class="doc-content"></div>
+                </section>
+                <section id="what-it-does-section" class="doc-section" hidden>
+                  <h3>What it does</h3>
+                  <div id="what-it-does" class="doc-content"></div>
+                </section>
+                <section id="what-it-does-not-own-section" class="doc-section" hidden>
+                  <h3>What it does not own</h3>
+                  <div id="what-it-does-not-own" class="doc-content"></div>
+                </section>
+                <section id="current-readiness-section" class="doc-section" hidden>
+                  <h3>Current readiness</h3>
+                  <div id="current-readiness" class="doc-content"></div>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Actions</h2>
+              <p class="muted">Module changes are explicit and restart-applied.</p>
+            </div>
+            <div class="panel-body">
+              <div class="action-grid" id="action-grid"></div>
+            </div>
+          </section>
+
+          <section id="module-surface-section" class="panel" hidden>
+            <div class="panel-head">
+              <h2 id="module-surface-title">Module surface</h2>
+              <p class="muted" id="module-surface-subtitle">Module-owned operator surface.</p>
+            </div>
+            <div class="panel-body">
+              <div id="ocr-module-surface" hidden>
+                <div class="catalog-import">
+                  <div class="catalog-import-row">
+                    <input id="ocr-source-name" type="text" placeholder="Source name, e.g. takeaway-menu.jpg">
+                    <input id="ocr-image-file" type="file" accept="image/png,image/jpeg,image/webp">
+                    <button id="ocr-scan-photo" class="secondary" type="button">Scan photo</button>
+                    <button id="ocr-clear-draft" class="secondary" type="button">Clear draft</button>
+                  </div>
+                  <p class="muted">Upload a photographed menu card. Review the OCR draft here, then save selected rows into the catalog through the editor dependency.</p>
+                </div>
+                <div id="ocr-import-preview"></div>
+              </div>
+              <p id="module-surface-disabled" class="muted" hidden>This module is not enabled in the running node yet. Enable it and restart the node to use its operator surface.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Technical detail</h2>
+            </div>
+            <div class="panel-body">
+              <dl id="technical-details"></dl>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Node</h2>
+            </div>
+            <div class="panel-body">
+              <dl id="node-details"></dl>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Desired module set</h2>
+            </div>
+            <div class="panel-body stack">
+              <div>
+                <h3 class="muted">Running now</h3>
+                <div id="current-module-list" class="inline-list"></div>
+              </div>
+              <div>
+                <h3 class="muted">After restart</h3>
+                <div id="desired-module-list" class="inline-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Module data</h2>
+            </div>
+            <div class="panel-body stack">
+              <div>
+                <h3 class="muted">Data access</h3>
+                <div id="data-access-list" class="inline-list"></div>
+              </div>
+              <div>
+                <h3 class="muted">Input events</h3>
+                <div id="input-events-list" class="inline-list"></div>
+              </div>
+              <div>
+                <h3 class="muted">Output events</h3>
+                <div id="output-events-list" class="inline-list"></div>
+              </div>
+              <div>
+                <h3 class="muted">Failure modes</h3>
+                <div id="failure-modes-list" class="inline-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Links</h2>
+            </div>
+            <div class="panel-body stack" id="link-list"></div>
+          </section>
+
+          <details class="panel">
+            <summary>Debug JSON</summary>
+            <div class="panel-body">
+              <pre id="raw">{}</pre>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.getElementById("token");
+      const statusLine = document.getElementById("status-line");
+      const rawEl = document.getElementById("raw");
+      const nodeDetails = document.getElementById("node-details");
+      const moduleId = decodeURIComponent(location.pathname.split("/").pop() || "");
+      const OCR_IMPORT_MODULE_ID = "p4p.catalog.import.ocr";
+      const importPreviewCategories = ["pizza", "durum", "pita", "burger", "kebab", "salad", "pasta", "drink", "main"];
+      const state = {
+        detail: null,
+        menu: null,
+        importPreview: null
+      };
+
+      tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function setStatus(text, tone) {
+        statusLine.textContent = text;
+        statusLine.style.color = tone === "bad" ? "var(--bad)" : tone === "ok" ? "var(--ok)" : "var(--muted)";
+      }
+
+      function headers() {
+        return {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-P4P-Operator-Token": token()
+        };
+      }
+
+      async function requestJSON(path, options = {}) {
+        const response = await fetch(path, {
+          method: options.method || "GET",
+          headers: headers(),
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        return response.json();
+      }
+
+      function badge(text, tone) {
+        const el = document.createElement("span");
+        el.className = `badge ${tone || ""}`.trim();
+        el.textContent = text;
+        return el;
+      }
+
+      function healthTone(value) {
+        if (value === "up" || value === "available") return "ok";
+        if (value === "down" || value === "not_configured" || value === "undeclared") return "bad";
+        if (value === "degraded") return "warn";
+        return "";
+      }
+
+      function isOcrModule() {
+        return moduleId === OCR_IMPORT_MODULE_ID;
+      }
+
+      function slugifyImportName(value) {
+        return (value || "")
+          .toLowerCase()
+          .replaceAll("æ", "ae")
+          .replaceAll("ø", "oe")
+          .replaceAll("å", "aa")
+          .replaceAll("&", " og ")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/-{2,}/g, "-")
+          .replace(/^-|-$/g, "");
+      }
+
+      function currentImportRowId(candidate, fallbackIndex) {
+        if (candidate?.item?.id) return candidate.item.id;
+        return `draft-${fallbackIndex}`;
+      }
+
+      function importPreviewBadge(text, tone) {
+        return badge(text, tone);
+      }
+
+      function importPreviewCategoryOptions(currentValue) {
+        const options = [...importPreviewCategories];
+        if (currentValue && !options.includes(currentValue)) {
+          options.push(currentValue);
+        }
+        return options;
+      }
+
+      function boolTone(value) {
+        return value ? "ok" : "warn";
+      }
+
+      function renderInlineList(target, values) {
+        target.innerHTML = "";
+        const entries = Array.isArray(values) ? values.filter(Boolean) : [];
+        if (!entries.length) {
+          const empty = document.createElement("span");
+          empty.className = "muted";
+          empty.textContent = "None";
+          target.appendChild(empty);
+          return;
+        }
+        entries.forEach((value) => {
+          const chip = document.createElement("span");
+          chip.className = "inline-chip";
+          chip.textContent = value;
+          target.appendChild(chip);
+        });
+      }
+
+      function renderMarkdownish(target, text) {
+        target.innerHTML = "";
+        if (!text || !text.trim()) {
+          target.parentElement.hidden = true;
+          return;
+        }
+        target.parentElement.hidden = false;
+        const lines = text.split("\n");
+        let index = 0;
+
+        while (index < lines.length) {
+          const line = lines[index];
+          if (!line.trim()) {
+            index += 1;
+            continue;
+          }
+          if (line.trim() === "```text" || line.trim() === "```bash" || line.trim() === "```") {
+            index += 1;
+            const codeLines = [];
+            while (index < lines.length && lines[index].trim() !== "```") {
+              codeLines.push(lines[index]);
+              index += 1;
+            }
+            if (index < lines.length && lines[index].trim() === "```") {
+              index += 1;
+            }
+            const pre = document.createElement("pre");
+            pre.textContent = codeLines.join("\n").trim();
+            target.appendChild(pre);
+            continue;
+          }
+          if (line.trim().startsWith("- ")) {
+            const list = document.createElement("ul");
+            while (index < lines.length && lines[index].trim().startsWith("- ")) {
+              const item = document.createElement("li");
+              item.textContent = lines[index].trim().slice(2).trim();
+              list.appendChild(item);
+              index += 1;
+            }
+            target.appendChild(list);
+            continue;
+          }
+          const paragraphLines = [];
+          while (index < lines.length) {
+            const next = lines[index];
+            if (!next.trim() || next.trim().startsWith("- ") || next.trim() === "```text" || next.trim() === "```bash" || next.trim() === "```") {
+              break;
+            }
+            paragraphLines.push(next.trim());
+            index += 1;
+          }
+          const paragraph = document.createElement("p");
+          paragraph.textContent = paragraphLines.join(" ");
+          target.appendChild(paragraph);
+        }
+      }
+
+      function renderLinks(links) {
+        const target = document.getElementById("link-list");
+        target.innerHTML = "";
+        const linkEntries = [
+          ["Read module doc", links?.module_doc_url],
+          ["Open module manifest", links?.module_manifest_url],
+          ["Read provider doc", links?.provider_doc_url],
+          ["Open provider manifest", links?.provider_manifest_url]
+        ].filter(([, url]) => url);
+        if (!linkEntries.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No module links available.";
+          target.appendChild(empty);
+          return;
+        }
+        linkEntries.forEach(([label, url]) => {
+          const link = document.createElement("a");
+          link.className = "button-link secondary";
+          link.href = url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = label;
+          target.appendChild(link);
+        });
+      }
+
+      function renderTechnicalDetails(detail) {
+        const entry = detail.module;
+        const target = document.getElementById("technical-details");
+        target.innerHTML = "";
+        const pairs = [
+          ["Module", entry.module_id],
+          ["Provider", entry.provider_id || "no provider"],
+          ["Version", entry.version || "-"],
+          ["Lane", entry.lane],
+          ["Module class", entry.module_class || "-"],
+          ["Type", entry.module_type || "-"],
+          ["Implementation", entry.implementation],
+          ["Visibility", entry.visibility],
+          ["Status", entry.status],
+          ["Readiness", entry.readiness],
+          ["Configured", entry.configured],
+          ["Executable now", entry.executable],
+          ["Enabled now", entry.enabled_now],
+          ["Desired after restart", entry.desired_enabled],
+          ["Active now", entry.active],
+          ["Health", entry.health],
+          ["Health reason", entry.health_reason || "-"],
+          ["Trust", entry.trust_status || "-"],
+          ["Checked", detail.checked_at || "-"],
+          ["Desired updated", detail.desired_module_ids_updated_at || "-"],
+          ["Missing config", (entry.missing_configuration || []).join(", ") || "-"],
+          ["Depends on", (entry.depends_on || []).join(", ") || "-"],
+          ["Dependents", (entry.dependents || []).join(", ") || "-"],
+          ["Suggested fallbacks", Object.keys(entry.suggested_fallbacks || {}).join(", ") || "-"],
+          ["Configuration", Object.keys(entry.configuration || {}).length ? JSON.stringify(entry.configuration) : "-"]
+        ];
+        pairs.forEach(([key, value]) => {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = String(value ?? "-");
+          target.appendChild(dt);
+          target.appendChild(dd);
+        });
+      }
+
+      function renderNodeDetails(detail) {
+        const pairs = [
+          ["Node", detail.node_id || "-"],
+          ["Checked", detail.checked_at || "-"],
+          ["Restart required", detail.restart_required ? "true" : "false"],
+          ["Active payment", detail.active_by_lane?.payment || "-"],
+          ["Running modules", Array.isArray(detail.current_module_ids) ? String(detail.current_module_ids.length) : "0"],
+          ["Desired modules", Array.isArray(detail.desired_module_ids) ? String(detail.desired_module_ids.length) : "0"]
+        ];
+        nodeDetails.innerHTML = "";
+        pairs.forEach(([key, value]) => {
+          const dt = document.createElement("dt");
+          const dd = document.createElement("dd");
+          dt.textContent = key;
+          dd.textContent = value;
+          nodeDetails.appendChild(dt);
+          nodeDetails.appendChild(dd);
+        });
+      }
+
+      function renderActions(detail) {
+        const target = document.getElementById("action-grid");
+        target.innerHTML = "";
+        const entry = detail.module;
+
+        const desiredToggle = document.createElement("button");
+        desiredToggle.type = "button";
+        desiredToggle.className = entry.desired_enabled ? "secondary" : "";
+        desiredToggle.textContent = entry.desired_enabled ? "Disable after restart" : "Enable after restart";
+        desiredToggle.addEventListener("click", () => {
+          updateDesiredModuleState(!entry.desired_enabled).catch((error) => setStatus(error.message, "bad"));
+        });
+        target.appendChild(desiredToggle);
+
+        if (entry.lane === "payment" && entry.enabled_now && !entry.active) {
+          const paymentButton = document.createElement("button");
+          paymentButton.type = "button";
+          paymentButton.className = "secondary";
+          paymentButton.textContent = "Set active now";
+          paymentButton.addEventListener("click", () => {
+            setActivePayment(entry.module_id).catch((error) => setStatus(error.message, "bad"));
+          });
+          target.appendChild(paymentButton);
+        }
+
+        if (entry.configuration?.self_test_path) {
+          const selfTest = document.createElement("button");
+          selfTest.type = "button";
+          selfTest.className = "secondary";
+          selfTest.textContent = "Run self-test";
+          selfTest.addEventListener("click", () => {
+            runModuleSelfTest(entry.configuration.self_test_path, entry.module_id).catch((error) => setStatus(error.message, "bad"));
+          });
+          target.appendChild(selfTest);
+        }
+
+        if (entry.configuration?.view_url) {
+          const openSurface = document.createElement("a");
+          openSurface.className = "button-link secondary";
+          openSurface.href = entry.configuration.view_url;
+          openSurface.textContent = "Open surface";
+          target.appendChild(openSurface);
+        }
+      }
+
+      function clearImportPreview() {
+        state.importPreview = null;
+        const fileInput = document.getElementById("ocr-image-file");
+        if (fileInput) {
+          fileInput.value = "";
+        }
+        renderModuleSurface(state.detail);
+      }
+
+      function renderImportPreview() {
+        const target = document.getElementById("ocr-import-preview");
+        target.innerHTML = "";
+        const preview = state.importPreview;
+        if (!preview) {
+          return;
+        }
+
+        const wrap = document.createElement("section");
+        wrap.className = "import-preview";
+
+        const head = document.createElement("div");
+        head.className = "import-preview-head";
+
+        const headMain = document.createElement("div");
+        const title = document.createElement("h3");
+        title.textContent = `OCR draft${preview.source_name ? `: ${preview.source_name}` : ""}`;
+        headMain.appendChild(title);
+
+        const meta = document.createElement("p");
+        meta.className = "muted";
+        meta.textContent = `${preview.ocr_line_count || 0} OCR line(s), ${preview.candidates?.length || 0} draft item(s). Nothing is saved until you click Save selected to catalog.`;
+        headMain.appendChild(meta);
+
+        if (Array.isArray(preview.warnings) && preview.warnings.length) {
+          const warningRow = document.createElement("div");
+          warningRow.className = "badges";
+          preview.warnings.forEach((warning) => {
+            warningRow.appendChild(importPreviewBadge(warning, "warn"));
+          });
+          headMain.appendChild(warningRow);
+        }
+
+        head.appendChild(headMain);
+
+        const headActions = document.createElement("div");
+        headActions.className = "import-preview-actions";
+
+        const saveSelected = document.createElement("button");
+        saveSelected.type = "button";
+        saveSelected.textContent = "Save selected to catalog";
+        saveSelected.addEventListener("click", () => {
+          saveImportPreviewSelected().catch((error) => setStatus(error.message, "bad"));
+        });
+        headActions.appendChild(saveSelected);
+
+        const clear = document.createElement("button");
+        clear.type = "button";
+        clear.className = "secondary";
+        clear.textContent = "Dismiss draft";
+        clear.addEventListener("click", () => {
+          clearImportPreview();
+          setStatus("OCR draft cleared.");
+        });
+        headActions.appendChild(clear);
+
+        head.appendChild(headActions);
+        wrap.appendChild(head);
+
+        const list = document.createElement("div");
+        list.className = "import-preview-list";
+
+        const candidates = Array.isArray(preview.candidates) ? preview.candidates : [];
+        if (!candidates.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No importable menu items were found in the uploaded image.";
+          list.appendChild(empty);
+        } else {
+          candidates.forEach((candidate, index) => {
+            const row = document.createElement("article");
+            row.className = "import-preview-row";
+
+            const toggle = document.createElement("input");
+            toggle.type = "checkbox";
+            toggle.checked = candidate.__selected !== false;
+            toggle.addEventListener("change", () => {
+              candidate.__selected = toggle.checked;
+            });
+            row.appendChild(toggle);
+
+            const main = document.createElement("div");
+            main.className = "import-preview-main";
+
+            const rowTitle = document.createElement("div");
+            rowTitle.className = "import-preview-title";
+            const rowId = document.createElement("span");
+            rowId.className = "import-preview-id";
+            rowId.textContent = `${candidate.item?.name || "Unnamed item"} (${candidate.item?.id || "missing-id"})`;
+            rowTitle.appendChild(rowId);
+            rowTitle.appendChild(
+              importPreviewBadge(
+                candidate.confidence || "unknown",
+                candidate.confidence === "high" ? "ok" : candidate.confidence === "medium" ? "dark" : "warn"
+              )
+            );
+            main.appendChild(rowTitle);
+
+            const rowMeta = document.createElement("div");
+            rowMeta.className = "import-preview-meta";
+            rowMeta.textContent = `OCR line: ${candidate.source_line || "-"} | Price source: ${candidate.source_price_text || "no-price"}`;
+            main.appendChild(rowMeta);
+
+            const editorRow = document.createElement("div");
+            editorRow.className = "import-preview-editors";
+
+            const sourceField = document.createElement("div");
+            sourceField.className = "field";
+            const sourceLabel = document.createElement("label");
+            sourceLabel.textContent = "OCR name";
+            const sourceValue = document.createElement("input");
+            sourceValue.type = "text";
+            sourceValue.value = candidate.item?.name || "";
+            sourceValue.addEventListener("input", () => {
+              if (!candidate.item) return;
+              candidate.item.name = sourceValue.value.trim();
+              const nextId = slugifyImportName(candidate.item.name) || currentImportRowId(candidate, index);
+              candidate.item.id = nextId;
+              rowId.textContent = `${candidate.item.name || "Unnamed item"} (${candidate.item.id || "missing-id"})`;
+            });
+            sourceField.appendChild(sourceLabel);
+            sourceField.appendChild(sourceValue);
+            editorRow.appendChild(sourceField);
+
+            const categoryField = document.createElement("div");
+            categoryField.className = "field";
+            const categoryLabel = document.createElement("label");
+            categoryLabel.textContent = "Category before save";
+            const categorySelect = document.createElement("select");
+            importPreviewCategoryOptions(candidate.item?.category || "main").forEach((optionValue) => {
+              const option = document.createElement("option");
+              option.value = optionValue;
+              option.textContent = optionValue;
+              option.selected = optionValue === (candidate.item?.category || "main");
+              categorySelect.appendChild(option);
+            });
+            categorySelect.addEventListener("change", () => {
+              if (!candidate.item) return;
+              candidate.item.category = categorySelect.value;
+            });
+            categoryField.appendChild(categoryLabel);
+            categoryField.appendChild(categorySelect);
+            editorRow.appendChild(categoryField);
+
+            const priceField = document.createElement("div");
+            priceField.className = "field";
+            const priceLabel = document.createElement("label");
+            priceLabel.textContent = "Price (minor units)";
+            const priceValue = document.createElement("input");
+            priceValue.type = "number";
+            priceValue.min = "0";
+            priceValue.step = "1";
+            priceValue.value = String(candidate.item?.price ?? 0);
+            priceValue.addEventListener("input", () => {
+              if (!candidate.item) return;
+              candidate.item.price = Number.parseInt(priceValue.value || "0", 10);
+            });
+            priceField.appendChild(priceLabel);
+            priceField.appendChild(priceValue);
+            editorRow.appendChild(priceField);
+
+            main.appendChild(editorRow);
+            row.appendChild(main);
+
+            const side = document.createElement("div");
+            side.className = "badges";
+            side.appendChild(importPreviewBadge(candidate.source_price_text || "no-price", "dark"));
+            row.appendChild(side);
+            list.appendChild(row);
+          });
+        }
+        wrap.appendChild(list);
+
+        if (preview.extracted_text) {
+          const details = document.createElement("details");
+          details.className = "import-preview-text";
+          const summary = document.createElement("summary");
+          summary.textContent = "Show extracted OCR text";
+          details.appendChild(summary);
+          const pre = document.createElement("pre");
+          pre.textContent = preview.extracted_text;
+          details.appendChild(pre);
+          wrap.appendChild(details);
+        }
+
+        target.appendChild(wrap);
+      }
+
+      function renderModuleSurface(detail) {
+        const section = document.getElementById("module-surface-section");
+        const ocrSurface = document.getElementById("ocr-module-surface");
+        const disabled = document.getElementById("module-surface-disabled");
+        section.hidden = !isOcrModule();
+        if (!isOcrModule()) {
+          state.importPreview = null;
+          return;
+        }
+
+        document.getElementById("module-surface-title").textContent = "OCR import surface";
+        document.getElementById("module-surface-subtitle").textContent = "This surface belongs to the OCR helper module, not to the generic operator shell.";
+
+        const enabled = Boolean(detail?.module?.enabled_now && detail?.module?.declared);
+        ocrSurface.hidden = !enabled;
+        disabled.hidden = enabled;
+        if (!enabled) {
+          state.importPreview = null;
+          document.getElementById("ocr-import-preview").innerHTML = "";
+          return;
+        }
+        renderImportPreview();
+      }
+
+      function renderRestartBanner(detail) {
+        const target = document.getElementById("restart-banner");
+        if (!detail.restart_required) {
+          target.hidden = false;
+          target.className = "restart-banner good";
+          target.innerHTML = "<strong>No restart required.</strong><p>The running runtime already matches the desired module set.</p>";
+          return;
+        }
+        target.hidden = false;
+        target.className = "restart-banner";
+        target.innerHTML = "<strong>Restart required.</strong><p>The desired module set is saved in the node database, but the current runtime keeps running until the node process starts again.</p><p>Restart the local node/service to apply module changes.</p>";
+      }
+
+      function render(detail) {
+        const entry = detail.module;
+        document.title = `${entry.module_id} · P4P Module`;
+        document.getElementById("module-title").textContent = entry.module_id;
+        document.getElementById("module-subtitle").textContent = entry.owner_function || entry.description || "Module detail";
+
+        const badges = document.getElementById("module-badges");
+        badges.innerHTML = "";
+        badges.appendChild(badge(entry.health, healthTone(entry.health)));
+        if (entry.enabled_now) badges.appendChild(badge("enabled now", "dark"));
+        if (entry.desired_enabled) badges.appendChild(badge("desired", "ok"));
+        if (entry.restart_pending) badges.appendChild(badge("restart pending", "warn"));
+        if (entry.active) badges.appendChild(badge("active", "dark"));
+        if (!entry.declared) badges.appendChild(badge("undeclared", "bad"));
+        badges.appendChild(badge(entry.readiness || "unknown"));
+
+        document.getElementById("metric-enabled-now").textContent = entry.enabled_now ? "yes" : "no";
+        document.getElementById("metric-desired").textContent = entry.desired_enabled ? "yes" : "no";
+        document.getElementById("metric-health").textContent = entry.health || "-";
+        document.getElementById("metric-lane").textContent = entry.lane || "-";
+
+        renderRestartBanner(detail);
+        renderMarkdownish(document.getElementById("payment-boundary"), detail.documentation?.sections?.payment_boundary || "");
+        renderMarkdownish(document.getElementById("purpose"), detail.documentation?.sections?.purpose || "");
+        renderMarkdownish(document.getElementById("what-it-does"), detail.documentation?.sections?.what_it_does || "");
+        renderMarkdownish(document.getElementById("what-it-does-not-own"), detail.documentation?.sections?.what_it_does_not_own || "");
+        renderMarkdownish(document.getElementById("current-readiness"), detail.documentation?.sections?.current_readiness || "");
+        renderActions(detail);
+        renderModuleSurface(detail);
+        renderTechnicalDetails(detail);
+        renderNodeDetails(detail);
+        renderInlineList(document.getElementById("current-module-list"), detail.current_module_ids);
+        renderInlineList(document.getElementById("desired-module-list"), detail.desired_module_ids);
+        renderInlineList(document.getElementById("data-access-list"), detail.module.data_access_summary ? [detail.module.data_access_summary] : detail.module.data_access);
+        renderInlineList(document.getElementById("input-events-list"), detail.module.input_events || []);
+        renderInlineList(document.getElementById("output-events-list"), detail.module.output_events || []);
+        renderInlineList(document.getElementById("failure-modes-list"), detail.module.failure_modes || []);
+        renderLinks(detail.documentation?.links);
+        rawEl.textContent = JSON.stringify(detail, null, 2);
+      }
+
+      async function refreshDetail() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        setStatus(`Loading ${moduleId}.`);
+        state.detail = await requestJSON(`/operator/modules/${encodeURIComponent(moduleId)}`);
+        if (isOcrModule() && state.detail.module.enabled_now) {
+          state.menu = await requestJSON("/operator/menu");
+        } else {
+          state.menu = null;
+          state.importPreview = null;
+        }
+        render(state.detail);
+        setStatus("Updated.", "ok");
+      }
+
+      async function importCatalogImagePreview() {
+        if (!token()) {
+          setStatus("Waiting for token.", "bad");
+          return;
+        }
+        if (!isOcrModule() || !state.detail?.module?.enabled_now) {
+          setStatus("Catalog OCR import module is not enabled on this node.", "bad");
+          return;
+        }
+        const fileInput = document.getElementById("ocr-image-file");
+        const sourceInput = document.getElementById("ocr-source-name");
+        const file = fileInput.files?.[0];
+        if (!file) {
+          setStatus("Choose a menu photo first.", "bad");
+          return;
+        }
+        const sourceName = sourceInput.value.trim() || file.name;
+        sourceInput.value = sourceName;
+        setStatus(`Scanning ${sourceName}.`);
+        const response = await fetch(`/operator/menu/import-image-preview?source_name=${encodeURIComponent(sourceName)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            "X-P4P-Operator-Token": token()
+          },
+          body: await file.arrayBuffer()
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+        }
+        const preview = await response.json();
+        preview.candidates = Array.isArray(preview.candidates)
+          ? preview.candidates.map((candidate) => ({ ...candidate, __selected: true }))
+          : [];
+        state.importPreview = preview;
+        renderModuleSurface(state.detail);
+        setStatus("OCR draft ready. Review names, categories, and prices before saving them to the catalog.", "ok");
+      }
+
+      async function saveImportPreviewSelected() {
+        const preview = state.importPreview;
+        if (!preview || !Array.isArray(preview.candidates)) {
+          setStatus("No OCR draft to save.", "bad");
+          return;
+        }
+        const selected = preview.candidates
+          .filter((candidate) => candidate.__selected !== false)
+          .map((candidate) => candidate.item)
+          .filter(Boolean);
+        if (!selected.length) {
+          setStatus("No draft items selected.", "bad");
+          return;
+        }
+
+        const currentMenu = state.menu || await requestJSON("/operator/menu");
+        const currentItems = Array.isArray(currentMenu?.items) ? [...currentMenu.items] : [];
+        const byId = new Map(currentItems.map((item) => [item.id, item]));
+        const importIds = new Set(currentItems.map((item) => item.id));
+        selected.forEach((item, index) => {
+          const baseId = slugifyImportName(item.name || item.id || `draft-${index + 1}`) || `draft-${index + 1}`;
+          let nextId = baseId;
+          let duplicateCounter = 2;
+          while (importIds.has(nextId) && !byId.has(nextId)) {
+            nextId = `${baseId}-${duplicateCounter}`;
+            duplicateCounter += 1;
+          }
+          importIds.add(nextId);
+          byId.set(nextId, {
+            id: nextId,
+            name: item.name,
+            description: item.description || "",
+            price: item.price,
+            category: item.category || "main",
+            active: item.active !== false,
+            image_url: item.image_url || ""
+          });
+        });
+
+        state.menu = await requestJSON("/operator/menu", {
+          method: "PUT",
+          body: {
+            items: Array.from(byId.values())
+          }
+        });
+        state.importPreview = null;
+        renderModuleSurface(state.detail);
+        setStatus(`Saved ${selected.length} OCR draft item(s) into the catalog.`, "ok");
+      }
+
+      async function updateDesiredModuleState(enable) {
+        if (!state.detail) return;
+        let moduleIds = Array.isArray(state.detail.desired_module_ids) ? [...state.detail.desired_module_ids] : [];
+        if (enable) {
+          if (!moduleIds.includes(moduleId)) {
+            moduleIds.push(moduleId);
+          }
+          setStatus(`Enabling ${moduleId} for next restart.`);
+        } else {
+          moduleIds = moduleIds.filter((value) => value !== moduleId);
+          setStatus(`Disabling ${moduleId} for next restart.`);
+        }
+        await requestJSON("/operator/modules/set", {
+          method: "PATCH",
+          body: { module_ids: moduleIds }
+        });
+        await refreshDetail();
+      }
+
+      async function setActivePayment(moduleIdValue) {
+        setStatus(`Setting ${moduleIdValue} active.`);
+        await requestJSON("/operator/modules/payment", {
+          method: "PATCH",
+          body: { module_id: moduleIdValue }
+        });
+        await refreshDetail();
+        setStatus("Payment module updated.", "ok");
+      }
+
+      async function runModuleSelfTest(path, moduleIdValue) {
+        setStatus(`Running self-test for ${moduleIdValue}.`);
+        const payload = await requestJSON(path, { method: "POST" });
+        const events = Array.isArray(payload.events) ? payload.events.join(" -> ") : "self-test completed";
+        await refreshDetail();
+        setStatus(`${moduleIdValue}: ${events}`, payload.success === false ? "bad" : "ok");
+      }
+
+      document.getElementById("save-token").addEventListener("click", () => {
+        localStorage.setItem("p4pOperatorToken", token());
+        refreshDetail().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("clear-token").addEventListener("click", () => {
+        localStorage.removeItem("p4pOperatorToken");
+        tokenInput.value = "";
+        setStatus("Token cleared.");
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refreshDetail().catch((error) => setStatus(error.message, "bad"));
+      });
+
+      document.getElementById("copy-json").addEventListener("click", async () => {
+        if (!state.detail) {
+          setStatus("Nothing to copy yet.", "bad");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(state.detail, null, 2));
+          setStatus("JSON copied.", "ok");
+        } catch (error) {
+          setStatus(error.message || "Could not copy JSON.", "bad");
+        }
+      });
+
+      const ocrScanButton = document.getElementById("ocr-scan-photo");
+      if (ocrScanButton) {
+        ocrScanButton.addEventListener("click", () => {
+          importCatalogImagePreview().catch((error) => setStatus(error.message, "bad"));
+        });
+      }
+
+      const ocrClearButton = document.getElementById("ocr-clear-draft");
+      if (ocrClearButton) {
+        ocrClearButton.addEventListener("click", () => {
+          clearImportPreview();
+          setStatus("OCR draft cleared.");
+        });
+      }
+
+      const ocrImageFileInput = document.getElementById("ocr-image-file");
+      const ocrSourceNameInput = document.getElementById("ocr-source-name");
+      if (ocrImageFileInput && ocrSourceNameInput) {
+        ocrImageFileInput.addEventListener("change", () => {
+          const file = ocrImageFileInput.files?.[0];
+          if (file) {
+            ocrSourceNameInput.value = file.name;
+          }
+        });
+      }
+
+      if (token()) {
+        refreshDetail().catch((error) => setStatus(error.message, "bad"));
+      }
+    </script>
+  </body>
+</html>

@@ -33,3 +33,14 @@ Use these fixtures to test:
 
 The generated text is test material only. It is not catalog truth and should not
 be treated as production restaurant data.
+
+When local OCR is enabled in the pilot node, a fixture can be posted directly to
+the operator-only image preview route:
+
+```bash
+curl -sS \
+  -H "Authorization: Bearer $P4P_OPERATOR_TOKEN" \
+  -H "Content-Type: image/png" \
+  --data-binary @copenhagen-pizza-grill-paper-menu.png \
+  "http://127.0.0.1:8201/operator/menu/import-image-preview?source_name=copenhagen-pizza-grill-paper-menu.png"
+```
