@@ -1,87 +1,95 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang_attr}}" dir="{{dir_attr}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="{{author_name}}">
-  <title>{{provider_name}} - Pizza4People Provider Page</title>
+  <title>{{page_title}}</title>
   <meta name="description" content="{{provider_summary}}">
   <link rel="canonical" href="{{canonical_url}}">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="{{provider_name}} - Pizza4People Provider Page">
+  <meta property="og:title" content="{{page_title}}">
   <meta property="og:description" content="{{provider_summary}}">
   <meta property="og:url" content="{{canonical_url}}">
   <meta property="og:site_name" content="Pizza4People">
   <link rel="stylesheet" href="../../style.css">
+  <style>
+    .locale-switcher { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin-top:1rem; }
+    .locale-switcher-label { font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+    .locale-switcher-links { display:flex; flex-wrap:wrap; gap:.45rem; }
+    .locale-link { display:inline-flex; align-items:center; justify-content:center; min-height:2.1rem; padding:0 .8rem; border-radius:999px; border:1px solid rgba(219,232,216,.2); color:var(--text); text-decoration:none; }
+    .locale-link.active { border-color:rgba(219,232,216,.45); background:rgba(219,232,216,.08); }
+  </style>
 </head>
 <body>
   <!-- {{generated_comment}} -->
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">{{skip_link}}</a>
   <header class="site-header">
-    <a class="brand" href="../../" aria-label="Pizza4People home">
+    <a class="brand" href="{{home_href}}" aria-label="{{brand_home_aria}}">
       <span class="brand-mark">P4P</span>
       <span class="brand-copy">Pizza4People</span>
     </a>
-    <nav class="top-nav" aria-label="Primary navigation">
-      <a href="../../">Home</a>
-      <a href="../../modules/">Modules</a>
-      <a href="../">Providers</a>
-      <a href="../../press-kit/">Press kit DK</a>
-      <a href="../../press-kit/en.html">Press kit EN</a>
-      <a href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
-      <a href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+    <nav class="top-nav" aria-label="{{nav_label}}">
+      <a href="{{home_href}}">{{nav_home}}</a>
+      <a href="{{modules_href}}">{{nav_modules}}</a>
+      <a href="{{provider_catalog_url}}">{{nav_providers}}</a>
+      <a href="{{press_kit_dk_href}}">{{nav_press_dk}}</a>
+      <a href="{{press_kit_en_href}}">{{nav_press_en}}</a>
+      <a href="{{repo_proof_url}}" rel="noopener noreferrer">{{nav_proof}}</a>
+      <a href="{{repo_url}}" rel="noopener noreferrer">{{nav_code}}</a>
     </nav>
   </header>
   <main id="main">
     <section class="hero hero-compact" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">Current tool source / {{provider_state_label}}</p>
+        <p class="eyebrow">{{hero_eyebrow}}</p>
         <h1 id="hero-title">{{provider_name}}</h1>
         <p class="hero-lede">{{provider_summary}}</p>
+{{locale_switcher_html}}
         <div class="hero-actions" aria-label="Provider links">
-          <a class="button" href="../">Back to provider catalog</a>
-          <a class="button button-secondary" href="../../modules/">Module catalog</a>
-          <a class="button button-secondary" href="{{provider_doc_url}}" rel="noopener noreferrer">GitHub provider reference</a>
+          <a class="button" href="{{provider_catalog_url}}">{{hero_action_back_catalog}}</a>
+          <a class="button button-secondary" href="{{modules_href}}">{{nav_modules}}</a>
+          <a class="button button-secondary" href="{{provider_doc_url}}" rel="noopener noreferrer">{{github_provider_reference}}</a>
         </div>
       </div>
       <div class="brief-card">
-        <p class="brief-label">For a pizzeria</p>
+        <p class="brief-label">{{brief_label_for_shop}}</p>
         <p class="brief-line">{{provider_owner_value}}</p>
       </div>
     </section>
 
     <section class="two-column" aria-label="Provider meaning">
       <article class="fact-panel">
-        <p class="section-kicker">What it is</p>
+        <p class="section-kicker">{{what_it_is_kicker}}</p>
         <p>{{provider_what_it_is}}</p>
       </article>
       <article class="fact-panel">
-        <p class="section-kicker warning">What it is not</p>
+        <p class="section-kicker warning">{{what_it_is_not_kicker}}</p>
         <p>{{provider_what_it_is_not}}</p>
       </article>
     </section>
 
     <section class="section-grid" aria-labelledby="state-title">
       <div>
-        <p class="section-kicker">What this covers right now</p>
+        <p class="section-kicker">{{state_kicker}}</p>
         <h2 id="state-title">{{provider_current_shape}}</h2>
       </div>
       <div class="section-body">
-        <p><strong>For a shop:</strong> {{provider_owner_value}}</p>
+        <p><strong>{{for_shop_label}}</strong> {{provider_owner_value}}</p>
         <div class="provider-focus">
-          <p class="provider-focus-label">Good first pages for a shop</p>
+          <p class="provider-focus-label">{{good_first_pages}}</p>
           <ul class="provider-focus-list">
 {{provider_focus_modules_html}}
           </ul>
         </div>
-        <p><strong>Not yet:</strong> {{provider_not_yet}}</p>
+        <p><strong>{{not_yet_label}}</strong> {{provider_not_yet}}</p>
       </div>
     </section>
 
     <section class="module-section" aria-labelledby="module-list-title">
       <div class="section-heading">
-        <p class="section-kicker">Current modules</p>
-        <h2 id="module-list-title">What this provider publishes right now.</h2>
+        <p class="section-kicker">{{current_modules_kicker}}</p>
+        <h2 id="module-list-title">{{provider_modules_title}}</h2>
       </div>
       <div class="provider-module-groups">
 {{provider_module_groups_html}}
@@ -90,30 +98,30 @@
 
     <section class="section-grid" aria-labelledby="tech-title">
       <div>
-        <p class="section-kicker">Technical record</p>
+        <p class="section-kicker">{{technical_record}}</p>
         <h2 id="tech-title"><code>{{provider_id}}</code></h2>
       </div>
       <div class="section-body">
-        <p>Status: {{provider_status}}</p>
-        <p>Supported lanes: {{provider_lanes}}</p>
-        <p>Current module count: {{provider_module_count}}</p>
-        <p>Website: <a href="{{provider_website}}" rel="noopener noreferrer">{{provider_website}}</a></p>
-        <p>This local page is the P4P-readable surface. The GitHub reference and raw manifest remain the developer-facing source material.</p>
-        <p class="module-links"><a href="{{provider_catalog_url}}">Back to provider catalog</a> <span>/</span> <a href="{{provider_doc_url}}" rel="noopener noreferrer">Open GitHub provider reference</a> <span>/</span> <a href="{{provider_manifest_url}}" rel="noopener noreferrer">Open raw provider manifest</a></p>
+        <p>{{status_label}}: {{provider_status}}</p>
+        <p>{{supported_lanes_label}}: {{provider_lanes}}</p>
+        <p>{{module_count_label}}: {{provider_module_count}}</p>
+        <p>{{website_label}}: <a href="{{provider_website}}" rel="noopener noreferrer">{{provider_website}}</a></p>
+        <p>{{provider_readable_surface}}</p>
+        <p class="module-links"><a href="{{provider_catalog_url}}">{{back_to_provider_catalog}}</a> <span>/</span> <a href="{{provider_doc_url}}" rel="noopener noreferrer">{{github_provider_reference}}</a> <span>/</span> <a href="{{provider_manifest_url}}" rel="noopener noreferrer">{{open_raw_provider_manifest}}</a></p>
       </div>
     </section>
 
     <section class="contact-section" id="contact" aria-labelledby="contact-title">
-      <p class="section-kicker">Contact</p>
-      <h2 id="contact-title">Questions about who stands behind these tools?</h2>
-      <p>Questions about this provider page, module ownership, or the live-pilot boundary: <a href="mailto:hedegreen.research@gmail.com">hedegreen.research@gmail.com</a>.</p>
-      <p>Public proof front door: <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
-      <p>Broader protocol-family direction: <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
+      <p class="section-kicker">{{nav_contact}}</p>
+      <h2 id="contact-title">{{contact_title}}</h2>
+      <p>{{contact_body_1}} <a href="mailto:hedegreen.research@gmail.com">hedegreen.research@gmail.com</a>.</p>
+      <p>{{contact_body_2}} <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
+      <p>{{contact_body_3}} <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
     </section>
   </main>
   <footer class="site-footer">
-    <span>Pizza4People / {{provider_name}}</span>
-    <span>Public protocol proof. Controlled live pilot next.</span>
+    <span>{{footer_left}}</span>
+    <span>{{footer_right}}</span>
   </footer>
 </body>
 </html>

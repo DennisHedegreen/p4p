@@ -111,6 +111,8 @@ The setup/onboarding layer also has a node-local source of truth in SQLite.
 - `GET /operator/setup` returns the computed setup summary as JSON for the operator shell
 - `PATCH /operator/setup` persists the small onboarding record beside runtime state
 - the remembered onboarding state also stores one operator locale so the tablet can stay in Danish, Swedish, Turkish, Arabic, or Kurdish between refreshes
+- the next-step split between locale engine, shell language packs, and per-node custom overrides is documented in `docs/LANGUAGE-PACKS-v2.md`
+- the first on-disk scaffold for that split now lives under `data/i18n/`
 - setup state is not the source of truth for menu, modules, or orders; it is a remembered owner-facing checklist layer on top of them
 - hardware setup state now persists a richer owner-facing shape beside the legacy bundle id:
   - `hardware_profile` remains as a compatibility bundle field when the chosen base shape and add-ons still match a known reference profile

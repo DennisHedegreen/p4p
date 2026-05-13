@@ -50,6 +50,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Short packet for independent node builders and interop sessions.
 - `NODE-OPERATOR-LITE.md`
   Reference node-owned operator surface for controlling order mode, modules, and registry health.
+- `LANGUAGE-PACKS-v2.md`
+  Next-step spec for moving operator/public shell copy into installable language-pack JSON layers while keeping the locale engine in code and module/provider text in manifests.
 - `NODE-IDENTITY.md`
   Ed25519 signed announcements and signed heartbeats for protecting node metadata updates.
 - `PROOF-STATUS.md`

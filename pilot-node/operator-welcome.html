@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{page_title}}</title>
     <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <script src="/operator/assets/operator-locale-switcher.js" defer></script>
     <style>
       .hero-grid,
       .welcome-list,
@@ -61,6 +62,12 @@
             <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
           </div>
           <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+          <div class="toolbar-locale">
+            <label for="locale-switcher">
+              <span>{{toolbar_language}}</span>
+              <select id="locale-switcher"></select>
+            </label>
+          </div>
         </div>
       </header>
 
@@ -74,22 +81,50 @@
         <a class="nav-link" href="/operator/import">{{nav_import}}</a>
         <a class="nav-link" href="/operator/node">{{nav_node}}</a>
       </nav>
+      <script id="operator-locale-payload" type="application/json">{{locale_payload_json}}</script>
+      <script id="operator-ui-strings" type="application/json">{{operator_ui_strings_json}}</script>
+      <script>
+        window.P4P_UI = (() => {
+          const node = document.getElementById("operator-ui-strings");
+          if (!node) return {};
+          try {
+            return JSON.parse(node.textContent || "{}");
+          } catch (_error) {
+            return {};
+          }
+        })();
+        window.p4pT = function p4pT(key, fallback = "") {
+          return window.P4P_UI[key] || fallback || key;
+        };
+        window.p4pFormat = function p4pFormat(key, vars = {}, fallback = "") {
+          let text = window.p4pT(key, fallback);
+          for (const [name, value] of Object.entries(vars)) {
+            text = text.replaceAll(`{${name}}`, String(value));
+          }
+          return text;
+        };
+        document.addEventListener("DOMContentLoaded", () => {
+          document.querySelectorAll("[data-i18n]").forEach((el) => {
+            el.textContent = window.p4pT(el.dataset.i18n, el.textContent);
+          });
+        });
+      </script>
 
       <section class="summary" aria-label="Welcome summary">
         <div class="metric">
-          <span>Node</span>
+          <span data-i18n="common.node">Node</span>
           <strong id="metric-node">-</strong>
         </div>
         <div class="metric">
-          <span>Mode</span>
+          <span data-i18n="common.mode">Mode</span>
           <strong id="metric-mode">-</strong>
         </div>
         <div class="metric">
-          <span>Payment</span>
+          <span data-i18n="common.payment">Payment</span>
           <strong id="metric-payment">-</strong>
         </div>
         <div class="metric">
-          <span>Next</span>
+          <span data-i18n="common.next">Next</span>
           <strong id="metric-next">-</strong>
         </div>
       </section>
@@ -100,28 +135,28 @@
         <div class="stack">
           <section class="panel">
             <div class="panel-head">
-              <h2>This node</h2>
-              <p class="muted">Local menu, local order flow, local operator surfaces.</p>
+              <h2 data-i18n="common.this_node">This node</h2>
+              <p class="muted" data-i18n="welcome.this_node_body">Local menu, local order flow, local operator surfaces.</p>
             </div>
             <div class="panel-body">
               <div class="hero-grid">
                 <div class="welcome-list">
                   <article class="welcome-card">
-                    <h3>Menu work lives in Catalog</h3>
-                    <p class="muted">Items, prices, images, and menu import.</p>
+                    <h3 data-i18n="welcome.menu_work_title">Menu work lives in Catalog</h3>
+                    <p class="muted" data-i18n="welcome.menu_work_body">Items, prices, images, and menu import.</p>
                   </article>
                   <article class="welcome-card">
-                    <h3>Daily flow lives in Operations</h3>
-                    <p class="muted">Incoming orders, kitchen work, and runtime state.</p>
+                    <h3 data-i18n="welcome.daily_flow_title">Daily flow lives in Operations</h3>
+                    <p class="muted" data-i18n="welcome.daily_flow_body">Incoming orders, kitchen work, and runtime state.</p>
                   </article>
                   <article class="welcome-card">
-                    <h3>System shape lives in Modules</h3>
-                    <p class="muted">Running now, desired after restart, and explicit module changes.</p>
+                    <h3 data-i18n="welcome.system_shape_title">System shape lives in Modules</h3>
+                    <p class="muted" data-i18n="welcome.system_shape_body">Running now, desired after restart, and explicit module changes.</p>
                   </article>
                 </div>
                 <aside class="panel">
                   <div class="panel-head">
-                    <h2>Current reading</h2>
+                    <h2 data-i18n="common.current_reading">Current reading</h2>
                   </div>
                   <div class="panel-body">
                     <dl id="node-details"></dl>
@@ -133,8 +168,8 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Start here</h2>
-              <p class="muted">Follow the next real step. The rest can wait.</p>
+              <h2 data-i18n="common.start_here">Start here</h2>
+              <p class="muted" data-i18n="welcome.start_here_body">Follow the next real step. The rest can wait.</p>
             </div>
             <div class="panel-body">
               <div class="welcome-list" id="start-here"></div>
@@ -145,7 +180,7 @@
         <aside class="side">
           <section class="panel">
             <div class="panel-head">
-              <h2>Next rooms</h2>
+              <h2 data-i18n="common.next_rooms">Next rooms</h2>
             </div>
             <div class="panel-body">
               <div class="quick-links" id="quick-links"></div>
@@ -153,7 +188,7 @@
           </section>
 
           <details class="panel">
-            <summary>Debug JSON</summary>
+            <summary data-i18n="common.debug_json">Debug JSON</summary>
             <div class="panel-body">
               <pre id="raw">{}</pre>
             </div>
@@ -175,6 +210,14 @@
       const restartBanner = document.getElementById("restart-banner");
       const startHere = document.getElementById("start-here");
       const quickLinks = document.getElementById("quick-links");
+      const t = window.p4pT || ((key, fallback = "") => fallback || key);
+      const formatText = window.p4pFormat || ((key, vars = {}, fallback = "") => {
+        let text = t(key, fallback);
+        for (const [name, value] of Object.entries(vars)) {
+          text = text.replaceAll(`{${name}}`, String(value));
+        }
+        return text;
+      });
 
       const state = { setup: null };
 
@@ -221,13 +264,13 @@
       function renderQuickLinks(payload) {
         quickLinks.innerHTML = "";
         [
-          ["/operator/setup", "Open setup"],
-          ["/operator/catalog", "Open catalog"],
-          ["/operator/modules", "Open modules"],
-          ["/operator", "Open operations"],
-          [payload?.modules?.discover?.operator_discover_url || "/operator/discover", "Open discover"],
-          [payload?.modules?.discover?.operator_import_url || "/operator/import", "Open import"],
-          [payload?.modules?.discover?.public_catalog_url, "Read public catalog"]
+          ["/operator/setup", t("common.open_setup", "Open setup")],
+          ["/operator/catalog", t("common.open_catalog", "Open catalog")],
+          ["/operator/modules", t("common.open_modules", "Open modules")],
+          ["/operator", t("common.open_operations", "Open operations")],
+          [payload?.modules?.discover?.operator_discover_url || "/operator/discover", t("common.open_discover", "Open discover")],
+          [payload?.modules?.discover?.operator_import_url || "/operator/import", t("common.open_import", "Open import")],
+          [payload?.modules?.discover?.public_catalog_url, t("common.read_public_catalog", "Read public catalog")]
         ].forEach(([href, text]) => {
           if (!href) return;
           const link = document.createElement("a");
@@ -250,7 +293,7 @@
         }
         restartBanner.hidden = false;
         restartBanner.className = "restart-banner";
-        restartBanner.innerHTML = "<strong>Restart required.</strong><p>The desired module set differs from the running node. Restart after finishing setup or backoffice changes.</p>";
+        restartBanner.innerHTML = `<strong>${t("status.restart_required", "Restart required")}</strong><p>${t("welcome.restart_detail", "The desired module set differs from the running node. Restart after finishing setup or backoffice changes.")}</p>`;
       }
 
       function nextAction(payload) {
@@ -263,74 +306,76 @@
         const current = new Set(modules?.current_module_ids || []);
         const itemCount = menu?.items?.length || 0;
         const payment = modules?.active_by_lane?.payment || "-";
+        const checklist = Array.isArray(payload?.checklist) ? payload.checklist : [];
         if (modules?.restart_required) {
           return {
-            label: "Restart node",
-            detail: "The desired module set is saved, but the runtime is still on the old set.",
+            label: t("welcome.action_restart_node", "Restart node"),
+            detail: t("welcome.action_restart_node_detail", "The desired module set is saved, but the runtime is still on the old set."),
             href: "/operator/modules"
           };
         }
-        if (REQUIRED_MODULES.some((moduleId) => !desired.has(moduleId))) {
+        const firstIncomplete = checklist.find((item) => !item.done && item.href);
+        if (firstIncomplete) {
           return {
-            label: "Choose baseline modules",
-            detail: "The pilot baseline is not selected yet.",
-            href: "/operator/modules"
+            label: firstIncomplete.title,
+            detail: firstIncomplete.detail,
+            href: firstIncomplete.href
           };
         }
         if (!payment || payment === "-") {
           return {
-            label: "Choose payment lane",
-            detail: "A pickup payment lane should be active before testing.",
+            label: t("welcome.action_choose_payment", "Choose payment lane"),
+            detail: t("welcome.action_choose_payment_detail", "A pickup payment lane should be active before testing."),
             href: "/operator/modules"
           };
         }
         if (itemCount === 0) {
           return {
-            label: "Add first menu",
-            detail: "This node does not have a menu yet.",
+            label: t("welcome.add_first_menu", "Add first menu"),
+            detail: t("welcome.this_node_no_menu", "This node does not have a menu yet."),
             href: "/operator/catalog"
           };
         }
         if (!setup?.hardware_profile) {
           return {
-            label: "Confirm hardware profile",
-            detail: "Record which hardware shape this node is meant to run on before pilot use.",
+            label: t("welcome.confirm_hardware_profile", "Confirm hardware profile"),
+            detail: t("welcome.confirm_hardware_profile_detail", "Record which hardware shape this node is meant to run on before pilot use."),
             href: "/operator/setup"
           };
         }
         if (!setup?.catalog_ready) {
           return {
-            label: "Review the menu",
-            detail: "The menu exists, but setup has not marked it as reviewed yet.",
+            label: t("welcome.review_menu", "Review the menu"),
+            detail: t("welcome.review_menu_detail", "The menu exists, but setup has not marked it as reviewed yet."),
             href: "/operator/catalog"
           };
         }
         if (!(setup?.completed_steps || []).includes("local_tests_run")) {
           return {
-            label: "Run local tests",
-            detail: "Finish the local checks before trusting the node in a real shop.",
+            label: t("welcome.run_local_tests", "Run local tests"),
+            detail: t("welcome.run_local_tests_detail", "Finish the local checks before trusting the node in a real shop."),
             href: "/operator/setup"
           };
         }
         if (node?.node?.order_mode !== "menu_only" && node?.node?.order_mode !== "live") {
           return {
-            label: "Set menu_only",
-            detail: "Keep the node in menu_only while you finish setup.",
+            label: t("welcome.set_menu_only", "Set menu_only"),
+            detail: t("welcome.set_menu_only_detail", "Keep the node in menu_only while you finish setup."),
             href: "/operator"
           };
         }
         if (!current.has("p4p.kitchen.screen")) {
           return {
-            label: "Review operations surface",
-            detail: "The node can already hold a menu, but kitchen handling is not active in the running set.",
+            label: t("common.open_operations", "Open operations"),
+            detail: t("operations.kitchen_body", "Incoming and active pickup orders for the current shift."),
             href: "/operator/modules"
           };
         }
         return {
-          label: "Open operations",
+          label: t("welcome.action_open_operations", "Open operations"),
           detail: summary?.ready_for_menu_only
-            ? "The node is now menu_only-ready. Use operations for day-to-day testing."
-            : "The basic pilot shape is there. Use operations for day-to-day testing.",
+            ? t("welcome.action_open_operations_detail_ready", "The node is now menu_only-ready. Use operations for day-to-day testing.")
+            : t("welcome.action_open_operations_detail_basic", "The basic pilot shape is there. Use operations for day-to-day testing."),
           href: "/operator"
         };
       }
@@ -343,13 +388,20 @@
         const cards = [
           action,
           {
-            label: "Catalog is where menu work happens",
-            detail: `This node currently has ${menu?.items?.length || 0} catalog item(s).`,
+            label: t("welcome.catalog_card_title", "Catalog is where menu work happens"),
+            detail: formatText("welcome.catalog_card_detail", { count: menu?.items?.length || 0 }, `This node currently has ${menu?.items?.length || 0} catalog item(s).`),
             href: "/operator/catalog"
           },
           {
-            label: "Modules is where system shape happens",
-            detail: `Running now: ${(modules?.current_module_ids || []).length} module(s). Desired after restart: ${(modules?.desired_module_ids || []).length}.`,
+            label: t("welcome.modules_card_title", "Modules is where system shape happens"),
+            detail: formatText(
+              "welcome.modules_card_detail",
+              {
+                current: (modules?.current_module_ids || []).length,
+                desired: (modules?.desired_module_ids || []).length,
+              },
+              `Running now: ${(modules?.current_module_ids || []).length} module(s). Desired after restart: ${(modules?.desired_module_ids || []).length}.`,
+            ),
             href: "/operator/modules"
           }
         ];
@@ -364,7 +416,7 @@
           const link = document.createElement("a");
           link.className = "button-link secondary";
           link.href = card.href;
-          link.textContent = "Open";
+          link.textContent = t("common.open", "Open");
           article.appendChild(title);
           article.appendChild(detail);
           article.appendChild(link);
@@ -384,13 +436,13 @@
         metricPayment.textContent = modules?.active_by_lane?.payment || "-";
         metricNext.textContent = action.label;
         renderPairs(nodeDetails, [
-          ["Open", node?.node?.open],
-          ["Accepts orders", node?.accepts_orders],
-          ["Catalog items", menu?.items?.length || 0],
-          ["Running now", modules?.current_module_ids || []],
-          ["Desired after restart", modules?.desired_module_ids || []],
-          ["Setup status", payload?.summary?.status || "-"],
-          ["Checked", modules?.checked_at]
+          [t("common.open", "Open"), node?.node?.open],
+          [t("common.accepts_orders", "Accepts orders"), node?.accepts_orders],
+          [t("common.catalog_items", "Catalog items"), menu?.items?.length || 0],
+          [t("common.running_now", "Running now"), modules?.current_module_ids || []],
+          [t("common.desired_after_restart", "Desired after restart"), modules?.desired_module_ids || []],
+          [t("common.status", "Status"), payload?.summary?.status || "-"],
+          [t("common.checked", "Checked"), modules?.checked_at]
         ]);
         renderRestartBanner(modules);
         renderStartHere(payload);
@@ -400,13 +452,13 @@
 
       async function refresh() {
         if (!token()) {
-          setStatus("Waiting for token.", "bad");
+          setStatus(t("common.waiting_for_token", "Waiting for token."), "bad");
           return;
         }
-        setStatus("Loading.");
+        setStatus(t("common.loading", "Loading."));
         state.setup = await request("/operator/setup");
         render();
-        setStatus("Updated.", "ok");
+        setStatus(t("common.updated", "Updated."), "ok");
       }
 
       document.getElementById("save-token").addEventListener("click", () => {
@@ -417,7 +469,7 @@
       document.getElementById("clear-token").addEventListener("click", () => {
         localStorage.removeItem("p4pOperatorToken");
         tokenInput.value = "";
-        setStatus("Token cleared.");
+        setStatus(t("common.token_cleared", "Token cleared."));
       });
 
       document.getElementById("refresh").addEventListener("click", () => {
@@ -427,7 +479,7 @@
       document.getElementById("copy-json").addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(rawEl.textContent);
-          setStatus("Copied JSON.", "ok");
+          setStatus(t("common.copied_json", "Copied JSON."), "ok");
         } catch (error) {
           setStatus(error.message || "Could not copy JSON.", "bad");
         }

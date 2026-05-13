@@ -21,8 +21,12 @@ if str(P4P_ROOT) not in sys.path:
 from p4p_core import load_reference_provider_catalog
 from module_catalog import (
     PublicCatalogUrls,
+    locale_direction,
+    localized_field_map,
+    localized_field_text,
     localized_text,
     normalize_locale,
+    operator_locale_payload,
     public_module_catalog,
 )
 
@@ -42,12 +46,829 @@ PROTOCOLS_SCREENSHOT_ROOT = PROTOCOLS_ROOT / "assets" / "screenshots"
 SCREENSHOT_STAGE_LABELS = {
     "next_gate": {
         "da": "Næste gate / pilot-node",
+        "sv": "Nästa gate / pilot-node",
+        "tr": "Sonraki aşama / pilot-node",
+        "ar": "البوابة التالية / pilot-node",
+        "ku": "Dergehê paş / pilot-node",
         "en": "Pilot-node / next gate",
     },
     "public_proof": {
         "da": "Offentligt proof",
+        "sv": "Offentligt bevis",
+        "tr": "Kamusal kanıt",
+        "ar": "إثبات عام",
+        "ku": "Proofa giştî",
         "en": "Public proof",
     },
+}
+
+PIZZA_HOME_UI = {
+    "page_title": {
+        "da": "Pizza4People - Åben protokol for direkte restaurantordrer",
+        "sv": "Pizza4People - Öppet protokoll för direkta restaurangbeställningar",
+        "tr": "Pizza4People - Doğrudan restoran siparişi için açık protokol",
+        "ar": "Pizza4People - بروتوكول مفتوح للطلبات المباشرة من المطعم",
+        "ku": "Pizza4People - Protokola vekirî ji bo fermanên rasterast ji restaurantê",
+        "en": "Pizza4People - Open Protocol for Direct Restaurant Ordering",
+    },
+    "page_description": {
+        "da": "Pizza4People er et offentligt open-protocol proof og en kontrolleret live-pilotsti for restaurant-discovery, direkte menuadgang, direkte ordreflow og node-ejet identitet.",
+        "en": "Pizza4People is a public open-protocol proof and controlled live-pilot path for restaurant discovery, direct menu access, direct ordering, and node-owned identity.",
+    },
+    "og_description": {
+        "da": "Et offentligt protokol-proof og en kontrolleret live-pilotsti for direkte restaurant-kunde-ordrer.",
+        "en": "A public protocol proof and controlled live-pilot path for direct restaurant-customer ordering.",
+    },
+    "skip": {
+        "da": "Spring til indhold",
+        "sv": "Hoppa till innehåll",
+        "tr": "İçeriğe geç",
+        "ar": "انتقل إلى المحتوى",
+        "ku": "Biçe naverokê",
+        "en": "Skip to content",
+    },
+    "brand_home": {
+        "da": "Pizza4People hjem",
+        "sv": "Pizza4People hem",
+        "tr": "Pizza4People ana sayfa",
+        "ar": "الصفحة الرئيسية لـ Pizza4People",
+        "ku": "Mala serî ya Pizza4People",
+        "en": "Pizza4People home",
+    },
+    "nav_label": {
+        "da": "Primær navigation",
+        "sv": "Primär navigering",
+        "tr": "Birincil gezinme",
+        "ar": "التنقل الرئيسي",
+        "ku": "Navîgasyona bingehîn",
+        "en": "Primary navigation",
+    },
+    "nav_owner": {
+        "da": "For pizzeriaer",
+        "sv": "För pizzerior",
+        "tr": "Pizzacılar için",
+        "ar": "لأصحاب البيتزا",
+        "ku": "Ji bo pizzeriayan",
+        "en": "For pizzerias",
+    },
+    "nav_proof": {
+        "da": "Proof",
+        "sv": "Bevis",
+        "tr": "Kanıt",
+        "ar": "الإثبات",
+        "ku": "Proof",
+        "en": "Proof",
+    },
+    "nav_modules": {
+        "da": "Moduler",
+        "sv": "Moduler",
+        "tr": "Modüller",
+        "ar": "الوحدات",
+        "ku": "Modul",
+        "en": "Modules",
+    },
+    "nav_story": {
+        "da": "Historien",
+        "sv": "Berättelsen",
+        "tr": "Hikâye",
+        "ar": "القصة",
+        "ku": "Çîrok",
+        "en": "Story",
+    },
+    "nav_providers": {
+        "da": "Providers",
+        "sv": "Providers",
+        "tr": "Sağlayıcılar",
+        "ar": "المزوّدون",
+        "ku": "Provider",
+        "en": "Providers",
+    },
+    "nav_press": {
+        "da": "Pressekit",
+        "sv": "Presskit",
+        "tr": "Basın kiti",
+        "ar": "ملف صحفي",
+        "ku": "Paketa çapemeniyê",
+        "en": "Press kit",
+    },
+    "nav_contact": {
+        "da": "Kontakt",
+        "sv": "Kontakt",
+        "tr": "İletişim",
+        "ar": "اتصل",
+        "ku": "Têkilî",
+        "en": "Contact",
+    },
+    "locale_label": {
+        "da": "Sprog",
+        "sv": "Språk",
+        "tr": "Dil",
+        "ar": "اللغة",
+        "ku": "Ziman",
+        "en": "Language",
+    },
+    "hero_shape_label": {
+        "da": "Nuværende form",
+        "sv": "Nuvarande form",
+        "tr": "Mevcut şekil",
+        "ar": "الشكل الحالي",
+        "ku": "Forma niha",
+        "en": "Current shape",
+    },
+    "hero_tag_public": {
+        "da": "Offentligt proof nu",
+        "sv": "Offentligt bevis nu",
+        "tr": "Şimdi kamusal kanıt",
+        "ar": "إثبات عام الآن",
+        "ku": "Niha proofa giştî",
+        "en": "Public proof now",
+    },
+    "hero_tag_pilot": {
+        "da": "Pickup-først pilot næste",
+        "sv": "Pickup-först pilot nästa",
+        "tr": "Sıradaki adım pickup-first pilot",
+        "ar": "الخطوة التالية: تجريب pickup-first",
+        "ku": "Pilotê pickup-first dergeha paş e",
+        "en": "Pickup-first pilot next",
+    },
+    "hero_tag_not_marketplace": {
+        "da": "Ikke en marketplace-app",
+        "sv": "Inte en marketplace-app",
+        "tr": "Marketplace uygulaması değil",
+        "ar": "ليست تطبيق سوق",
+        "ku": "Sepana marketplace neye",
+        "en": "Not a marketplace app",
+    },
+    "hero_action_owner": {
+        "da": "Hvis du driver et pizzeria",
+        "sv": "Om du driver en pizzeria",
+        "tr": "Bir pizzacı işletiyorsan",
+        "ar": "إذا كنت تدير محل بيتزا",
+        "ku": "Heke tu pizzeriyayek dimeşînî",
+        "en": "If you run a pizzeria",
+    },
+    "hero_action_proof": {
+        "da": "Se proofet",
+        "sv": "Se beviset",
+        "tr": "Kanıtı gör",
+        "ar": "اعرض الإثبات",
+        "ku": "Proofê bibîne",
+        "en": "See the proof",
+    },
+    "hero_action_code": {
+        "da": "Kode / protokol",
+        "sv": "Kod / protokoll",
+        "tr": "Kod / protokol",
+        "ar": "الكود / البروتوكول",
+        "ku": "Kod / protokol",
+        "en": "Code / protocol",
+    },
+    "hero_more_routes": {
+        "da": "Flere ruter:",
+        "sv": "Fler vägar:",
+        "tr": "Daha fazla rota:",
+        "ar": "مسارات أخرى:",
+        "ku": "Rêyên din:",
+        "en": "More routes:",
+    },
+    "hero_route_story": {
+        "da": "60-sekunders version",
+        "sv": "60-sekundersversion",
+        "tr": "60 saniyelik sürüm",
+        "ar": "نسخة 60 ثانية",
+        "ku": "Versiyona 60 çirke",
+        "en": "60-second version",
+    },
+    "hero_route_proof": {
+        "da": "Proof note",
+        "sv": "Bevisnot",
+        "tr": "Kanıt notu",
+        "ar": "مذكرة الإثبات",
+        "ku": "Noteya proofê",
+        "en": "Proof note",
+    },
+    "hero_route_broader": {
+        "da": "Bredere vision",
+        "sv": "Bredare vision",
+        "tr": "Daha geniş vizyon",
+        "ar": "الرؤية الأوسع",
+        "ku": "Dîtina firehtir",
+        "en": "Broader vision",
+    },
+    "hero_route_press_da": {
+        "da": "Pressekit DK",
+        "sv": "Presskit DK",
+        "tr": "Basın kiti DK",
+        "ar": "ملف صحفي DK",
+        "ku": "Paketa çapemeniyê DK",
+        "en": "Press kit DK",
+    },
+    "hero_route_press_en": {
+        "da": "Pressekit EN",
+        "sv": "Presskit EN",
+        "tr": "Basın kiti EN",
+        "ar": "ملف صحفي EN",
+        "ku": "Paketa çapemeniyê EN",
+        "en": "Press kit EN",
+    },
+    "proof_figure_alt": {
+        "da": "Diagram der viser klient-discovery gennem registries og direkte menu-/ordreflow til restaurantnoden.",
+        "en": "Diagram showing client discovery through registries and direct menu/order flow to the restaurant node.",
+    },
+    "proof_figure_caption": {
+        "da": "Discovery kan gå gennem registries. Menu og ordrer går direkte til restaurantnoden.",
+        "en": "Discovery can go through registries. Menu and orders go directly to the restaurant node.",
+    },
+    "source_label": {
+        "da": "Kilde",
+        "sv": "Källa",
+        "tr": "Kaynak",
+        "ar": "المصدر",
+        "ku": "Çavkanî",
+        "en": "Source",
+    },
+    "owner_kicker": {
+        "da": "Hvis du driver et pizzeria",
+        "sv": "Om du driver en pizzeria",
+        "tr": "Bir pizzacı işletiyorsan",
+        "ar": "إذا كنت تدير محل بيتزا",
+        "ku": "Heke tu pizzeriyayek dimeşînî",
+        "en": "If You Run A Pizzeria",
+    },
+    "owner_title": {
+        "da": "Det her er den enkle version.",
+        "sv": "Det här är den enkla versionen.",
+        "tr": "Bu basit sürüm.",
+        "ar": "هذه هي النسخة البسيطة.",
+        "ku": "Ev versiyona hêsan e.",
+        "en": "This is the simple version.",
+    },
+    "owner_body": {
+        "da": "Pizza4People prøver at holde den grundlæggende digitale forbindelse i restaurantens hænder. Den første live-form er bevidst lille: kontrollerede pickup-ordrer, direkte menukontrol og enkel betaling ved afhentning før noget bredere.",
+        "en": "Pizza4People is trying to keep the basic digital connection in the restaurant's hands. The first live shape is intentionally small: controlled pickup orders, direct menu control, and simple payment at pickup before anything broader.",
+    },
+    "modules_kicker": {
+        "da": "Hvordan delene passer sammen",
+        "sv": "Hur delarna hänger ihop",
+        "tr": "Parçalar nasıl birleşiyor",
+        "ar": "كيف تتماسك الأجزاء",
+        "ku": "Parçe çawa li hev tên",
+        "en": "How The Pieces Fit",
+    },
+    "modules_title": {
+        "da": "Start med det der betyder noget for butikken, og åbn først detaljerne hvis du har brug for dem.",
+        "en": "Start with what matters to the shop, then open the details only if needed.",
+    },
+    "modules_body_1": {
+        "da": "Listen nedenfor er bevidst skrevet til første forståelse, ikke til manifest-læsning. Hver boks åbner først ind i de tekniske links når du har brug for dem.",
+        "en": "The list below is intentionally written for first understanding, not for manifest reading. Each box opens into the technical links only when you need them.",
+    },
+    "modules_body_2": {
+        "da": "Betaling holdes bevidst smal. P4P holder ikke penge, behandler ikke betalinger, opbevarer ikke betalingscredentials, afregner ikke penge og er ikke merchant of record.",
+        "en": "Payment stays narrow on purpose. P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.",
+    },
+    "modules_body_3": {
+        "da": "Hvis moduler ikke giver mening endnu, så start med den enkle guide inde i modulsiderne.",
+        "en": "If modules make no sense yet, start with the simple guide inside the module pages.",
+    },
+    "modules_body_4": {
+        "da": "Hvis du vil have hele den offentlige læsesti for modul-laget, så åbn de dedikerede modulsider.",
+        "en": "If you want the full public reading path for the module layer, open the dedicated module pages.",
+    },
+    "modules_body_5": {
+        "da": "Det nuværende offentlige katalog peger på {provider_count} læsbar(e) provider-identitetsside som et separat menneskeligt lag: åbn provider-kataloget.",
+        "en": "The current public catalog points to {provider_count} readable provider identity page as a separate human layer: open provider catalog.",
+    },
+    "modules_link_new_here": {
+        "da": "modulsider",
+        "en": "module pages",
+    },
+    "modules_link_catalog": {
+        "da": "modulsider",
+        "en": "module pages",
+    },
+    "modules_link_providers": {
+        "da": "åbn provider-katalog",
+        "en": "open provider catalog",
+    },
+    "story_kicker": {
+        "da": "Historien",
+        "sv": "Berättelsen",
+        "tr": "Hikâye",
+        "ar": "القصة",
+        "ku": "Çîrok",
+        "en": "The story",
+    },
+    "brief_label": {
+        "da": "I én sætning",
+        "sv": "I en mening",
+        "tr": "Tek cümlede",
+        "ar": "في جملة واحدة",
+        "ku": "Di hevokekê de",
+        "en": "In one sentence",
+    },
+    "plain_kicker": {
+        "da": "Det du allerede kan se",
+        "sv": "Det du redan kan se",
+        "tr": "Şimdiden görülebilen şeyler",
+        "ar": "ما يمكنك رؤيته بالفعل",
+        "ku": "Tiştên ku tu jixwe dikarî bibînî",
+        "en": "What you can see already",
+    },
+    "plain_title": {
+        "da": "Fire synlige ting, uden at du behøver kende protokollen.",
+        "en": "Four visible things, no protocol knowledge required.",
+    },
+    "problem_kicker": {
+        "da": "Problemet",
+        "sv": "Problemet",
+        "tr": "Sorun",
+        "ar": "المشكلة",
+        "ku": "Pirsgirêk",
+        "en": "Problem",
+    },
+    "proof_kicker": {
+        "da": "Proof",
+        "sv": "Bevis",
+        "tr": "Kanıt",
+        "ar": "الإثبات",
+        "ku": "Proof",
+        "en": "Proof",
+    },
+    "proof_title": {
+        "da": "Det offentlige proof viser én smal løkke.",
+        "en": "The public proof demonstrates one narrow loop.",
+    },
+    "takeaway_kicker": {
+        "da": "Presse-takeaway",
+        "sv": "Press takeaway",
+        "tr": "Basın özeti",
+        "ar": "خلاصة صحفية",
+        "ku": "Xulasaya çapemeniyê",
+        "en": "Press takeaway",
+    },
+    "proves_kicker": {
+        "da": "Det her beviser",
+        "sv": "Det här visar",
+        "tr": "Bunun gösterdiği",
+        "ar": "ما يثبته هذا",
+        "ku": "Ev çi diprove dike",
+        "en": "What this proves",
+    },
+    "not_proves_kicker": {
+        "da": "Det her beviser ikke",
+        "sv": "Det här visar inte",
+        "tr": "Bunun göstermediği",
+        "ar": "ما لا يثبته هذا",
+        "ku": "Ev ne diprove dike",
+        "en": "What this does not prove",
+    },
+    "trust_kicker": {
+        "da": "Retning for tillid",
+        "sv": "Tillitens riktning",
+        "tr": "Güven yönü",
+        "ar": "اتجاه الثقة",
+        "ku": "Rêya baweriyê",
+        "en": "Trust direction",
+    },
+    "gate_kicker": {
+        "da": "Proof-gate",
+        "sv": "Bevis-gate",
+        "tr": "Kanıt kapısı",
+        "ar": "بوابة الإثبات",
+        "ku": "Dergehê proofê",
+        "en": "Proof gate",
+    },
+    "roadmap_kicker": {
+        "da": "Roadmap",
+        "sv": "Roadmap",
+        "tr": "Yol haritası",
+        "ar": "خارطة الطريق",
+        "ku": "Roadmap",
+        "en": "Roadmap",
+    },
+    "roadmap_title": {
+        "da": "Fra offentligt protokol-proof til kontrolleret live-pilot.",
+        "en": "From public protocol proof to controlled live pilot.",
+    },
+    "pilot_kicker": {
+        "da": "Næste gate",
+        "sv": "Nästa gate",
+        "tr": "Sonraki aşama",
+        "ar": "البوابة التالية",
+        "ku": "Dergehê paş",
+        "en": "Next gate",
+    },
+    "pilot_title": {
+        "da": "Det her er det restauranten vil styre lokalt i den kontrollerede pilot.",
+        "en": "What the restaurant will control locally in the controlled pilot.",
+    },
+    "pilot_lede": {
+        "da": "De her flader er virkelige og allerede bygget, men de hører til pilot-node-sporet efter det nuværende offentlige proof. De er ikke selve den smalle v0.1-proofløkke.",
+        "en": "These surfaces are real and already built, but they belong to the pilot-node path after the current public proof. They are not the narrow v0.1 proof loop itself.",
+    },
+    "contact_kicker": {
+        "da": "Kontakt",
+        "sv": "Kontakt",
+        "tr": "İletişim",
+        "ar": "اتصل",
+        "ku": "Têkilî",
+        "en": "Contact",
+    },
+    "contact_title": {
+        "da": "Det her er et offentligt protokol-proof og en kontrolleret pilotsti, ikke en kommerciel marketplace-lancering.",
+        "en": "This is a public protocol proof and controlled pilot path, not a commercial marketplace launch.",
+    },
+    "contact_line": {
+        "da": "Til teknisk review, protokolspørgsmål eller pressekontekst:",
+        "en": "For technical review, protocol questions, or press context:",
+    },
+    "contact_source_label": {
+        "da": "Kilde- og protokolarbejde:",
+        "en": "Source and protocol work:",
+    },
+    "contact_broader_label": {
+        "da": "Bredere protokol-familieretning:",
+        "en": "Broader protocol-family direction:",
+    },
+    "contact_fine_print": {
+        "da": "Pizza4People er det konkrete restaurant-ordering proof. Protocols4People er den bredere protokol-familieretning.",
+        "en": "Pizza4People is the concrete restaurant-ordering proof. Protocols4People is the broader protocol-family direction.",
+    },
+}
+
+PIZZA_PRESS_UI = {
+    "download_da": {
+        "da": "Download dansk PDF",
+        "sv": "Ladda ner dansk PDF",
+        "tr": "Danca PDF indir",
+        "ar": "نزّل PDF الدنماركية",
+        "ku": "PDF-a Danîmarkî daxîne",
+        "en": "Download Danish PDF",
+    },
+    "download_en": {
+        "da": "Download English PDF",
+        "sv": "Ladda ner engelsk PDF",
+        "tr": "İngilizce PDF indir",
+        "ar": "نزّل PDF الإنجليزية",
+        "ku": "PDF-a Îngilîzî daxîne",
+        "en": "Download English PDF",
+    },
+    "site_label": {
+        "da": "pizza4people.com",
+        "en": "pizza4people.com",
+    },
+    "provider_catalog": {
+        "da": "provider-katalog",
+        "sv": "provider-katalog",
+        "tr": "sağlayıcı kataloğu",
+        "ar": "كتالوج المزوّدين",
+        "ku": "kataloga provideran",
+        "en": "provider catalog",
+    },
+    "repo_label": {
+        "da": "github.com/DennisHedegreen/p4p",
+        "en": "github.com/DennisHedegreen/p4p",
+    },
+    "diagram_core_flow": {
+        "da": "Kerneflow",
+        "sv": "Kärnflöde",
+        "tr": "Çekirdek akış",
+        "ar": "التدفق الأساسي",
+        "ku": "Herikîna bingehîn",
+        "en": "Core flow",
+    },
+    "client_label": {
+        "da": "Klient",
+        "sv": "Klient",
+        "tr": "İstemci",
+        "ar": "العميل",
+        "ku": "Klîent",
+        "en": "Client",
+    },
+    "registry_label": {
+        "da": "Registry",
+        "sv": "Registry",
+        "tr": "Registry",
+        "ar": "السجل",
+        "ku": "Registry",
+        "en": "Registry",
+    },
+    "pilot_topology": {
+        "da": "Pilot-topologi",
+        "sv": "Pilot-topologi",
+        "tr": "Pilot topolojisi",
+        "ar": "بنية الطيار",
+        "ku": "Topolojiya pilotê",
+        "en": "Pilot topology",
+    },
+    "primary_registry": {
+        "da": "Primær registry",
+        "sv": "Primär registry",
+        "tr": "Birincil registry",
+        "ar": "السجل الأساسي",
+        "ku": "Registry-a bingehîn",
+        "en": "Primary registry",
+    },
+    "backup_registry": {
+        "da": "Backup registry",
+        "sv": "Backup registry",
+        "tr": "Yedek registry",
+        "ar": "السجل الاحتياطي",
+        "ku": "Registry-a paşve",
+        "en": "Backup registry",
+    },
+    "minimum_api": {
+        "da": "Minimum node-API",
+        "sv": "Minsta node-API",
+        "tr": "Minimum node API",
+        "ar": "أدنى API للعقدة",
+        "ku": "API-ya nodeyê ya herî kêm",
+        "en": "Minimum node API",
+    },
+    "checker": {
+        "da": "Checker",
+        "sv": "Checker",
+        "tr": "Denetleyici",
+        "ar": "أداة التحقق",
+        "ku": "Checker",
+        "en": "Checker",
+    },
+    "contact_card": {
+        "da": "Kontakt",
+        "sv": "Kontakt",
+        "tr": "İletişim",
+        "ar": "اتصل",
+        "ku": "Têkilî",
+        "en": "Contact",
+    },
+    "links_card": {
+        "da": "Links",
+        "sv": "Länkar",
+        "tr": "Bağlantılar",
+        "ar": "روابط",
+        "ku": "Girêdan",
+        "en": "Links",
+    },
+    "source_link": {
+        "da": "Just Eat Takeaway.com-kilde",
+        "sv": "Just Eat Takeaway.com-källa",
+        "tr": "Just Eat Takeaway.com kaynağı",
+        "ar": "مصدر Just Eat Takeaway.com",
+        "ku": "Çavkaniya Just Eat Takeaway.com",
+        "en": "Just Eat Takeaway.com source",
+    },
+}
+
+PIZZA_MODULES_UI = {
+    "nav_home": {"da": "Hjem", "en": "Home"},
+    "nav_modules": {"da": "Moduler", "en": "Modules"},
+    "nav_providers": {"da": "Providers", "en": "Providers"},
+    "nav_press_dk": {"da": "Pressekit DK", "en": "Press kit DK"},
+    "nav_press_en": {"da": "Pressekit EN", "en": "Press kit EN"},
+    "nav_proof": {"da": "Proof note", "en": "Proof note"},
+    "nav_code": {"da": "Kode / protokol", "en": "Code / protocol"},
+    "page_title_modules": {
+        "da": "Pizza4People Modulsider",
+        "en": "Pizza4People Module Pages",
+    },
+    "page_description_modules": {
+        "da": "Menneskelige modulsider for den nuværende Pizza4People-stack før rå manifests og GitHub-docs.",
+        "en": "Plain-language module pages for the current Pizza4People stack, before raw manifests and GitHub docs.",
+    },
+    "page_description_modules_og": {
+        "da": "Et læsbart modul-katalog for den nuværende Pizza4People proof-stack.",
+        "en": "A readable module catalog for the current Pizza4People proof stack.",
+    },
+    "hero_eyebrow_modules": {
+        "da": "Modulsider / menneskelig læsning af stacken",
+        "en": "Module pages / plain-language stack reading",
+    },
+    "hero_title_modules": {
+        "da": "Hvilket modul betyder noget først?",
+        "en": "Which module matters first?",
+    },
+    "hero_lede_modules": {
+        "da": "Det her er det menneskelige modul-katalog for det nuværende Pizza4People proof. Start her hvis du vil forstå hvad kunden ser, hvad butikken styrer, og hvor betalings- eller tillidsgrænserne ligger før du åbner rå manifests.",
+        "en": "This is the human module catalog for the current Pizza4People proof. Start here if you want to understand what the customer sees, what the shop controls, and where payment or trust boundaries sit before opening raw manifests.",
+    },
+    "hero_action_back_home": {"da": "Tilbage til forsiden", "en": "Back to homepage"},
+    "hero_action_new_here": {"da": "Ny her?", "en": "New here?"},
+    "hero_action_provider_pages": {"da": "Providersider", "en": "Provider pages"},
+    "brief_label_scope": {"da": "Nuværende scope", "en": "Current scope"},
+    "brief_line_modules": {
+        "da": "{module_count} modulsider på tværs af {provider_count} delt provider-lag.",
+        "en": "{module_count} module pages across {provider_count} shared provider layer.",
+    },
+    "brief_body_modules": {
+        "da": "Læsbarhed først. Rå manifests og GitHub-referencer kun når du har brug for udviklerlaget.",
+        "en": "Readable first. Raw manifests and GitHub references only when you need the developer-facing view.",
+    },
+    "new_here_kicker": {"da": "Ny her?", "en": "New here?"},
+    "new_here_title_modules": {
+        "da": "Start med den enkle idé, ikke de rå ids.",
+        "en": "Start with the simple idea, not the raw ids.",
+    },
+    "new_here_body_modules_1": {
+        "da": "P4P-kernen er vejen. Moduler er valgfrie værktøjer rundt om vejen.",
+        "en": "P4P core is the road. Modules are optional tools around the road.",
+    },
+    "new_here_body_modules_2": {
+        "da": "Gode eksempler er menuer, køkkenskærme, pickup boards, alarmer og betalingsadaptere. Dårlige eksempler er registryet selv eller det direkte node-order-endpoint selv.",
+        "en": "Good examples are menus, kitchen screens, pickup boards, alerts, and payment adapters. Bad examples are the registry itself or the direct node order endpoint itself.",
+    },
+    "start_kicker": {"da": "Start her", "en": "Start here"},
+    "start_title_modules": {
+        "da": "Tre praktiske veje ind i modul-stacken.",
+        "en": "Three practical ways into the module stack.",
+    },
+    "catalog_kicker": {"da": "Katalog", "en": "Catalog"},
+    "catalog_title_modules": {
+        "da": "Åbn den nuværende stack efter rolle, ikke rå id.",
+        "en": "Open the current stack by role, not by raw id.",
+    },
+    "catalog_body_modules_1": {
+        "da": "Den grupperede liste nedenfor er stadig den samme smalle proof-fortælling. Den er bare arrangeret i den rækkefølge en normal læser kan bruge: kundeflader først, derefter butiksværktøjer, derefter betalings-/tillidskanter, derefter interne tests.",
+        "en": "The grouped list below is still the same narrow proof story. It is just arranged in the order a normal reader can use: customer surfaces first, then shop tools, then payment/trust edges, then internal tests.",
+    },
+    "catalog_body_modules_2": {
+        "da": "Hvis du vil have det præcise tekniske sprog, er GitHub stadig source of truth. Den her side er det offentlige menneskelige lag oven på.",
+        "en": "If you want the exact technical language, GitHub remains the source of truth. This page is the public human layer above it.",
+    },
+    "current_module_pages": {"da": "Nuværende modulsider", "en": "Current module pages"},
+    "groups_title_modules": {
+        "da": "Læs de nuværende moduler som værktøjer, og åbn kun detaljerne når det er nødvendigt.",
+        "en": "Read the current modules as tools, then open the details only when needed.",
+    },
+    "contact_title_modules": {
+        "da": "Spørgsmål om modul-laget eller den nuværende proof-grænse?",
+        "en": "Questions about the module layer or the current proof boundary?",
+    },
+    "contact_body_modules_1": {
+        "da": "Spørgsmål om modulbetydning, provider-ejerskab eller live-pilotgrænsen:",
+        "en": "Questions about module meaning, provider ownership, or the live-pilot boundary:",
+    },
+    "contact_body_modules_2": {
+        "da": "Offentlig proof-fordør:",
+        "en": "Public proof front door:",
+    },
+    "contact_body_modules_3": {
+        "da": "Bredere protokol-familieretning:",
+        "en": "Broader protocol-family direction:",
+    },
+    "footer_modules_left": {"da": "Pizza4People / Modulsider", "en": "Pizza4People / Module Pages"},
+    "footer_next_gate": {
+        "da": "Offentligt protokol-proof. Kontrolleret live-pilot næste.",
+        "en": "Public protocol proof. Controlled live pilot next.",
+    },
+    "toggle_hint": {"da": "Klik for detaljer", "en": "Click for details"},
+    "owner_prefix": {"da": "For et pizzeria:", "en": "For a pizzeria:"},
+    "touches": {"da": "Berører", "en": "Touches"},
+    "does_not_own": {"da": "Ejer ikke", "en": "Does not own"},
+    "current_state": {"da": "Nuværende tilstand", "en": "Current state"},
+    "technical_id": {"da": "Teknisk id", "en": "Technical id"},
+    "more_info": {"da": "Mere info:", "en": "More info:"},
+    "open_full_module_page": {"da": "Åbn fuld modulside", "en": "Open full module page"},
+    "open_provider_page": {"da": "Åbn providerside", "en": "Open provider page"},
+    "open_manifest": {"da": "Åbn manifest", "en": "Open manifest"},
+    "reader_card_1_title": {"da": "Hvis du driver en butik", "en": "If you run a shop"},
+    "reader_card_1_body": {
+        "da": "Start med kundemenuen, butikskataloget og den enkle pay-at-pickup lane. Læs moduler som valgfrie værktøjer rundt om order flow, ikke som protokolteori.",
+        "en": "Start with the customer menu, the shop-side catalog, and the simple pay-at-pickup lane. Read modules as optional tools around the order flow, not as protocol theory.",
+    },
+    "reader_card_2_title": {"da": "Hvis du bygger software", "en": "If you build software"},
+    "reader_card_2_body": {
+        "da": "Start med den dum-sikre modul-forklaring, derefter community builder-guiden, og så én smal hardware-lane så du kan se hvad et smalt modul ligner før de tungere kontrakter.",
+        "en": "Start with the dumb-safe module explanation, then the community builder guide, then one small hardware lane so you can see what a narrow module looks like before reading the heavier contracts.",
+    },
+    "reader_card_3_title": {"da": "Hvis du er skeptisk", "en": "If you are skeptical"},
+    "reader_card_3_body": {
+        "da": "Start med review-pakken, undersøg derefter payment boundary og de to nye pilot hardware lanes. Det nyttige spørgsmål er om kernen bliver lille mens ekstra lagene bliver ærlige og valgfrie.",
+        "en": "Start with the review packet, then inspect the payment boundary and the two new pilot hardware lanes. The useful question is whether the core stays small while the extras stay honest and optional.",
+    },
+    "open_customer_menu_page": {"da": "Åbn kundemenuside", "en": "Open customer menu page"},
+    "open_shop_catalog_page": {"da": "Åbn butikskatalog-side", "en": "Open shop catalog page"},
+    "open_simple_payment_page": {"da": "Åbn enkel betalingsside", "en": "Open simple payment page"},
+    "open_simple_module_guide": {"da": "Åbn enkel modulguide", "en": "Open simple module guide"},
+    "open_builder_guide": {"da": "Åbn builder-guide", "en": "Open builder guide"},
+    "open_backup_print_example": {"da": "Åbn backup-print eksempel", "en": "Open backup-print example"},
+    "open_review_packet": {"da": "Åbn review-pakke", "en": "Open review packet"},
+    "open_payment_boundary_page": {"da": "Åbn payment boundary-side", "en": "Open payment boundary page"},
+    "open_pickup_board_page": {"da": "Åbn pickup-board-side", "en": "Open pickup-board page"},
+    "route_card_1_title": {"da": "Start med kundesiden", "en": "Start with the customer side"},
+    "route_card_1_body": {
+        "da": "Hvis du først vil forstå det synlige offentlige proof, så start med menuen og statussiderne kunden faktisk ser.",
+        "en": "If you want to understand the visible public proof first, start with the menu and status pages the customer actually sees.",
+    },
+    "route_card_2_title": {"da": "Læs derefter butiksværktøjerne", "en": "Then read the shop-side tools"},
+    "route_card_2_body": {
+        "da": "Hvis du vil forstå hvad et pizzeria faktisk kontrollerer, så hop til katalog-editoren og køkkenkøen før de dybere tekniske lag.",
+        "en": "If you want to understand what a pizzeria actually controls, jump to the catalog editor and kitchen queue before the deeper technical layers.",
+    },
+    "route_card_3_title": {"da": "Hold grænsen i syne", "en": "Keep the boundary in view"},
+    "route_card_3_body": {
+        "da": "Hvis du vil have den praktiske kant af det nuværende proof, så læs den enkle payment path og providersiden sammen.",
+        "en": "If you want the practical edge of the current proof, read the simple payment path and the provider page together.",
+    },
+    "simple_online_menu": {"da": "Enkel online-menu", "en": "Simple online menu"},
+    "order_status_page": {"da": "Ordrestatus-side", "en": "Order status page"},
+    "edit_menu_and_prices": {"da": "Rediger menu og priser", "en": "Edit menu and prices"},
+    "kitchen_order_queue": {"da": "Køkken-ordrekø", "en": "Kitchen order queue"},
+    "pay_at_pickup_cash": {"da": "Betal ved afhentning / kontant", "en": "Pay at pickup / cash"},
+    "current_provider_page": {"da": "Nuværende providerside", "en": "Current provider page"},
+}
+
+PIZZA_PROVIDER_UI = {
+    "page_title_providers": {"da": "Pizza4People Providersider", "en": "Pizza4People Provider Pages"},
+    "page_description_providers": {
+        "da": "Hvem der står bag de nuværende Pizza4People-værktøjer, i menneskeligt sprog før rå manifests.",
+        "en": "Who stands behind the current Pizza4People tools, in plain language before raw manifests.",
+    },
+    "page_description_providers_og": {
+        "da": "Menneskelige providersider for de nuværende Pizza4People-værktøjer.",
+        "en": "Plain-language provider pages for the current Pizza4People tools.",
+    },
+    "hero_eyebrow_providers": {"da": "Nuværende værktøjskilde / menneskelige providersider", "en": "Current tool source / plain-language provider pages"},
+    "hero_title_providers": {
+        "da": "Hvem står bag de nuværende Pizza4People-værktøjer?",
+        "en": "Who stands behind the current Pizza4People tools?",
+    },
+    "hero_lede_providers": {
+        "da": "Lige nu peger det offentlige Pizza4People-site på ét delt reference-provider-lag. Det betyder at den nuværende menu-, ordre- og operator-flade kommer fra én in-repo reference-stack. Den her side forklarer det i menneskeligt sprog før rå manifests og GitHub-docs.",
+        "en": "Right now the public Pizza4People site points to one shared reference provider. That means the current menu, order, and operator pages come from one in-repo reference stack. This page explains that in plain language before raw manifests and GitHub docs.",
+    },
+    "hero_action_module_catalog": {"da": "Modul-katalog", "en": "Module catalog"},
+    "hero_action_broader": {"da": "Bredere vision", "en": "Broader vision"},
+    "brief_label_reality": {"da": "Nuværende virkelighed", "en": "Current reality"},
+    "brief_line_providers": {
+        "da": "{provider_count} delt providerside i det nuværende offentlige site.",
+        "en": "{provider_count} shared provider page in the current public site.",
+    },
+    "brief_body_providers": {
+        "da": "Ikke et bredt vendor-marked endnu. Én delt reference-stack med den samme smalle proof-grænse som resten af sitet.",
+        "en": "Not a broad vendor marketplace yet. One shared reference stack, with the same narrow proof boundary as the rest of the site.",
+    },
+    "providers_kicker": {"da": "Providers", "en": "Providers"},
+    "providers_title": {"da": "Hvad en providerside er til for.", "en": "What a provider page is for."},
+    "providers_body_1": {
+        "da": "En modulside forklarer hvad et værktøj gør. En providerside forklarer hvem der udgiver den værktøjsfamilie lige nu. Det er det menneskelige læselag ved siden af de rå manifests.",
+        "en": "A module page explains what a tool does. A provider page explains who publishes that tool family right now. It is the human reading layer beside the raw manifests.",
+    },
+    "providers_body_2": {
+        "da": "Det certificerer ingen. Det gør ikke registryet til en marketplace-operatør. Det gør bare den nuværende kilde til værktøjerne læsbar for en butiksejer, journalist eller reviewer.",
+        "en": "This does not certify anyone. It does not turn the registry into a marketplace operator. It simply makes the current source of the tools readable for a shop owner, journalist, or reviewer.",
+    },
+    "current_catalog": {"da": "Nuværende katalog", "en": "Current catalog"},
+    "provider_cards_title": {
+        "da": "Den nuværende delte provider bag de offentlige værktøjer.",
+        "en": "The current shared provider behind the public tools.",
+    },
+    "contact_title_providers": {
+        "da": "Spørgsmål om hvem der står bag den nuværende stack?",
+        "en": "Questions about who stands behind the current stack?",
+    },
+    "contact_body_providers_1": {
+        "da": "Spørgsmål om provider-identitet, modulejerskab eller den nuværende offentlige værktøjskilde:",
+        "en": "Questions about provider identity, module ownership, or the current public tool source:",
+    },
+    "contact_body_providers_2": {"da": "Kilde- og protokolarbejde:", "en": "Source and protocol work:"},
+    "contact_body_providers_3": {"da": "Offentlig proof-fordør:", "en": "Public proof front door:"},
+    "footer_providers_left": {"da": "Pizza4People / Providersider", "en": "Pizza4People / Provider Pages"},
+    "current_tool_source": {"da": "Nuværende værktøjskilde", "en": "Current tool source"},
+    "what_this_is_not": {"da": "Hvad det ikke er", "en": "What this is not"},
+    "module_count_label": {"da": "Modulantal", "en": "Module count"},
+    "good_first_pages": {"da": "Gode første sider for en butik", "en": "Good first pages for a shop"},
+    "open_full_provider_page": {"da": "Åbn fuld providerside", "en": "Open full provider page"},
+    "github_provider_reference": {"da": "GitHub provider-reference", "en": "GitHub provider reference"},
+    "open_provider_manifest": {"da": "Åbn provider-manifest", "en": "Open provider manifest"},
+    "provider_title_suffix": {"da": "Pizza4People Providerside", "en": "Pizza4People Provider Page"},
+    "hero_action_back_provider_catalog": {"da": "Tilbage til provider-katalog", "en": "Back to provider catalog"},
+    "brief_label_for_shop": {"da": "For et pizzeria", "en": "For a pizzeria"},
+    "what_it_is": {"da": "Hvad det er", "en": "What it is"},
+    "what_this_covers_right_now": {"da": "Hvad det dækker lige nu", "en": "What this covers right now"},
+    "for_shop_strong": {"da": "For en butik:", "en": "For a shop:"},
+    "not_yet": {"da": "Ikke endnu:", "en": "Not yet:"},
+    "current_modules": {"da": "Nuværende moduler", "en": "Current modules"},
+    "provider_modules_title": {"da": "Hvad den her provider udgiver lige nu.", "en": "What this provider publishes right now."},
+    "technical_record": {"da": "Teknisk registrering", "en": "Technical record"},
+    "status": {"da": "Status", "en": "Status"},
+    "supported_lanes": {"da": "Understøttede lanes", "en": "Supported lanes"},
+    "website": {"da": "Website", "en": "Website"},
+    "provider_readable_surface": {
+        "da": "Den lokale side her er P4P’s læsbare flade. GitHub-referencen og det rå manifest er stadig det udviklervendte kildemateriale.",
+        "en": "This local page is the P4P-readable surface. The GitHub reference and raw manifest remain the developer-facing source material.",
+    },
+    "back_to_provider_catalog": {"da": "Tilbage til provider-katalog", "en": "Back to provider catalog"},
+    "open_raw_provider_manifest": {"da": "Åbn rå provider-manifest", "en": "Open raw provider manifest"},
+    "contact_title_provider_detail": {
+        "da": "Spørgsmål om hvem der står bag de her værktøjer?",
+        "en": "Questions about who stands behind these tools?",
+    },
+    "contact_body_provider_detail_1": {
+        "da": "Spørgsmål om den her providerside, modulejerskab eller live-pilotgrænsen:",
+        "en": "Questions about this provider page, module ownership, or the live-pilot boundary:",
+    },
+    "provider_focus_modules_suffix": {"da": " ", "en": " "},
 }
 
 
@@ -72,11 +893,82 @@ def public_localized_text(texts: dict[str, str] | None, locale: str) -> str:
     if not texts:
         return ""
     normalized_locale = str(locale or "").strip().lower()
-    for candidate in (normalized_locale, "da", "en"):
+    for candidate in (normalized_locale, "en", "da"):
         value = str(texts.get(candidate, "")).strip()
         if value:
             return value
     return next((str(value).strip() for value in texts.values() if str(value).strip()), "")
+
+
+def public_field_text(value: object, locale: str = "en") -> str:
+    if isinstance(value, dict):
+        normalized = {
+            ("da" if str(key).strip().lower() == "dk" else str(key).strip().lower()): str(text)
+            for key, text in value.items()
+        }
+        return public_localized_text(normalized, locale)
+    return str(value or "").strip()
+
+
+def public_ui_text(table: dict[str, dict[str, str]], key: str, locale: str) -> str:
+    return public_localized_text(table.get(key, {}), locale)
+
+
+def public_locale_choices() -> list[dict[str, str]]:
+    return operator_locale_payload("da").get("choices", [])
+
+
+def locale_file_href(*, kind: str, locale: str) -> str:
+    if kind == "press":
+        return "./" if locale == "da" else f"./{locale}.html"
+    return "./" if locale == "en" else f"./{locale}.html"
+
+
+def localized_static_page_href(prefix: str, locale: str, *, default_locale: str) -> str:
+    return prefix if locale == default_locale else f"{prefix}{locale}.html"
+
+
+def localized_detail_page_href(prefix: str, item_id: str, locale: str, *, default_locale: str = "en") -> str:
+    return f"{prefix}{item_id}/" if locale == default_locale else f"{prefix}{item_id}/{locale}.html"
+
+
+def render_locale_switcher(*, kind: str, locale: str, ui: dict[str, dict[str, str]]) -> str:
+    label = public_ui_text(ui, "locale_label", locale) or "Language"
+    links: list[str] = []
+    for choice in public_locale_choices():
+        choice_locale = str(choice.get("id", "")).strip()
+        if not choice_locale:
+            continue
+        href = locale_file_href(kind=kind, locale=choice_locale)
+        active_attr = ' aria-current="page"' if choice_locale == locale else ""
+        class_name = "locale-link active" if choice_locale == locale else "locale-link"
+        link_label = str(choice.get("native_label") or choice.get("label") or choice_locale)
+        links.append(f'<a class="{class_name}" href="{escape(href)}"{active_attr}>{escape(link_label)}</a>')
+    return (
+        f'<div class="locale-switcher" aria-label="{escape(label)}">'
+        f'<span class="locale-switcher-label">{escape(label)}</span>'
+        f'<div class="locale-switcher-links">{"".join(links)}</div>'
+        "</div>"
+    )
+
+
+def render_custom_locale_switcher(*, locale: str, label: str, href_for_locale) -> str:
+    links: list[str] = []
+    for choice in public_locale_choices():
+        choice_locale = str(choice.get("id", "")).strip()
+        if not choice_locale:
+            continue
+        href = href_for_locale(choice_locale)
+        active_attr = ' aria-current="page"' if choice_locale == locale else ""
+        class_name = "locale-link active" if choice_locale == locale else "locale-link"
+        link_label = str(choice.get("native_label") or choice.get("label") or choice_locale)
+        links.append(f'<a class="{class_name}" href="{escape(href)}"{active_attr}>{escape(link_label)}</a>')
+    return (
+        f'<div class="locale-switcher" aria-label="{escape(label)}">'
+        f'<span class="locale-switcher-label">{escape(label)}</span>'
+        f'<div class="locale-switcher-links">{"".join(links)}</div>'
+        "</div>"
+    )
 
 
 def screenshot_asset_source_root(pack: dict[str, object]) -> Path:
@@ -208,23 +1100,35 @@ OWNER_EXPLAINERS = [
 MODULE_GROUPS = [
     {
         "id": "customer",
-        "title": "What the customer sees",
-        "intro": "These are the public surfaces a customer can actually open during discovery and ordering.",
+        "title": {"da": "Hvad kunden ser", "en": "What the customer sees"},
+        "intro": {
+            "da": "Det her er de offentlige flader en kunde faktisk kan åbne under discovery og ordering.",
+            "en": "These are the public surfaces a customer can actually open during discovery and ordering.",
+        },
     },
     {
         "id": "operator",
-        "title": "What the shop uses behind the counter",
-        "intro": "These are the restaurant-side tools for menu control, kitchen flow, stock, printing, and fallback alerts.",
+        "title": {"da": "Hvad butikken bruger bag disken", "en": "What the shop uses behind the counter"},
+        "intro": {
+            "da": "Det her er restaurant-side værktøjer til menu-kontrol, køkkenflow, lager, print og fallback-alarmer.",
+            "en": "These are the restaurant-side tools for menu control, kitchen flow, stock, printing, and fallback alerts.",
+        },
     },
     {
         "id": "payment_trust",
-        "title": "Payment and business trust",
-        "intro": "This is where payment stays intentionally simple and where identity or business verification can later become reviewable.",
+        "title": {"da": "Betaling og forretningstillid", "en": "Payment and business trust"},
+        "intro": {
+            "da": "Her holdes betaling bevidst enkel, og her kan identitet eller virksomhedsverifikation senere blive læsbar og reviewbar.",
+            "en": "This is where payment stays intentionally simple and where identity or business verification can later become reviewable.",
+        },
     },
     {
         "id": "internal",
-        "title": "Internal tests and future extras",
-        "intro": "These modules are not the live restaurant offer today. They are internal test scaffolding or planned next-step pieces.",
+        "title": {"da": "Interne tests og fremtidige ekstra-lag", "en": "Internal tests and future extras"},
+        "intro": {
+            "da": "De her moduler er ikke det live restaurant-tilbud i dag. De er intern test-stillads eller planlagte næste skridt.",
+            "en": "These modules are not the live restaurant offer today. They are internal test scaffolding or planned next-step pieces.",
+        },
     },
 ]
 
@@ -839,15 +1743,20 @@ def load_modules() -> list[dict]:
                 "lane": payload["lane"],
                 "visibility": payload["visibility"],
                 "provider_id": provider_id,
-                "description": payload["description"],
-                "function": public_catalog.get("function", payload["description"]),
-                "data_access": public_catalog.get(
-                    "data_access_summary",
-                    ", ".join(payload.get("data_access", [])) or "Not declared yet.",
-                ),
-                "trust_status": public_catalog.get("trust_status", payload["status"]),
+                "title": localized_field_map(public_catalog.get("title")) or {"en": module_id},
+                "summary": localized_field_map(public_catalog.get("summary"))
+                or localized_field_map(public_catalog.get("function"))
+                or localized_field_map(payload.get("description"))
+                or {"en": localized_field_text(payload.get("description"), "en")},
+                "description": localized_field_map(payload.get("description")) or {"en": localized_field_text(payload.get("description"), "en")},
+                "function": localized_field_map(public_catalog.get("function"))
+                or localized_field_map(payload.get("description"))
+                or {"en": localized_field_text(payload.get("description"), "en")},
+                "data_access": localized_field_map(public_catalog.get("data_access_summary"))
+                or {"en": ", ".join(payload.get("data_access", [])) or "Not declared yet."},
+                "trust_status": localized_field_map(public_catalog.get("trust_status")) or {"en": payload["status"]},
                 "readiness": public_catalog.get("readiness", payload["status"]),
-                "operator_status": public_catalog.get("operator_status", "not enabled"),
+                "operator_status": localized_field_map(public_catalog.get("operator_status")) or {"en": "not enabled"},
                 "module_site_path": f"modules/{module_id}/",
                 "provider_site_path": f"providers/{provider_id}/",
                 "module_doc_url": f"https://github.com/DennisHedegreen/p4p/blob/main/docs/modules/{module_id}.md",
@@ -870,8 +1779,8 @@ def load_providers(modules: list[dict]) -> list[dict]:
         providers.append(
             {
                 "provider_id": provider_id,
-                "name": manifest.name,
-                "description": manifest.description,
+                "name": localized_field_map(manifest.raw.get("name")) or {"en": manifest.name},
+                "description": localized_field_map(manifest.raw.get("description")) or {"en": manifest.description},
                 "website": manifest.website,
                 "status": manifest.status,
                 "supported_lanes": list(manifest.supported_lanes),
@@ -890,12 +1799,14 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def module_page_path(module_id: str) -> Path:
-    return PUBLIC_ROOT / "modules" / module_id / "index.html"
+def module_page_path(module_id: str, *, locale: str = "en") -> Path:
+    filename = "index.html" if locale == "en" else f"{locale}.html"
+    return PUBLIC_ROOT / "modules" / module_id / filename
 
 
-def provider_page_path(provider_id: str) -> Path:
-    return PUBLIC_ROOT / "providers" / provider_id / "index.html"
+def provider_page_path(provider_id: str, *, locale: str = "en") -> Path:
+    filename = "index.html" if locale == "en" else f"{locale}.html"
+    return PUBLIC_ROOT / "providers" / provider_id / filename
 
 
 def module_catalog_payload(site_data: dict, modules: list[dict]) -> dict:
@@ -956,6 +1867,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Dil",
         "ar": "اللغة",
         "ku": "Ziman",
+        "en": "Language",
     },
     "modules_title": {
         "da": "Moduler til lokale butikker og direkte kontakt",
@@ -963,6 +1875,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Yerel dükkânlar ve doğrudan ilişki için modüller",
         "ar": "وحدات للمتاجر المحلية والعلاقة المباشرة",
         "ku": "Modul ji bo dikkanên herêmî û têkiliya rasterast",
+        "en": "Modules for local shops and direct contact",
     },
     "modules_lede": {
         "da": "Læs modul-familierne menneskeligt her. Brug operatoren lokalt til at vælge hvad din node faktisk skal køre.",
@@ -970,6 +1883,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Modül ailelerini burada insanvenligt okuyun. Düğümünüzün gerçekten ne çalıştıracağını seçmek için yerel operatörü kullanın.",
         "ar": "اقرأ عائلات الوحدات هنا بشكل إنساني. استخدم واجهة المشغّل محلياً لتختار ما الذي يجب أن تشغله عقدتك فعلاً.",
         "ku": "Li vir malbatên modulê bi awayekî merivane bixwîne. Operatorê herêmî bi kar bîne da ku tu hilbijêrî nodeya te bi rastî çi bixebitîne.",
+        "en": "Read module families here in human terms. Use the local operator to choose what your node should actually run.",
     },
     "shop_title": {
         "da": "Shop er første familie",
@@ -977,6 +1891,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Shop ilk aile",
         "ar": "shop هي العائلة الأولى",
         "ku": "shop malbata yekem e",
+        "en": "Shop is the first family",
     },
     "shop_lede": {
         "da": "Start med behov som menu, kundesider, betaling og lokal hardware i stedet for at starte med pizza som kategori.",
@@ -984,6 +1899,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Kategori olarak pizzayla başlamak yerine menü, müşteri yüzleri, ödeme ve yerel donanım gibi ihtiyaçlarla başlayın.",
         "ar": "ابدأ بالاحتياجات مثل القائمة وواجهات الزبون والدفع والعتاد المحلي بدلاً من البدء بالبيتزا كفئة.",
         "ku": "Li şûna ku bi pizza wek kategori dest pê bikî, bi hewcedariyên wek menu, rûyên xerîdar, dravdan û hardwareya herêmî dest pê bike.",
+        "en": "Start with needs like menu, customer surfaces, payment, and local hardware instead of starting with pizza as a category.",
     },
     "recommended": {
         "da": "Anbefalet baseline",
@@ -991,6 +1907,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Önerilen başlangıç seti",
         "ar": "الحد الأدنى الموصى به",
         "ku": "Bingehê pêşniyarkirî",
+        "en": "Recommended baseline",
     },
     "browse": {
         "da": "Gennemse grupper",
@@ -998,6 +1915,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Gruplara göz at",
         "ar": "تصفّح المجموعات",
         "ku": "Li koman bigere",
+        "en": "Browse groups",
     },
     "open_proof": {
         "da": "Åbn proof-side",
@@ -1005,6 +1923,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Proof sayfasını aç",
         "ar": "افتح صفحة الإثبات",
         "ku": "Rûpela proof veke",
+        "en": "Open proof page",
     },
     "open_doc": {
         "da": "Åbn modul-doc",
@@ -1012,6 +1931,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Modül dokümanını aç",
         "ar": "افتح توثيق الوحدة",
         "ku": "Belgeya modulê veke",
+        "en": "Open module doc",
     },
     "open_manifest": {
         "da": "Åbn manifest",
@@ -1019,6 +1939,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Manifesti aç",
         "ar": "افتح المانيفست",
         "ku": "Manifestê veke",
+        "en": "Open manifest",
     },
     "open_shop": {
         "da": "Åbn shop-familien",
@@ -1026,6 +1947,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Shop ailesini aç",
         "ar": "افتح عائلة shop",
         "ku": "Malbata shop veke",
+        "en": "Open shop family",
     },
     "screenshots": {
         "da": "Lokale flader",
@@ -1033,6 +1955,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Yerel yüzeyler",
         "ar": "الأسطح المحلية",
         "ku": "Rûberên herêmî",
+        "en": "Local surfaces",
     },
     "screenshots_catalog_lede": {
         "da": "Det offentlige modul-katalog ender på en lokal node, hvor butikken kan læse og styre modulerne selv.",
@@ -1040,6 +1963,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Açık modül kataloğu, dükkânın modülleri yerel düğümde okuyup yönetebildiği yere bağlanır.",
         "ar": "ينتهي كتالوج الوحدات العام على عقدة محلية حيث يمكن للمتجر قراءة الوحدات والتحكم بها بنفسه.",
         "ku": "Kataloga giştî ya modulê di nodeyek herêmî de bi dawî dibe ku firotgeh dikare modulan bixwîne û bi xwe bi rê ve bibe.",
+        "en": "The public module catalog ends at a local node where the shop can read and control modules itself.",
     },
     "screenshots_shop_lede": {
         "da": "Shop-familien bliver først rigtig, når offentlig forklaring, lokal discover, import og modulvalg hænger sammen.",
@@ -1047,6 +1971,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Shop ailesi ancak açık açıklama, yerel keşif, içe aktarma ve modül seçimi birlikte çalışınca gerçek olur.",
         "ar": "تصبح عائلة shop حقيقية حين تتماسك الشروح العامة مع الاكتشاف المحلي والاستيراد واختيار الوحدات.",
         "ku": "Malbata shop tenê dema ku ravekirina giştî, discover ya herêmî, import û hilbijartina modulê bi hev re bixebitin rast dibe.",
+        "en": "The shop family only becomes real when public explanation, local discover, import, and module choice hang together.",
     },
     "stage_next_gate": {
         "da": "Næste gate / pilot-node",
@@ -1054,6 +1979,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Sonraki kapı / pilot düğüm",
         "ar": "البوابة التالية / عقدة تجريبية",
         "ku": "Deriyê din / nodeya pilotê",
+        "en": "Pilot-node / next gate",
     },
     "stage_public_proof": {
         "da": "Offentligt proof",
@@ -1061,6 +1987,7 @@ PROTOCOLS_MODULE_UI = {
         "tr": "Kamusal kanıt",
         "ar": "إثبات عام",
         "ku": "Proofa giştî",
+        "en": "Public proof",
     },
 }
 
@@ -1297,7 +2224,7 @@ def protocols_modules_shell(
 
     function localizedText(map, locale) {{
       if (!map) return "";
-      return map[locale] || map[payload.default_locale] || map.en || Object.values(map)[0] || "";
+      return map[locale] || map.en || map[payload.default_locale] || Object.values(map)[0] || "";
     }}
 
     function uiText(key, locale) {{
@@ -1320,8 +2247,8 @@ def protocols_modules_shell(
       return `
         <article class="module-card">
           <div>
-            <h3>${{entry.title[locale] || entry.title.da || entry.module_id}}</h3>
-            <p>${{entry.summary[locale] || entry.summary.da || ""}}</p>
+            <h3>${{localizedText(entry.title, locale) || entry.module_id}}</h3>
+            <p>${{localizedText(entry.summary, locale)}}</p>
           </div>
           <div class="module-meta">
             <span class="module-badge">${{localizedText(entry.category.title, locale)}}</span>
@@ -1424,10 +2351,10 @@ def protocols_modules_shell(
 </html>"""
 
 
-def render_press_facts(facts: list[dict], urls: dict) -> str:
+def render_press_facts(facts: list[dict], urls: dict, *, locale: str) -> str:
     items = []
     for fact in facts:
-        body = escape(fact["body"])
+        body = escape(public_field_text(fact["body"], locale))
         body = body.replace("Danish", '<a href="press-kit/">Danish</a>')
         body = body.replace("English", '<a href="press-kit/en.html">English</a>')
         body = body.replace("proof site", f'<a href="{escape(urls["site"])}">proof site</a>')
@@ -1442,21 +2369,21 @@ def render_press_facts(facts: list[dict], urls: dict) -> str:
         )
         items.append(
             f"""        <article>
-          <h3>{escape(fact["title"])}</h3>
+          <h3>{escape(public_field_text(fact["title"], locale))}</h3>
           <p>{body}</p>
         </article>"""
         )
     return "\n".join(items)
 
 
-def render_plain_cards(items: list[dict]) -> str:
+def render_plain_cards(items: list[dict], *, locale: str) -> str:
     cards = []
     for index, item in enumerate(items, start=1):
         cards.append(
             f"""        <article class="plain-card">
           <span class="plain-number">{index}</span>
-          <h3>{escape(item["title"])}</h3>
-          <p>{escape(item["body"])}</p>
+          <h3>{escape(public_field_text(item["title"], locale))}</h3>
+          <p>{escape(public_field_text(item["body"], locale))}</p>
         </article>"""
         )
     return "\n".join(cards)
@@ -1474,22 +2401,22 @@ def render_owner_cards() -> str:
     return "\n".join(cards)
 
 
-def render_proof_steps(items: list[dict]) -> str:
+def render_proof_steps(items: list[dict], *, locale: str) -> str:
     cards = []
     for index, item in enumerate(items, start=1):
         cards.append(
             f"""        <article class="proof-step">
           <span class="step-number">{index:02d}</span>
-          <h3>{escape(item["title"])}</h3>
-          <p>{escape(item["body"])}</p>
+          <h3>{escape(public_field_text(item["title"], locale))}</h3>
+          <p>{escape(public_field_text(item["body"], locale))}</p>
         </article>"""
         )
     return "\n".join(cards)
 
 
-def render_list_items(items: list[str], *, ordered: bool = False) -> str:
+def render_list_items(items: list[object], *, locale: str, ordered: bool = False) -> str:
     tag = "ol" if ordered else "ul"
-    inner = "\n".join(f"          <li>{escape(item)}</li>" for item in items)
+    inner = "\n".join(f"          <li>{escape(public_field_text(item, locale))}</li>" for item in items)
     return f"<{tag}>\n{inner}\n        </{tag}>"
 
 
@@ -1503,12 +2430,12 @@ def render_modules(modules: list[dict]) -> str:
             <h3>{escape(entry["module_id"])}</h3>
             <span>{escape(entry["readiness"])}</span>
           </div>
-          <p>{escape(entry["function"])}</p>
+          <p>{escape(public_field_text(entry["function"]))}</p>
           <dl>
             <div><dt>Provider</dt><dd><a href="{escape(entry["provider_doc_url"])}" rel="noopener noreferrer">{escape(entry["provider_id"])}</a></dd></div>
-            <div><dt>Data</dt><dd>{escape(entry["data_access"])}</dd></div>
-            <div><dt>Trust</dt><dd>{escape(entry["trust_status"])}</dd></div>
-            <div><dt>Operator</dt><dd>{escape(entry["operator_status"])}</dd></div>
+            <div><dt>Data</dt><dd>{escape(public_field_text(entry["data_access"]))}</dd></div>
+            <div><dt>Trust</dt><dd>{escape(public_field_text(entry["trust_status"]))}</dd></div>
+            <div><dt>Operator</dt><dd>{escape(public_field_text(entry["operator_status"]))}</dd></div>
           </dl>
           <p class="module-links"><a href="{escape(entry["module_doc_url"])}" rel="noopener noreferrer">Read module page</a> <span>/</span> <a href="{escape(entry["provider_doc_url"])}" rel="noopener noreferrer">Read provider page</a> <span>/</span> <a href="{escape(entry["module_manifest_url"])}" rel="noopener noreferrer">Open manifest</a></p>
         </article>"""
@@ -1516,60 +2443,89 @@ def render_modules(modules: list[dict]) -> str:
     return "\n".join(cards)
 
 
-def module_state(entry: dict) -> tuple[str, str]:
+def module_state(entry: dict, locale: str) -> tuple[str, str]:
     module_id = entry["module_id"]
     if "mock" in module_id:
-        return ("Internal test only", "state-internal")
+        return (public_localized_text({"da": "Kun intern test", "en": "Internal test only"}, locale), "state-internal")
     if entry["lane"] == "trust":
-        return ("Trust direction", "state-planned")
+        return (public_localized_text({"da": "Tillidsretning", "en": "Trust direction"}, locale), "state-planned")
     if entry["readiness"] == "planned":
-        return ("Planned next", "state-planned")
+        return (public_localized_text({"da": "Planlagt næste", "en": "Planned next"}, locale), "state-planned")
     if entry["visibility"] == "public":
-        return ("Shown in proof", "state-proof")
+        return (public_localized_text({"da": "Vist i proof", "en": "Shown in proof"}, locale), "state-proof")
     if entry["visibility"] == "operator_only":
-        return ("Operator-side prototype", "state-operator")
-    return ("Prototype", "state-proof")
+        return (
+            public_localized_text({"da": "Operator-side prototype", "en": "Operator-side prototype"}, locale),
+            "state-operator",
+        )
+    return (public_localized_text({"da": "Prototype", "en": "Prototype"}, locale), "state-proof")
 
 
-def module_presentation(entry: dict) -> dict[str, str]:
+def module_presentation(entry: dict, locale: str) -> dict[str, str]:
     fallback = {
         "group": "internal",
-        "title": entry["module_id"],
-        "audience": "Reference layer",
-        "summary": entry["function"],
-        "owner_value": entry["description"],
-        "touches": entry["data_access"],
-        "not_owner": "This module is only described at reference level right now.",
+        "title": public_field_text(entry.get("title", entry["module_id"]), locale),
+        "audience": public_localized_text({"da": "Reference-lag", "en": "Reference layer"}, locale),
+        "summary": public_field_text(entry.get("summary", entry["function"]), locale),
+        "owner_value": public_field_text(entry["description"], locale),
+        "touches": public_field_text(entry["data_access"], locale),
+        "not_owner": public_localized_text(
+            {"da": "Det her modul er kun beskrevet på reference-niveau lige nu.", "en": "This module is only described at reference level right now."},
+            locale,
+        ),
     }
     payload = dict(fallback)
     payload.update(MODULE_PRESENTATION.get(entry["module_id"], {}))
-    return payload
+    return {
+        "group": str(payload["group"]),
+        "title": public_field_text(payload["title"], locale),
+        "audience": public_field_text(payload["audience"], locale),
+        "summary": public_field_text(payload["summary"], locale),
+        "owner_value": public_field_text(payload["owner_value"], locale),
+        "touches": public_field_text(payload["touches"], locale),
+        "not_owner": public_field_text(payload["not_owner"], locale),
+    }
 
 
-def provider_presentation(entry: dict) -> dict[str, str]:
+def provider_presentation(entry: dict, locale: str) -> dict[str, str]:
     fallback = {
-        "summary": entry["description"],
-        "owner_value": "This provider is part of the current reference catalog and should be read as a declared source of modules, not as a marketplace authority.",
-        "what_it_is": entry["description"],
-        "what_it_is_not": "Not a certification authority and not proof that all declared modules are live.",
-        "current_shape": "A declared source of the current reference modules.",
-        "not_yet": "Not a broad vendor marketplace or certification layer.",
+        "summary": public_field_text(entry["description"], locale),
+        "owner_value": public_localized_text(
+            {
+                "da": "Den her provider er en del af det nuværende reference-katalog og skal læses som en erklæret modul-kilde, ikke som en marketplace-autoritet.",
+                "en": "This provider is part of the current reference catalog and should be read as a declared source of modules, not as a marketplace authority.",
+            },
+            locale,
+        ),
+        "what_it_is": public_field_text(entry["description"], locale),
+        "what_it_is_not": public_localized_text(
+            {"da": "Ikke en certificeringsautoritet og ikke bevis for at alle erklærede moduler er live.", "en": "Not a certification authority and not proof that all declared modules are live."},
+            locale,
+        ),
+        "current_shape": public_localized_text(
+            {"da": "En erklæret kilde til de nuværende reference-moduler.", "en": "A declared source of the current reference modules."},
+            locale,
+        ),
+        "not_yet": public_localized_text(
+            {"da": "Ikke et bredt vendor-marked eller certificeringslag.", "en": "Not a broad vendor marketplace or certification layer."},
+            locale,
+        ),
     }
     payload = dict(fallback)
     payload.update(PROVIDER_PRESENTATION.get(entry["provider_id"], {}))
-    return payload
+    return {key: public_field_text(value, locale) for key, value in payload.items()}
 
 
-def provider_state(entry: dict) -> tuple[str, str]:
+def provider_state(entry: dict, locale: str) -> tuple[str, str]:
     status = entry["status"]
     if status == "unsigned-reference":
-        return ("Shared reference stack", "state-proof")
+        return (public_localized_text({"da": "Delt reference-stack", "en": "Shared reference stack"}, locale), "state-proof")
     if status == "planned":
-        return ("Planned provider", "state-planned")
-    return ("Prototype provider", "state-proof")
+        return (public_localized_text({"da": "Planlagt provider", "en": "Planned provider"}, locale), "state-planned")
+    return (public_localized_text({"da": "Prototype-provider", "en": "Prototype provider"}, locale), "state-proof")
 
 
-def provider_focus_modules(entry: dict, modules_by_id: dict[str, dict], *, path_prefix: str) -> str:
+def provider_focus_modules(entry: dict, modules_by_id: dict[str, dict], *, path_prefix: str, locale: str) -> str:
     preferred = [
         "p4p.catalog.editor",
         "p4p.menu.list",
@@ -1583,7 +2539,7 @@ def provider_focus_modules(entry: dict, modules_by_id: dict[str, dict], *, path_
         module_entry = modules_by_id.get(module_id)
         if module_entry is None:
             continue
-        presentation = module_presentation(module_entry)
+        presentation = module_presentation(module_entry, locale)
         if presentation["group"] == "internal":
             continue
         selected.append(module_id)
@@ -1593,23 +2549,23 @@ def provider_focus_modules(entry: dict, modules_by_id: dict[str, dict], *, path_
     items: list[str] = []
     for module_id in selected:
         module_entry = modules_by_id[module_id]
-        module_view = module_presentation(module_entry)
+        module_view = module_presentation(module_entry, locale)
         items.append(
-            f"""                <li><a href="{escape(path_prefix)}{escape(module_id)}/">{escape(module_view["title"])}</a> <span>{escape(module_view["summary"])}</span></li>"""
+            f"""                <li><a href="{escape(localized_detail_page_href(path_prefix, module_id, locale))}">{escape(module_view["title"])}</a> <span>{escape(module_view["summary"])}</span></li>"""
         )
     return "\n".join(items)
 
 
-def provider_module_groups(entry: dict, modules_by_id: dict[str, dict]) -> str:
+def provider_module_groups(entry: dict, modules_by_id: dict[str, dict], *, locale: str) -> str:
     items_by_group: dict[str, list[str]] = {group["id"]: [] for group in MODULE_GROUPS}
     for module_id in entry["module_ids"]:
         module_entry = modules_by_id.get(module_id)
         if module_entry is None:
             continue
-        module_view = module_presentation(module_entry)
-        state_label, _ = module_state(module_entry)
+        module_view = module_presentation(module_entry, locale)
+        state_label, _ = module_state(module_entry, locale)
         items_by_group.setdefault(module_view["group"], []).append(
-            f"""            <li><a href="../../modules/{escape(module_id)}/">{escape(module_view["title"])}</a><span>{escape(module_view["summary"])} {escape(state_label)}.</span></li>"""
+            f"""            <li><a href="{escape(localized_detail_page_href('../../modules/', module_id, locale))}">{escape(module_view["title"])}</a><span>{escape(module_view["summary"])} {escape(state_label)}.</span></li>"""
         )
 
     sections: list[str] = []
@@ -1619,8 +2575,8 @@ def provider_module_groups(entry: dict, modules_by_id: dict[str, dict]) -> str:
             continue
         sections.append(
             f"""        <article class="provider-module-group">
-          <h3>{escape(group["title"])}</h3>
-          <p>{escape(group["intro"])}</p>
+          <h3>{escape(public_field_text(group["title"], locale))}</h3>
+          <p>{escape(public_field_text(group["intro"], locale))}</p>
           <ul class="provider-module-list">
 {chr(10).join(group_items)}
           </ul>
@@ -1634,6 +2590,7 @@ def render_module_groups(
     *,
     module_prefix: str,
     provider_prefix: str,
+    locale: str,
     open_modules: set[str] | None = None,
 ) -> str:
     module_lookup = {entry["module_id"]: entry for entry in modules}
@@ -1649,8 +2606,8 @@ def render_module_groups(
             entry = module_lookup.get(module_id)
             if entry is None:
                 continue
-            presentation = module_presentation(entry)
-            state_label, state_class = module_state(entry)
+            presentation = module_presentation(entry, locale)
+            state_label, state_class = module_state(entry, locale)
             open_attr = " open" if module_id in open_module_ids else ""
             items.append(
                 f"""          <details class="module-item {state_class}"{open_attr}>
@@ -1663,19 +2620,19 @@ def render_module_groups(
                 </div>
                 <div class="module-summary-side">
                   <span class="module-state-badge">{escape(state_label)}</span>
-                  <span class="module-toggle-hint">Click for details</span>
+                  <span class="module-toggle-hint">{escape(public_ui_text(PIZZA_MODULES_UI, "toggle_hint", locale))}</span>
                 </div>
               </div>
             </summary>
             <div class="module-body">
-              <p class="module-owner-line"><strong>For a pizzeria:</strong> {escape(presentation["owner_value"])}</p>
+              <p class="module-owner-line"><strong>{escape(public_ui_text(PIZZA_MODULES_UI, "owner_prefix", locale))}</strong> {escape(presentation["owner_value"])}</p>
               <dl>
-                <div><dt>Touches</dt><dd>{escape(presentation["touches"])}</dd></div>
-                <div><dt>Does not own</dt><dd>{escape(presentation["not_owner"])}</dd></div>
-                <div><dt>Current state</dt><dd>{escape(entry["operator_status"])}</dd></div>
-                <div><dt>Technical id</dt><dd><code>{escape(entry["module_id"])}</code></dd></div>
+                <div><dt>{escape(public_ui_text(PIZZA_MODULES_UI, "touches", locale))}</dt><dd>{escape(presentation["touches"])}</dd></div>
+                <div><dt>{escape(public_ui_text(PIZZA_MODULES_UI, "does_not_own", locale))}</dt><dd>{escape(presentation["not_owner"])}</dd></div>
+                <div><dt>{escape(public_ui_text(PIZZA_MODULES_UI, "current_state", locale))}</dt><dd>{escape(public_field_text(entry["operator_status"], locale))}</dd></div>
+                <div><dt>{escape(public_ui_text(PIZZA_MODULES_UI, "technical_id", locale))}</dt><dd><code>{escape(entry["module_id"])}</code></dd></div>
               </dl>
-              <p class="module-links">More info: <a href="{escape(module_prefix)}{escape(entry["module_id"])}/">Open full module page</a> <span>/</span> <a href="{escape(provider_prefix)}{escape(entry["provider_id"])}/">Open provider page</a> <span>/</span> <a href="{escape(entry["module_manifest_url"])}" rel="noopener noreferrer">Open manifest</a></p>
+              <p class="module-links">{escape(public_ui_text(PIZZA_MODULES_UI, "more_info", locale))} <a href="{escape(localized_detail_page_href(module_prefix, entry['module_id'], locale))}">{escape(public_ui_text(PIZZA_MODULES_UI, "open_full_module_page", locale))}</a> <span>/</span> <a href="{escape(localized_detail_page_href(provider_prefix, entry['provider_id'], locale))}">{escape(public_ui_text(PIZZA_MODULES_UI, "open_provider_page", locale))}</a> <span>/</span> <a href="{escape(entry["module_manifest_url"])}" rel="noopener noreferrer">{escape(public_ui_text(PIZZA_MODULES_UI, "open_manifest", locale))}</a></p>
             </div>
           </details>"""
             )
@@ -1683,8 +2640,8 @@ def render_module_groups(
         output.append(
             f"""        <section class="module-group">
           <div class="module-group-header">
-            <p class="section-kicker">{escape(group["title"])}</p>
-            <p>{escape(group["intro"])}</p>
+            <p class="section-kicker">{escape(public_field_text(group["title"], locale))}</p>
+            <p>{escape(public_field_text(group["intro"], locale))}</p>
           </div>
           <div class="module-stack">
 {chr(10).join(items)}
@@ -1695,30 +2652,30 @@ def render_module_groups(
     return "\n".join(output)
 
 
-def render_module_route_cards() -> str:
+def render_module_route_cards(locale: str) -> str:
     routes = [
         {
-            "title": "Start with the customer side",
-            "body": "If you want to understand the visible public proof first, start with the menu and status pages the customer actually sees.",
+            "title": public_ui_text(PIZZA_MODULES_UI, "route_card_1_title", locale),
+            "body": public_ui_text(PIZZA_MODULES_UI, "route_card_1_body", locale),
             "links": [
-                ("Simple online menu", "p4p.menu.list"),
-                ("Order status page", "p4p.customer.status"),
+                (public_ui_text(PIZZA_MODULES_UI, "simple_online_menu", locale), "p4p.menu.list"),
+                (public_ui_text(PIZZA_MODULES_UI, "order_status_page", locale), "p4p.customer.status"),
             ],
         },
         {
-            "title": "Then read the shop-side tools",
-            "body": "If you want to understand what a pizzeria actually controls, jump to the catalog editor and kitchen queue before the deeper technical layers.",
+            "title": public_ui_text(PIZZA_MODULES_UI, "route_card_2_title", locale),
+            "body": public_ui_text(PIZZA_MODULES_UI, "route_card_2_body", locale),
             "links": [
-                ("Edit menu and prices", "p4p.catalog.editor"),
-                ("Kitchen order queue", "p4p.kitchen.screen"),
+                (public_ui_text(PIZZA_MODULES_UI, "edit_menu_and_prices", locale), "p4p.catalog.editor"),
+                (public_ui_text(PIZZA_MODULES_UI, "kitchen_order_queue", locale), "p4p.kitchen.screen"),
             ],
         },
         {
-            "title": "Keep the boundary in view",
-            "body": "If you want the practical edge of the current proof, read the simple payment path and the provider page together.",
+            "title": public_ui_text(PIZZA_MODULES_UI, "route_card_3_title", locale),
+            "body": public_ui_text(PIZZA_MODULES_UI, "route_card_3_body", locale),
             "links": [
-                ("Pay at pickup / cash", "p4p.payment.cash"),
-                ("Current provider page", "../providers/p4p.reference/"),
+                (public_ui_text(PIZZA_MODULES_UI, "pay_at_pickup_cash", locale), "p4p.payment.cash"),
+                (public_ui_text(PIZZA_MODULES_UI, "current_provider_page", locale), "../providers/p4p.reference/"),
             ],
         },
     ]
@@ -1740,25 +2697,25 @@ def render_module_route_cards() -> str:
     return "\n".join(cards)
 
 
-def render_module_read_next(entry: dict, modules_by_id: dict[str, dict]) -> str:
+def render_module_read_next(entry: dict, modules_by_id: dict[str, dict], *, locale: str) -> str:
     cards: list[str] = []
     for route in MODULE_READ_NEXT.get(entry["module_id"], []):
         kind = route["kind"]
         if kind == "module":
             target_entry = modules_by_id[route["target"]]
-            target_title = module_presentation(target_entry)["title"]
-            href = f'../{route["target"]}/'
-            link_label = f"Open {target_title}"
+            target_title = module_presentation(target_entry, locale)["title"]
+            href = localized_detail_page_href("../", route["target"], locale)
+            link_label = public_localized_text({"da": f"Åbn {target_title}", "en": f"Open {target_title}"}, locale)
         elif kind == "provider":
-            href = f'../../providers/{entry["provider_id"]}/'
-            link_label = "Open provider page"
+            href = localized_detail_page_href("../../providers/", entry["provider_id"], locale)
+            link_label = public_ui_text(PIZZA_MODULES_UI, "open_provider_page", locale)
         else:
-            href = "../"
-            link_label = "Open module catalog"
+            href = localized_static_page_href("../", locale, default_locale="en")
+            link_label = public_localized_text({"da": "Åbn modul-katalog", "en": "Open module catalog"}, locale)
         cards.append(
             f"""        <article class="module-route-card">
-          <h3>{escape(route["title"])}</h3>
-          <p>{escape(route["body"])}</p>
+          <h3>{escape(public_field_text(route["title"], locale))}</h3>
+          <p>{escape(public_field_text(route["body"], locale))}</p>
           <div class="source-list">
             <a href="{escape(href)}">{escape(link_label)}</a>
           </div>
@@ -1767,43 +2724,34 @@ def render_module_read_next(entry: dict, modules_by_id: dict[str, dict]) -> str:
     return "\n".join(cards)
 
 
-def render_module_reader_cards(repo_url: str) -> str:
+def render_module_reader_cards(repo_url: str, *, locale: str) -> str:
     repo_prefix = f"{repo_url.rstrip('/')}/blob/main/"
     cards = [
         {
-            "title": "If you run a shop",
-            "body": (
-                "Start with the customer menu, the shop-side catalog, and the simple pay-at-pickup lane. "
-                "Read modules as optional tools around the order flow, not as protocol theory."
-            ),
+            "title": public_ui_text(PIZZA_MODULES_UI, "reader_card_1_title", locale),
+            "body": public_ui_text(PIZZA_MODULES_UI, "reader_card_1_body", locale),
             "links": [
-                ("Open customer menu page", "p4p.menu.list/"),
-                ("Open shop catalog page", "p4p.catalog.editor/"),
-                ("Open simple payment page", "p4p.payment.cash/"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_customer_menu_page", locale), "p4p.menu.list/"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_shop_catalog_page", locale), "p4p.catalog.editor/"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_simple_payment_page", locale), "p4p.payment.cash/"),
             ],
         },
         {
-            "title": "If you build software",
-            "body": (
-                "Start with the dumb-safe module explanation, then the community builder guide, then one small hardware lane "
-                "so you can see what a narrow module looks like before reading the heavier contracts."
-            ),
+            "title": public_ui_text(PIZZA_MODULES_UI, "reader_card_2_title", locale),
+            "body": public_ui_text(PIZZA_MODULES_UI, "reader_card_2_body", locale),
             "links": [
-                ("Open simple module guide", f"{repo_prefix}docs/MODULES-START-HERE.md"),
-                ("Open builder guide", f"{repo_prefix}docs/COMMUNITY-MODULES.md"),
-                ("Open backup-print example", "p4p.order.print.backup/"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_simple_module_guide", locale), f"{repo_prefix}docs/MODULES-START-HERE.md"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_builder_guide", locale), f"{repo_prefix}docs/COMMUNITY-MODULES.md"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_backup_print_example", locale), "p4p.order.print.backup/"),
             ],
         },
         {
-            "title": "If you are skeptical",
-            "body": (
-                "Start with the review packet, then inspect the payment boundary and the two new pilot hardware lanes. "
-                "The useful question is whether the core stays small while the extras stay honest and optional."
-            ),
+            "title": public_ui_text(PIZZA_MODULES_UI, "reader_card_3_title", locale),
+            "body": public_ui_text(PIZZA_MODULES_UI, "reader_card_3_body", locale),
             "links": [
-                ("Open review packet", f"{repo_prefix}REVIEW-ME.md"),
-                ("Open payment boundary page", "p4p.payment.cash/"),
-                ("Open pickup-board page", "p4p.pickup.board.basic/"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_review_packet", locale), f"{repo_prefix}REVIEW-ME.md"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_payment_boundary_page", locale), "p4p.payment.cash/"),
+                (public_ui_text(PIZZA_MODULES_UI, "open_pickup_board_page", locale), "p4p.pickup.board.basic/"),
             ],
         },
     ]
@@ -1825,46 +2773,123 @@ def render_module_reader_cards(repo_url: str) -> str:
     return "\n".join(rendered)
 
 
-def modules_html(site_data: dict, modules: list[dict], providers: list[dict]) -> str:
+def modules_html(site_data: dict, modules: list[dict], providers: list[dict], *, locale: str) -> str:
     urls = site_data["canonical_urls"]
     contact = site_data["contact"]
+    canonical_url = f'{urls["site"]}modules/' if locale == "en" else f'{urls["site"]}modules/{locale}.html'
     return render_template(
         "modules.html",
         {
+            "lang_attr": escape(locale),
+            "dir_attr": escape(locale_direction(locale)),
             "generated_comment": f"Generated from P4P module manifests on {datetime.now(timezone.utc).isoformat()}",
             "author_name": escape(contact["name"]),
-            "canonical_url": escape(f'{urls["site"]}modules/'),
+            "page_title": escape(public_ui_text(PIZZA_MODULES_UI, "page_title_modules", locale)),
+            "page_description": escape(public_ui_text(PIZZA_MODULES_UI, "page_description_modules", locale)),
+            "page_og_description": escape(public_ui_text(PIZZA_MODULES_UI, "page_description_modules_og", locale)),
+            "canonical_url": escape(canonical_url),
+            "skip_link": escape(public_ui_text(PIZZA_HOME_UI, "skip", locale)),
+            "brand_home_aria": escape(public_ui_text(PIZZA_HOME_UI, "brand_home", locale)),
+            "nav_label": escape(public_ui_text(PIZZA_HOME_UI, "nav_label", locale)),
+            "nav_home": escape(public_ui_text(PIZZA_MODULES_UI, "nav_home", locale)),
+            "nav_providers": escape(public_ui_text(PIZZA_MODULES_UI, "nav_providers", locale)),
+            "nav_press_dk": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_dk", locale)),
+            "nav_press_en": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_en", locale)),
+            "nav_proof": escape(public_ui_text(PIZZA_MODULES_UI, "nav_proof", locale)),
+            "nav_code": escape(public_ui_text(PIZZA_MODULES_UI, "nav_code", locale)),
+            "nav_contact": escape(public_ui_text(PIZZA_HOME_UI, "nav_contact", locale)),
+            "locale_switcher_html": render_custom_locale_switcher(
+                locale=locale,
+                label=public_ui_text(PIZZA_HOME_UI, "locale_label", locale) or "Language",
+                href_for_locale=lambda choice_locale: localized_static_page_href("./", choice_locale, default_locale="en"),
+            ),
             "site_url": escape(urls["site"]),
             "repo_url": escape(urls["repo"]),
             "repo_proof_url": escape(urls["repo_proof"]),
             "umbrella_url": escape(urls["umbrella"]),
+            "hero_eyebrow": escape(public_ui_text(PIZZA_MODULES_UI, "hero_eyebrow_modules", locale)),
+            "hero_title": escape(public_ui_text(PIZZA_MODULES_UI, "hero_title_modules", locale)),
+            "hero_lede": escape(public_ui_text(PIZZA_MODULES_UI, "hero_lede_modules", locale)),
+            "hero_action_back_home": escape(public_ui_text(PIZZA_MODULES_UI, "hero_action_back_home", locale)),
+            "hero_action_new_here": escape(public_ui_text(PIZZA_MODULES_UI, "hero_action_new_here", locale)),
+            "hero_action_provider_pages": escape(public_ui_text(PIZZA_MODULES_UI, "hero_action_provider_pages", locale)),
+            "brief_label": escape(public_ui_text(PIZZA_MODULES_UI, "brief_label_scope", locale)),
+            "brief_line": escape(public_ui_text(PIZZA_MODULES_UI, "brief_line_modules", locale).format(module_count=len(modules), provider_count=len(providers))),
+            "brief_body": escape(public_ui_text(PIZZA_MODULES_UI, "brief_body_modules", locale)),
+            "new_here_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "new_here_kicker", locale)),
+            "new_here_title": escape(public_ui_text(PIZZA_MODULES_UI, "new_here_title_modules", locale)),
+            "new_here_body_1": escape(public_ui_text(PIZZA_MODULES_UI, "new_here_body_modules_1", locale)),
+            "new_here_body_2": escape(public_ui_text(PIZZA_MODULES_UI, "new_here_body_modules_2", locale)),
             "module_count": escape(str(len(modules))),
             "provider_count": escape(str(len(providers))),
-            "module_reader_cards_html": render_module_reader_cards(urls["repo"]),
-            "module_route_cards_html": render_module_route_cards(),
+            "module_reader_cards_html": render_module_reader_cards(urls["repo"], locale=locale),
+            "start_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "start_kicker", locale)),
+            "start_title": escape(public_ui_text(PIZZA_MODULES_UI, "start_title_modules", locale)),
+            "module_route_cards_html": render_module_route_cards(locale),
+            "catalog_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "catalog_kicker", locale)),
+            "catalog_title": escape(public_ui_text(PIZZA_MODULES_UI, "catalog_title_modules", locale)),
+            "catalog_body_1": escape(public_ui_text(PIZZA_MODULES_UI, "catalog_body_modules_1", locale)),
+            "catalog_body_2": escape(public_ui_text(PIZZA_MODULES_UI, "catalog_body_modules_2", locale)),
+            "current_module_pages": escape(public_ui_text(PIZZA_MODULES_UI, "current_module_pages", locale)),
+            "groups_title": escape(public_ui_text(PIZZA_MODULES_UI, "groups_title_modules", locale)),
             "module_groups_html": render_module_groups(
                 modules,
                 module_prefix="",
                 provider_prefix="../providers/",
+                locale=locale,
                 open_modules={"p4p.menu.list", "p4p.catalog.editor", "p4p.payment.cash", "p4p.customer.status"},
             ),
             "contact_email": escape(contact["email"]),
+            "contact_title": escape(public_ui_text(PIZZA_MODULES_UI, "contact_title_modules", locale)),
+            "contact_body_1": escape(public_ui_text(PIZZA_MODULES_UI, "contact_body_modules_1", locale)),
+            "contact_body_2": escape(public_ui_text(PIZZA_MODULES_UI, "contact_body_modules_2", locale)),
+            "contact_body_3": escape(public_ui_text(PIZZA_MODULES_UI, "contact_body_modules_3", locale)),
+            "footer_left": escape(public_ui_text(PIZZA_MODULES_UI, "footer_modules_left", locale)),
+            "footer_right": escape(public_ui_text(PIZZA_MODULES_UI, "footer_next_gate", locale)),
+            "home_href": escape(localized_static_page_href("../", locale, default_locale="en")),
+            "providers_href": escape(localized_static_page_href("../providers/", locale, default_locale="en")),
+            "press_kit_dk_href": escape(localized_static_page_href("../press-kit/", "da", default_locale="da")),
+            "press_kit_en_href": escape(localized_static_page_href("../press-kit/", "en", default_locale="da")),
         },
     )
 
 
-def module_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, dict]) -> str:
+def module_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, dict], *, locale: str) -> str:
     urls = site_data["canonical_urls"]
     contact = site_data["contact"]
-    presentation = module_presentation(entry)
-    state_label, state_class = module_state(entry)
+    presentation = module_presentation(entry, locale)
+    state_label, state_class = module_state(entry, locale)
     group = next((group for group in MODULE_GROUPS if group["id"] == presentation["group"]), MODULE_GROUPS[-1])
+    canonical_url = (
+        f'{urls["site"]}modules/{entry["module_id"]}/'
+        if locale == "en"
+        else f'{urls["site"]}modules/{entry["module_id"]}/{locale}.html'
+    )
     return render_template(
         "module-page.html",
         {
+            "lang_attr": escape(locale),
+            "dir_attr": escape(locale_direction(locale)),
             "generated_comment": f'Generated module page for {entry["module_id"]} on {datetime.now(timezone.utc).isoformat()}',
             "author_name": escape(contact["name"]),
-            "canonical_url": escape(f'{urls["site"]}modules/{entry["module_id"]}/'),
+            "page_title": escape(f'{presentation["title"]} - {public_localized_text({"da": "Pizza4People Modulside", "en": "Pizza4People Module"}, locale)}'),
+            "canonical_url": escape(canonical_url),
+            "skip_link": escape(public_ui_text(PIZZA_HOME_UI, "skip", locale)),
+            "brand_home_aria": escape(public_ui_text(PIZZA_HOME_UI, "brand_home", locale)),
+            "nav_label": escape(public_ui_text(PIZZA_HOME_UI, "nav_label", locale)),
+            "nav_home": escape(public_ui_text(PIZZA_MODULES_UI, "nav_home", locale)),
+            "nav_modules": escape(public_ui_text(PIZZA_MODULES_UI, "nav_modules", locale)),
+            "nav_providers": escape(public_ui_text(PIZZA_MODULES_UI, "nav_providers", locale)),
+            "nav_press_dk": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_dk", locale)),
+            "nav_press_en": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_en", locale)),
+            "nav_proof": escape(public_ui_text(PIZZA_MODULES_UI, "nav_proof", locale)),
+            "nav_code": escape(public_ui_text(PIZZA_MODULES_UI, "nav_code", locale)),
+            "nav_contact": escape(public_ui_text(PIZZA_HOME_UI, "nav_contact", locale)),
+            "locale_switcher_html": render_custom_locale_switcher(
+                locale=locale,
+                label=public_ui_text(PIZZA_HOME_UI, "locale_label", locale) or "Language",
+                href_for_locale=lambda choice_locale: localized_static_page_href("./", choice_locale, default_locale="en"),
+            ),
             "site_url": escape(urls["site"]),
             "repo_url": escape(urls["repo"]),
             "repo_proof_url": escape(urls["repo_proof"]),
@@ -1877,39 +2902,89 @@ def module_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, dict
             "module_not_owner": escape(presentation["not_owner"]),
             "module_state": escape(state_label),
             "module_state_class": escape(state_class),
-            "module_current_state": escape(entry["operator_status"]),
+            "module_current_state": escape(public_field_text(entry["operator_status"], locale)),
             "module_id": escape(entry["module_id"]),
-            "module_group_title": escape(group["title"]),
-            "module_group_intro": escape(group["intro"]),
-            "module_data_access": escape(entry["data_access"]),
-            "module_read_next_html": render_module_read_next(entry, modules_by_id),
-            "module_catalog_url": escape("../"),
-            "module_provider_catalog_url": escape("../../providers/"),
-            "module_provider_page_url": escape(f'../../providers/{entry["provider_id"]}/'),
+            "module_group_title": escape(public_field_text(group["title"], locale)),
+            "module_group_intro": escape(public_field_text(group["intro"], locale)),
+            "module_data_access": escape(public_field_text(entry["data_access"], locale)),
+            "module_read_next_html": render_module_read_next(entry, modules_by_id, locale=locale),
+            "module_catalog_url": escape(localized_static_page_href("../", locale, default_locale="en")),
+            "module_provider_catalog_url": escape(localized_static_page_href("../../providers/", locale, default_locale="en")),
+            "module_provider_page_url": escape(localized_detail_page_href("../../providers/", entry["provider_id"], locale)),
             "module_github_doc_url": escape(entry["module_doc_url"]),
             "module_manifest_url": escape(entry["module_manifest_url"]),
             "module_provider_doc_url": escape(entry["provider_doc_url"]),
+            "hero_action_back_catalog": escape(public_localized_text({"da": "Tilbage til modul-katalog", "en": "Back to module catalog"}, locale)),
+            "brief_label_for_shop": escape(public_ui_text(PIZZA_PROVIDER_UI, "brief_label_for_shop", locale)),
+            "fit_kicker": escape(public_localized_text({"da": "Hvor den passer", "en": "Where it fits"}, locale)),
+            "module_explainer": escape(public_localized_text({"da": "Den her side er P4P’s læsbare forklaring af ét modul. Den er lavet til at kunne forstås før du åbner det rå manifest.", "en": "This page is the readable P4P explanation for one module. It is meant to be understandable before you open the raw manifest."}, locale)),
+            "touches_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "touches", locale)),
+            "not_owner_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "does_not_own", locale)),
+            "state_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "current_state", locale)),
+            "state_data_access_line": escape(public_localized_text({"da": "Nuværende erklærede data-access-summary:", "en": "Current declared data-access summary:"}, locale)),
+            "read_next_kicker": escape(public_localized_text({"da": "Læs næste", "en": "Read next"}, locale)),
+            "read_next_title": escape(public_localized_text({"da": "Stop ikke ved én modulside.", "en": "Do not stop at one module page."}, locale)),
+            "tech_kicker": escape(public_localized_text({"da": "Teknisk identitet", "en": "Technical identity"}, locale)),
+            "tech_body_1": escape(public_localized_text({"da": "Hvis du har brug for udviklerlaget, så åbn GitHub module reference eller det rå manifest. Den offentlige P4P-side holder fokus på hvad modulet betyder operationelt.", "en": "If you need the developer-facing version, open the GitHub module reference or the raw manifest. The public P4P page stays focused on what the module means operationally."}, locale)),
+            "open_provider_page_label": escape(public_ui_text(PIZZA_MODULES_UI, "open_provider_page", locale)),
+            "open_github_module_reference": escape(public_localized_text({"da": "Åbn GitHub module reference", "en": "Open GitHub module reference"}, locale)),
+            "open_github_provider_reference": escape(public_localized_text({"da": "Åbn GitHub provider reference", "en": "Open GitHub provider reference"}, locale)),
+            "open_raw_manifest": escape(public_localized_text({"da": "Åbn rå manifest", "en": "Open raw manifest"}, locale)),
+            "contact_title": escape(public_localized_text({"da": "Den her modulside er stadig del af den samme smalle proof-fortælling.", "en": "This module page is still part of the same narrow proof story."}, locale)),
+            "contact_body_1": escape(public_localized_text({"da": "Spørgsmål om det her modul, provider-laget eller live-pilotgrænsen:", "en": "Questions about this module, the provider layer, or the live-pilot boundary:"}, locale)),
+            "contact_body_2": escape(public_ui_text(PIZZA_MODULES_UI, "contact_body_modules_2", locale)),
+            "contact_body_3": escape(public_ui_text(PIZZA_MODULES_UI, "contact_body_modules_3", locale)),
+            "footer_left": escape(f'Pizza4People / {presentation["title"]}'),
+            "footer_right": escape(public_ui_text(PIZZA_MODULES_UI, "footer_next_gate", locale)),
+            "home_href": escape(localized_static_page_href("../../", locale, default_locale="en")),
+            "press_kit_dk_href": escape(localized_static_page_href("../../press-kit/", "da", default_locale="da")),
+            "press_kit_en_href": escape(localized_static_page_href("../../press-kit/", "en", default_locale="da")),
         },
     )
 
 
-def provider_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, dict]) -> str:
+def provider_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, dict], *, locale: str) -> str:
     urls = site_data["canonical_urls"]
     contact = site_data["contact"]
-    presentation = provider_presentation(entry)
-    state_label, state_class = provider_state(entry)
+    presentation = provider_presentation(entry, locale)
+    state_label, state_class = provider_state(entry, locale)
+    canonical_url = (
+        f'{urls["site"]}providers/{entry["provider_id"]}/'
+        if locale == "en"
+        else f'{urls["site"]}providers/{entry["provider_id"]}/{locale}.html'
+    )
     return render_template(
         "provider-page.html",
         {
+            "lang_attr": escape(locale),
+            "dir_attr": escape(locale_direction(locale)),
             "generated_comment": f'Generated provider page for {entry["provider_id"]} on {datetime.now(timezone.utc).isoformat()}',
             "author_name": escape(contact["name"]),
-            "canonical_url": escape(f'{urls["site"]}providers/{entry["provider_id"]}/'),
+            "page_title": escape(f'{public_field_text(entry["name"], locale)} - {public_ui_text(PIZZA_PROVIDER_UI, "provider_title_suffix", locale)}'),
+            "canonical_url": escape(canonical_url),
+            "skip_link": escape(public_ui_text(PIZZA_HOME_UI, "skip", locale)),
+            "brand_home_aria": escape(public_ui_text(PIZZA_HOME_UI, "brand_home", locale)),
+            "nav_label": escape(public_ui_text(PIZZA_HOME_UI, "nav_label", locale)),
+            "nav_home": escape(public_ui_text(PIZZA_MODULES_UI, "nav_home", locale)),
+            "nav_modules": escape(public_ui_text(PIZZA_MODULES_UI, "nav_modules", locale)),
+            "nav_providers": escape(public_ui_text(PIZZA_MODULES_UI, "nav_providers", locale)),
+            "nav_press_dk": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_dk", locale)),
+            "nav_press_en": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_en", locale)),
+            "nav_proof": escape(public_ui_text(PIZZA_MODULES_UI, "nav_proof", locale)),
+            "nav_code": escape(public_ui_text(PIZZA_MODULES_UI, "nav_code", locale)),
+            "nav_contact": escape(public_ui_text(PIZZA_HOME_UI, "nav_contact", locale)),
+            "locale_switcher_html": render_custom_locale_switcher(
+                locale=locale,
+                label=public_ui_text(PIZZA_HOME_UI, "locale_label", locale) or "Language",
+                href_for_locale=lambda choice_locale: localized_static_page_href("./", choice_locale, default_locale="en"),
+            ),
             "site_url": escape(urls["site"]),
             "repo_url": escape(urls["repo"]),
             "repo_proof_url": escape(urls["repo_proof"]),
             "umbrella_url": escape(urls["umbrella"]),
             "provider_id": escape(entry["provider_id"]),
-            "provider_name": escape(entry["name"]),
+            "provider_name": escape(public_field_text(entry["name"], locale)),
+            "hero_eyebrow": escape(f'{public_ui_text(PIZZA_PROVIDER_UI, "current_tool_source", locale)} / {state_label}'),
             "provider_state_label": escape(state_label),
             "provider_state_class": escape(state_class),
             "provider_status": escape(entry["status"]),
@@ -1926,114 +3001,156 @@ def provider_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, di
                 entry,
                 modules_by_id,
                 path_prefix="../../modules/",
+                locale=locale,
             ),
-            "provider_module_groups_html": provider_module_groups(entry, modules_by_id),
-            "provider_catalog_url": escape("../"),
+            "provider_module_groups_html": provider_module_groups(entry, modules_by_id, locale=locale),
+            "provider_catalog_url": escape(localized_static_page_href("../", locale, default_locale="en")),
             "provider_doc_url": escape(entry["provider_doc_url"]),
             "provider_manifest_url": escape(entry["provider_manifest_url"]),
+            "hero_action_back_catalog": escape(public_ui_text(PIZZA_PROVIDER_UI, "hero_action_back_provider_catalog", locale)),
+            "brief_label_for_shop": escape(public_ui_text(PIZZA_PROVIDER_UI, "brief_label_for_shop", locale)),
+            "what_it_is_kicker": escape(public_ui_text(PIZZA_PROVIDER_UI, "what_it_is", locale)),
+            "what_it_is_not_kicker": escape(public_ui_text(PIZZA_PROVIDER_UI, "what_this_is_not", locale)),
+            "state_kicker": escape(public_ui_text(PIZZA_PROVIDER_UI, "what_this_covers_right_now", locale)),
+            "for_shop_label": escape(public_ui_text(PIZZA_PROVIDER_UI, "for_shop_strong", locale)),
+            "good_first_pages": escape(public_ui_text(PIZZA_PROVIDER_UI, "good_first_pages", locale)),
+            "not_yet_label": escape(public_ui_text(PIZZA_PROVIDER_UI, "not_yet", locale)),
+            "current_modules_kicker": escape(public_ui_text(PIZZA_PROVIDER_UI, "current_modules", locale)),
+            "provider_modules_title": escape(public_ui_text(PIZZA_PROVIDER_UI, "provider_modules_title", locale)),
+            "technical_record": escape(public_ui_text(PIZZA_PROVIDER_UI, "technical_record", locale)),
+            "status_label": escape(public_ui_text(PIZZA_PROVIDER_UI, "status", locale)),
+            "supported_lanes_label": escape(public_ui_text(PIZZA_PROVIDER_UI, "supported_lanes", locale)),
+            "module_count_label": escape(public_ui_text(PIZZA_PROVIDER_UI, "module_count_label", locale)),
+            "website_label": escape(public_ui_text(PIZZA_PROVIDER_UI, "website", locale)),
+            "provider_readable_surface": escape(public_ui_text(PIZZA_PROVIDER_UI, "provider_readable_surface", locale)),
+            "back_to_provider_catalog": escape(public_ui_text(PIZZA_PROVIDER_UI, "back_to_provider_catalog", locale)),
+            "github_provider_reference": escape(public_ui_text(PIZZA_PROVIDER_UI, "github_provider_reference", locale)),
+            "open_raw_provider_manifest": escape(public_ui_text(PIZZA_PROVIDER_UI, "open_raw_provider_manifest", locale)),
+            "contact_title": escape(public_ui_text(PIZZA_PROVIDER_UI, "contact_title_provider_detail", locale)),
+            "contact_body_1": escape(public_ui_text(PIZZA_PROVIDER_UI, "contact_body_provider_detail_1", locale)),
+            "contact_body_2": escape(public_ui_text(PIZZA_MODULES_UI, "contact_body_modules_2", locale)),
+            "contact_body_3": escape(public_ui_text(PIZZA_MODULES_UI, "contact_body_modules_3", locale)),
+            "footer_left": escape(f'Pizza4People / {public_field_text(entry["name"], locale)}'),
+            "footer_right": escape(public_ui_text(PIZZA_MODULES_UI, "footer_next_gate", locale)),
+            "home_href": escape(localized_static_page_href("../../", locale, default_locale="en")),
+            "modules_href": escape(localized_static_page_href("../../modules/", locale, default_locale="en")),
+            "press_kit_dk_href": escape(localized_static_page_href("../../press-kit/", "da", default_locale="da")),
+            "press_kit_en_href": escape(localized_static_page_href("../../press-kit/", "en", default_locale="da")),
         },
     )
 
 
-def render_providers(providers: list[dict], modules_by_id: dict[str, dict]) -> str:
+def render_providers(providers: list[dict], modules_by_id: dict[str, dict], *, locale: str) -> str:
     cards = []
     for index, entry in enumerate(providers):
-        presentation = provider_presentation(entry)
-        state_label, state_class = provider_state(entry)
+        presentation = provider_presentation(entry, locale)
+        state_label, state_class = provider_state(entry, locale)
         open_attr = " open" if index == 0 else ""
         cards.append(
             f"""        <details class="module-item provider-item {escape(state_class)}"{open_attr}>
           <summary>
             <div class="module-summary">
               <div class="module-summary-copy">
-                <p class="module-audience">Current tool source</p>
-                <h3>{escape(entry["name"])}</h3>
+                <p class="module-audience">{escape(public_ui_text(PIZZA_PROVIDER_UI, "current_tool_source", locale))}</p>
+            <h3>{escape(public_field_text(entry["name"], locale))}</h3>
                 <p>{escape(presentation["summary"])}</p>
               </div>
               <div class="module-summary-side">
                 <span class="module-state-badge">{escape(state_label)}</span>
-                <span class="module-toggle-hint">Click for details</span>
+                <span class="module-toggle-hint">{escape(public_ui_text(PIZZA_MODULES_UI, "toggle_hint", locale))}</span>
               </div>
             </div>
           </summary>
           <div class="module-body">
-            <p class="module-owner-line"><strong>For a pizzeria:</strong> {escape(presentation["owner_value"])}</p>
+            <p class="module-owner-line"><strong>{escape(public_ui_text(PIZZA_MODULES_UI, "owner_prefix", locale))}</strong> {escape(presentation["owner_value"])}</p>
             <dl>
-              <div><dt>Current shape</dt><dd>{escape(presentation["current_shape"])}</dd></div>
-              <div><dt>What this is not</dt><dd>{escape(presentation["not_yet"])}</dd></div>
-              <div><dt>Module count</dt><dd>{escape(str(entry["module_count"]))}</dd></div>
-              <div><dt>Technical id</dt><dd><code>{escape(entry["provider_id"])}</code></dd></div>
+              <div><dt>{escape(public_localized_text({"da": "Nuværende form", "en": "Current shape"}, locale))}</dt><dd>{escape(presentation["current_shape"])}</dd></div>
+              <div><dt>{escape(public_ui_text(PIZZA_PROVIDER_UI, "what_this_is_not", locale))}</dt><dd>{escape(presentation["not_yet"])}</dd></div>
+              <div><dt>{escape(public_ui_text(PIZZA_PROVIDER_UI, "module_count_label", locale))}</dt><dd>{escape(str(entry["module_count"]))}</dd></div>
+              <div><dt>{escape(public_ui_text(PIZZA_MODULES_UI, "technical_id", locale))}</dt><dd><code>{escape(entry["provider_id"])}</code></dd></div>
             </dl>
             <div class="provider-focus">
-              <p class="provider-focus-label">Good first pages for a shop</p>
+              <p class="provider-focus-label">{escape(public_ui_text(PIZZA_PROVIDER_UI, "good_first_pages", locale))}</p>
               <ul class="provider-focus-list">
-{provider_focus_modules(entry, modules_by_id, path_prefix="../modules/")}
+{provider_focus_modules(entry, modules_by_id, path_prefix="../modules/", locale=locale)}
               </ul>
             </div>
-            <p class="module-links">More info: <a href="{escape(entry["provider_id"])}/">Open full provider page</a> <span>/</span> <a href="{escape(entry["provider_doc_url"])}" rel="noopener noreferrer">GitHub provider reference</a> <span>/</span> <a href="{escape(entry["provider_manifest_url"])}" rel="noopener noreferrer">Open provider manifest</a></p>
+            <p class="module-links">{escape(public_ui_text(PIZZA_MODULES_UI, "more_info", locale))} <a href="{escape(localized_detail_page_href('', entry['provider_id'], locale))}">{escape(public_ui_text(PIZZA_PROVIDER_UI, "open_full_provider_page", locale))}</a> <span>/</span> <a href="{escape(entry["provider_doc_url"])}" rel="noopener noreferrer">{escape(public_ui_text(PIZZA_PROVIDER_UI, "github_provider_reference", locale))}</a> <span>/</span> <a href="{escape(entry["provider_manifest_url"])}" rel="noopener noreferrer">{escape(public_ui_text(PIZZA_PROVIDER_UI, "open_provider_manifest", locale))}</a></p>
           </div>
         </details>"""
         )
     return "\n".join(cards)
 
 
-def render_trace(items: list[str]) -> str:
-    return "\n".join(f'          <span role="listitem">{escape(item)}</span>' for item in items)
+def render_trace(items: list[object], *, locale: str) -> str:
+    return "\n".join(f'          <span role="listitem">{escape(public_field_text(item, locale))}</span>' for item in items)
 
 
-def render_gate(items: list[dict]) -> str:
+def render_gate(items: list[dict], *, locale: str) -> str:
     rendered = []
     for item in items:
         checked = " checked" if item["done"] else ""
         rendered.append(
-            f'        <label><input type="checkbox"{checked} disabled> {escape(item["label"])}</label>'
+            f'        <label><input type="checkbox"{checked} disabled> {escape(public_field_text(item["label"], locale))}</label>'
         )
     return "\n".join(rendered)
 
 
-def render_roadmap(items: list[str]) -> str:
+def render_roadmap(items: list[object], *, locale: str) -> str:
     rows = []
     for item in items:
-        number, body = item.split(". ", 1)
+        localized_item = public_field_text(item, locale)
+        number, body = localized_item.split(". ", 1)
         rows.append(f"        <li><strong>{escape(number)}.</strong> {escape(body)}</li>")
     return "\n".join(rows)
 
 
-def render_press_badges(labels: list[str]) -> str:
+def render_press_badges(labels: list[object], *, locale: str) -> str:
     output = []
     for label in labels:
-        badge_class = " warn" if "Ikke" in label or "Not" in label else ""
-        output.append(f'            <span class="badge{badge_class}">{escape(label)}</span>')
+        text = public_field_text(label, locale)
+        badge_class = " warn" if "Ikke" in text or "Not" in text else ""
+        output.append(f'            <span class="badge{badge_class}">{escape(text)}</span>')
     return "\n".join(output)
 
 
-def render_press_points(points: list[str], *, ordered: bool = False) -> str:
+def render_press_points(points: list[object], *, locale: str, ordered: bool = False) -> str:
     tag = "ol" if ordered else "ul"
-    inner = "\n".join(f"            <li>{escape(point)}</li>" for point in points)
+    inner = "\n".join(f"            <li>{escape(public_field_text(point, locale))}</li>" for point in points)
     return f"<{tag}>\n{inner}\n          </{tag}>"
 
 
-def render_press_angles(items: list[dict]) -> str:
+def render_press_angles(items: list[dict], *, locale: str) -> str:
     cards = []
     for item in items:
         cards.append(
             f"""        <div class="card">
-          <h3>{escape(item["title"])}</h3>
-          <p>{escape(item["body"])}</p>
+          <h3>{escape(public_field_text(item["title"], locale))}</h3>
+          <p>{escape(public_field_text(item["body"], locale))}</p>
         </div>"""
         )
     return "\n".join(cards)
 
 
-def render_press_module_cards(*, lang: str) -> str:
+def render_press_module_cards(*, locale: str) -> str:
     cards = []
-    open_label = "Åbn modulsiden" if lang == "dk" else "Open module page"
+    open_label = public_localized_text(
+        {
+            "da": "Åbn modulsiden",
+            "sv": "Öppna modulsidan",
+            "tr": "Modül sayfasını aç",
+            "ar": "افتح صفحة الوحدة",
+            "ku": "Rûpela modulê veke",
+            "en": "Open module page",
+        },
+        locale,
+    )
     for item in PRESS_MODULE_SPOTLIGHTS:
         module_id = item["module_id"]
         cards.append(
             f"""        <div class="card">
-          <h3>{escape(item["title"][lang])}</h3>
-          <p>{escape(item["body"][lang])}</p>
+          <h3>{escape(public_field_text(item["title"], locale))}</h3>
+          <p>{escape(public_field_text(item["body"], locale))}</p>
           <div class="source-list">
             <a href="../modules/{escape(module_id)}/">{escape(open_label)}</a>
           </div>
@@ -2047,6 +3164,7 @@ def homepage_html(
     modules: list[dict],
     providers: list[dict],
     *,
+    locale: str,
     screenshot_pack: dict[str, object],
 ) -> str:
     home = site_data["homepage"]
@@ -2055,55 +3173,127 @@ def homepage_html(
     next_gate_entries = screenshot_entries(
         screenshot_pack,
         "pizza_home",
-        locale="en",
+        locale=locale,
         asset_prefix="assets/screenshots/",
     )
+    canonical_url = urls["site"] if locale == "en" else f'{urls["site"]}{locale}.html'
     return render_template(
         "homepage.html",
         {
+            "lang_attr": escape(locale),
+            "dir_attr": escape(locale_direction(locale)),
             "generated_comment": f"Generated from site-data + P4P/modules on {datetime.now(timezone.utc).isoformat()}",
             "author_name": escape(contact["name"]),
+            "page_title": escape(public_ui_text(PIZZA_HOME_UI, "page_title", locale)),
+            "page_description": escape(public_ui_text(PIZZA_HOME_UI, "page_description", locale)),
+            "canonical_url": escape(canonical_url),
+            "og_title": escape(public_ui_text(PIZZA_HOME_UI, "page_title", locale)),
+            "og_description": escape(public_ui_text(PIZZA_HOME_UI, "og_description", locale)),
+            "skip_link": escape(public_ui_text(PIZZA_HOME_UI, "skip", locale)),
+            "brand_home_aria": escape(public_ui_text(PIZZA_HOME_UI, "brand_home", locale)),
+            "nav_label": escape(public_ui_text(PIZZA_HOME_UI, "nav_label", locale)),
+            "nav_owner": escape(public_ui_text(PIZZA_HOME_UI, "nav_owner", locale)),
+            "nav_proof": escape(public_ui_text(PIZZA_HOME_UI, "nav_proof", locale)),
+            "nav_modules": escape(public_ui_text(PIZZA_HOME_UI, "nav_modules", locale)),
+            "nav_story": escape(public_ui_text(PIZZA_HOME_UI, "nav_story", locale)),
+            "nav_providers": escape(public_ui_text(PIZZA_HOME_UI, "nav_providers", locale)),
+            "nav_press": escape(public_ui_text(PIZZA_HOME_UI, "nav_press", locale)),
+            "nav_contact": escape(public_ui_text(PIZZA_HOME_UI, "nav_contact", locale)),
+            "locale_switcher_html": render_locale_switcher(kind="home", locale=locale, ui=PIZZA_HOME_UI),
             "site_url": escape(urls["site"]),
-            "hero_eyebrow": escape(home["eyebrow"]),
-            "hero_title": escape(home["title"]),
-            "hero_lede": escape(home["lede"]),
+            "hero_eyebrow": escape(public_field_text(home["eyebrow"], locale)),
+            "hero_title": escape(public_field_text(home["title"], locale)),
+            "hero_lede": escape(public_field_text(home["lede"], locale)),
             "repo_url": escape(urls["repo"]),
             "repo_proof_url": escape(urls["repo_proof"]),
             "umbrella_url": escape(urls["umbrella"]),
-            "notice": escape(home["notice"]),
+            "hero_shape_label": escape(public_ui_text(PIZZA_HOME_UI, "hero_shape_label", locale)),
+            "hero_tag_public": escape(public_ui_text(PIZZA_HOME_UI, "hero_tag_public", locale)),
+            "hero_tag_pilot": escape(public_ui_text(PIZZA_HOME_UI, "hero_tag_pilot", locale)),
+            "hero_tag_not_marketplace": escape(public_ui_text(PIZZA_HOME_UI, "hero_tag_not_marketplace", locale)),
+            "hero_action_owner": escape(public_ui_text(PIZZA_HOME_UI, "hero_action_owner", locale)),
+            "hero_action_proof": escape(public_ui_text(PIZZA_HOME_UI, "hero_action_proof", locale)),
+            "hero_action_code": escape(public_ui_text(PIZZA_HOME_UI, "hero_action_code", locale)),
+            "hero_more_routes": escape(public_ui_text(PIZZA_HOME_UI, "hero_more_routes", locale)),
+            "hero_route_story": escape(public_ui_text(PIZZA_HOME_UI, "hero_route_story", locale)),
+            "hero_route_proof": escape(public_ui_text(PIZZA_HOME_UI, "hero_route_proof", locale)),
+            "hero_route_broader": escape(public_ui_text(PIZZA_HOME_UI, "hero_route_broader", locale)),
+            "hero_route_press_da": escape(public_ui_text(PIZZA_HOME_UI, "hero_route_press_da", locale)),
+            "hero_route_press_en": escape(public_ui_text(PIZZA_HOME_UI, "hero_route_press_en", locale)),
+            "proof_figure_alt": escape(public_ui_text(PIZZA_HOME_UI, "proof_figure_alt", locale)),
+            "proof_figure_caption": escape(public_ui_text(PIZZA_HOME_UI, "proof_figure_caption", locale)),
+            "notice": escape(public_field_text(home["notice"], locale)),
+            "source_label": escape(public_ui_text(PIZZA_HOME_UI, "source_label", locale)),
+            "owner_kicker": escape(public_ui_text(PIZZA_HOME_UI, "owner_kicker", locale)),
+            "owner_title": escape(public_ui_text(PIZZA_HOME_UI, "owner_title", locale)),
+            "owner_body": escape(public_ui_text(PIZZA_HOME_UI, "owner_body", locale)),
             "just_eat_source_url": escape(urls["just_eat_source"]),
             "owner_cards_html": render_owner_cards(),
-            "press_heading": escape(home["press_heading"]),
-            "press_lede": escape(home["press_lede"]),
-            "press_facts_html": render_press_facts(home["press_facts"], urls),
-            "story_heading": escape(home["story_heading"]),
-            "story_body": escape(home["story_body"]),
-            "one_sentence": escape(home["one_sentence"]),
-            "plain_cards_html": render_plain_cards(home["plain_demo"]),
-            "problem_heading": escape(home["problem_heading"]),
-            "problem_body_1": escape(home["problem_body"][0]),
-            "problem_body_2": escape(home["problem_body"][1]),
-            "proof_steps_html": render_proof_steps(home["proof_steps"]),
-            "takeaway_heading": escape(home["takeaway_heading"]),
-            "takeaway_body": escape(home["takeaway_body"]),
-            "proves_list_html": render_list_items(home["proves"]),
-            "does_not_prove_list_html": render_list_items(home["does_not_prove"]),
-            "trust_heading": escape(home["trust_heading"]),
-            "trust_body": escape(home["trust_body"]),
-            "trace_html": render_trace(home["trace"]),
+            "press_heading": escape(public_field_text(home["press_heading"], locale)),
+            "press_lede": escape(public_field_text(home["press_lede"], locale)),
+            "press_facts_html": render_press_facts(home["press_facts"], urls, locale=locale),
+            "modules_kicker": escape(public_ui_text(PIZZA_HOME_UI, "modules_kicker", locale)),
+            "modules_title": escape(public_ui_text(PIZZA_HOME_UI, "modules_title", locale)),
+            "modules_body_1": escape(public_ui_text(PIZZA_HOME_UI, "modules_body_1", locale)),
+            "modules_body_2": escape(public_ui_text(PIZZA_HOME_UI, "modules_body_2", locale)),
+            "modules_body_3": escape(public_ui_text(PIZZA_HOME_UI, "modules_body_3", locale)),
+            "modules_body_4": escape(public_ui_text(PIZZA_HOME_UI, "modules_body_4", locale)),
+            "modules_body_5": escape(public_ui_text(PIZZA_HOME_UI, "modules_body_5", locale).format(provider_count=len(providers))),
+            "modules_link_new_here": escape(public_ui_text(PIZZA_HOME_UI, "modules_link_new_here", locale)),
+            "modules_link_catalog": escape(public_ui_text(PIZZA_HOME_UI, "modules_link_catalog", locale)),
+            "modules_link_providers": escape(public_ui_text(PIZZA_HOME_UI, "modules_link_providers", locale)),
+            "story_kicker": escape(public_ui_text(PIZZA_HOME_UI, "story_kicker", locale)),
+            "story_heading": escape(public_field_text(home["story_heading"], locale)),
+            "story_body": escape(public_field_text(home["story_body"], locale)),
+            "brief_label": escape(public_ui_text(PIZZA_HOME_UI, "brief_label", locale)),
+            "one_sentence": escape(public_field_text(home["one_sentence"], locale)),
+            "plain_kicker": escape(public_ui_text(PIZZA_HOME_UI, "plain_kicker", locale)),
+            "plain_title": escape(public_ui_text(PIZZA_HOME_UI, "plain_title", locale)),
+            "plain_cards_html": render_plain_cards(home["plain_demo"], locale=locale),
+            "problem_kicker": escape(public_ui_text(PIZZA_HOME_UI, "problem_kicker", locale)),
+            "problem_heading": escape(public_field_text(home["problem_heading"], locale)),
+            "problem_body_1": escape(public_field_text(home["problem_body"][0], locale)),
+            "problem_body_2": escape(public_field_text(home["problem_body"][1], locale)),
+            "proof_kicker": escape(public_ui_text(PIZZA_HOME_UI, "proof_kicker", locale)),
+            "proof_title": escape(public_ui_text(PIZZA_HOME_UI, "proof_title", locale)),
+            "proof_steps_html": render_proof_steps(home["proof_steps"], locale=locale),
+            "takeaway_kicker": escape(public_ui_text(PIZZA_HOME_UI, "takeaway_kicker", locale)),
+            "takeaway_heading": escape(public_field_text(home["takeaway_heading"], locale)),
+            "takeaway_body": escape(public_field_text(home["takeaway_body"], locale)),
+            "proves_kicker": escape(public_ui_text(PIZZA_HOME_UI, "proves_kicker", locale)),
+            "proves_list_html": render_list_items(home["proves"], locale=locale),
+            "not_proves_kicker": escape(public_ui_text(PIZZA_HOME_UI, "not_proves_kicker", locale)),
+            "does_not_prove_list_html": render_list_items(home["does_not_prove"], locale=locale),
+            "trust_kicker": escape(public_ui_text(PIZZA_HOME_UI, "trust_kicker", locale)),
+            "trust_heading": escape(public_field_text(home["trust_heading"], locale)),
+            "trust_body": escape(public_field_text(home["trust_body"], locale)),
+            "trace_html": render_trace(home["trace"], locale=locale),
             "module_groups_html": render_module_groups(
                 modules,
                 module_prefix="modules/",
                 provider_prefix="providers/",
+                locale=locale,
                 open_modules={"p4p.menu.list", "p4p.catalog.editor", "p4p.payment.cash"},
             ),
             "provider_count": escape(str(len(providers))),
-            "proof_gate_heading": escape(home["proof_gate_heading"]),
-            "gate_html": render_gate(home["proof_gate"]),
-            "roadmap_html": render_roadmap(home["roadmap"]),
+            "gate_kicker": escape(public_ui_text(PIZZA_HOME_UI, "gate_kicker", locale)),
+            "proof_gate_heading": escape(public_field_text(home["proof_gate_heading"], locale)),
+            "gate_html": render_gate(home["proof_gate"], locale=locale),
+            "roadmap_kicker": escape(public_ui_text(PIZZA_HOME_UI, "roadmap_kicker", locale)),
+            "roadmap_title": escape(public_ui_text(PIZZA_HOME_UI, "roadmap_title", locale)),
+            "roadmap_html": render_roadmap(home["roadmap"], locale=locale),
+            "pilot_kicker": escape(public_ui_text(PIZZA_HOME_UI, "pilot_kicker", locale)),
+            "pilot_title": escape(public_ui_text(PIZZA_HOME_UI, "pilot_title", locale)),
+            "pilot_lede": escape(public_ui_text(PIZZA_HOME_UI, "pilot_lede", locale)),
             "pilot_gallery_html": render_screenshot_cards(next_gate_entries, card_class="screenshot-card compact"),
             "contact_email": escape(contact["email"]),
-            "footer_status": escape(home["footer_status"]),
+            "contact_kicker": escape(public_ui_text(PIZZA_HOME_UI, "contact_kicker", locale)),
+            "contact_title": escape(public_ui_text(PIZZA_HOME_UI, "contact_title", locale)),
+            "contact_line": escape(public_ui_text(PIZZA_HOME_UI, "contact_line", locale)),
+            "contact_source_label": escape(public_ui_text(PIZZA_HOME_UI, "contact_source_label", locale)),
+            "contact_broader_label": escape(public_ui_text(PIZZA_HOME_UI, "contact_broader_label", locale)),
+            "contact_fine_print": escape(public_ui_text(PIZZA_HOME_UI, "contact_fine_print", locale)),
+            "footer_status": escape(public_field_text(home["footer_status"], locale)),
         },
     )
 
@@ -2113,164 +3303,238 @@ def press_kit_html(
     modules: list[dict],
     providers: list[dict],
     *,
-    lang: str,
+    locale: str,
     screenshot_pack: dict[str, object],
 ) -> str:
-    data = site_data["press_kit"][lang]
+    data = site_data["press_kit"]["dk" if locale == "da" else "en"]
     urls = site_data["canonical_urls"]
     contact = site_data["contact"]
-    is_dk = lang == "dk"
-    locale = "da" if is_dk else "en"
     press_entries = screenshot_entries(
         screenshot_pack,
         "pizza_press",
         locale=locale,
         asset_prefix="../assets/screenshots/",
     )
+    canonical_url = urls["press_kit_dk"] if locale == "da" else f'{urls["site"]}press-kit/{locale}.html'
     return render_template(
         "press-kit.html",
         {
-            "lang_attr": "da" if is_dk else "en",
+            "lang_attr": escape(locale),
+            "dir_attr": escape(locale_direction(locale)),
             "author_name": escape(contact["name"]),
-            "page_title": escape("Pizza4People Pressekit" if is_dk else "Pizza4People Press Kit"),
+            "page_title": escape("Pizza4People Pressekit" if locale == "da" else "Pizza4People Press Kit"),
             "page_description": escape(
-                "Kort pressekit for Pizza4People: et offentligt open-protocol proof for direkte restaurant-kunde discovery og ordering."
-                if is_dk
-                else "Press kit for Pizza4People: an open protocol proof for direct restaurant-customer discovery and ordering."
+                public_localized_text(
+                    {
+                        "da": "Kort pressekit for Pizza4People: et offentligt open-protocol proof for direkte restaurant-kunde discovery og ordering.",
+                        "en": "Press kit for Pizza4People: an open protocol proof for direct restaurant-customer discovery and ordering.",
+                    },
+                    locale,
+                )
             ),
-            "canonical_url": escape(urls["press_kit_dk"] if is_dk else urls["press_kit_en"]),
+            "canonical_url": escape(canonical_url),
             "press_style": load_text(TEMPLATE_ROOT / "press-style.css").strip(),
-            "topbar_label": escape(data["topbar_label"]),
-            "date_label": escape(data["date_label"]),
-            "kicker": escape(data["kicker"]),
-            "headline": escape(data["headline"]),
-            "lede": escape(data["lede"]),
-            "badges_html": render_press_badges(data["badges"]),
-            "quote": escape(data["quote"]),
-            "other_lang_link": escape("en.html" if is_dk else "index.html"),
-            "other_lang_label": escape("English version" if is_dk else "Dansk version"),
+            "locale_switcher_html": render_locale_switcher(kind="press", locale=locale, ui=PIZZA_HOME_UI),
+            "topbar_label": escape(public_field_text(data["topbar_label"], locale)),
+            "date_label": escape(public_field_text(data["date_label"], locale)),
+            "kicker": escape(public_field_text(data["kicker"], locale)),
+            "headline": escape(public_field_text(data["headline"], locale)),
+            "lede": escape(public_field_text(data["lede"], locale)),
+            "badges_html": render_press_badges(data["badges"], locale=locale),
+            "quote": escape(public_field_text(data["quote"], locale)),
             "contact_name": escape(contact["name"]),
             "contact_org": escape(contact["org"]),
             "contact_email": escape(contact["email"]),
-            "why_now_label": escape("Hvorfor nu" if is_dk else "Why now"),
-            "why_now_heading": escape(data["why_now_heading"]),
+            "why_now_label": escape(public_localized_text({"da": "Hvorfor nu", "en": "Why now"}, locale)),
+            "why_now_heading": escape(public_field_text(data["why_now_heading"], locale)),
             "why_now_body_html": "\n".join(
-                f"          <p>{escape(paragraph)}</p>" for paragraph in data["why_now_body"]
+                f"          <p>{escape(public_field_text(paragraph, locale))}</p>" for paragraph in data["why_now_body"]
             ),
             "journalist_box_label": escape(
-                "Hvad en journalist kan skrive nu" if is_dk else "What can be written now"
+                public_localized_text(
+                    {"da": "Hvad en journalist kan skrive nu", "en": "What can be written now"},
+                    locale,
+                )
             ),
-            "journalist_bullets_html": render_press_points(data["journalist_bullets"]),
-            "source_note": escape(data["source_note"]),
-            "system_label": escape("Systemet på én side" if is_dk else "System in one page"),
-            "system_heading": escape(data["system_heading"]),
+            "journalist_bullets_html": render_press_points(data["journalist_bullets"], locale=locale),
+            "source_note": escape(public_field_text(data["source_note"], locale)),
+            "system_label": escape(public_localized_text({"da": "Systemet på én side", "en": "System in one page"}, locale)),
+            "system_heading": escape(public_field_text(data["system_heading"], locale)),
+            "diagram_core_flow": escape(public_ui_text(PIZZA_PRESS_UI, "diagram_core_flow", locale)),
+            "client_label": escape(public_ui_text(PIZZA_PRESS_UI, "client_label", locale)),
             "client_flow_text": escape(
-                "Finder restauranter, viser menu, sender ordre."
-                if is_dk
-                else "Finds restaurants, renders menus, sends orders."
+                public_localized_text(
+                    {"da": "Finder restauranter, viser menu, sender ordre.", "en": "Finds restaurants, renders menus, sends orders."},
+                    locale,
+                )
             ),
+            "registry_label": escape(public_ui_text(PIZZA_PRESS_UI, "registry_label", locale)),
             "registry_flow_text": escape(
-                "Discovery, heartbeat, offentlig node-metadata."
-                if is_dk
-                else "Discovery, heartbeat and public node metadata."
+                public_localized_text(
+                    {"da": "Discovery, heartbeat, offentlig node-metadata.", "en": "Discovery, heartbeat and public node metadata."},
+                    locale,
+                )
             ),
-            "node_flow_label": escape("Restaurant node" if is_dk else "Restaurant node"),
+            "node_flow_label": escape(public_localized_text({"da": "Restaurant node", "en": "Restaurant node"}, locale)),
             "node_flow_text": escape(
-                "Menu, ordreendpoint, status, identitet og operator-kontrol."
-                if is_dk
-                else "Menu, order endpoint, status, identity and operator control."
+                public_localized_text(
+                    {"da": "Menu, ordreendpoint, status, identitet og operator-kontrol.", "en": "Menu, order endpoint, status, identity and operator control."},
+                    locale,
+                )
             ),
             "flow_caption": escape(
-                "Registry bruges til discovery. Menu og ordre går direkte fra client til restaurant node."
-                if is_dk
-                else "Registry is used for discovery. Menu and order flow go directly from client to restaurant node."
+                public_localized_text(
+                    {"da": "Registry bruges til discovery. Menu og ordre går direkte fra client til restaurant node.", "en": "Registry is used for discovery. Menu and order flow go directly from client to restaurant node."},
+                    locale,
+                )
             ),
-            "layers_label": escape("Lagene" if is_dk else "Layers"),
-            "layers_heading": escape(data["layers_heading"]),
+            "layers_label": escape(public_localized_text({"da": "Lagene", "en": "Layers"}, locale)),
+            "layers_heading": escape(public_field_text(data["layers_heading"], locale)),
             "module_intro": escape(
-                "Her er den korte butikslæsning af den nuværende stack. De fulde modul- og providersider ligger på selve Pizza4People-sitet."
-                if is_dk
-                else "This is the short shop-owner reading of the current stack. Full module and provider pages live on the Pizza4People site itself."
+                public_localized_text(
+                    {
+                        "da": "Her er den korte butikslæsning af den nuværende stack. De fulde modul- og providersider ligger på selve Pizza4People-sitet.",
+                        "en": "This is the short shop-owner reading of the current stack. Full module and provider pages live on the Pizza4People site itself.",
+                    },
+                    locale,
+                )
             ),
-            "module_cards_html": render_press_module_cards(lang=lang),
+            "module_cards_html": render_press_module_cards(locale=locale),
             "module_footer_html": (
                 f'Fuld lokal læsesti: <a href="{escape(urls["site"])}modules/p4p.menu.list/">modulsider</a> og '
                 f'<a href="{escape(urls["site"])}providers/">providersider</a>.'
-                if is_dk
+                if locale == "da"
                 else f'Full local reading path: <a href="{escape(urls["site"])}modules/p4p.menu.list/">module pages</a> and '
                 f'<a href="{escape(urls["site"])}providers/">provider pages</a>.'
             ),
-            "status_label": escape("Nuværende status" if is_dk else "Current status"),
-            "status_heading": escape(data["status_heading"]),
-            "current_status_title": escape(data["current_status_title"]),
-            "current_status_items_html": render_press_points(data["current_status_items"]),
-            "next_test_title": escape(data["next_test_title"]),
-            "next_test_items_html": render_press_points(data["next_test_items"], ordered=True),
-            "screenshots_label": escape("Pilot-flader" if is_dk else "Pilot surfaces"),
+            "status_label": escape(public_localized_text({"da": "Nuværende status", "en": "Current status"}, locale)),
+            "status_heading": escape(public_field_text(data["status_heading"], locale)),
+            "current_status_title": escape(public_field_text(data["current_status_title"], locale)),
+            "current_status_items_html": render_press_points(data["current_status_items"], locale=locale),
+            "next_test_title": escape(public_field_text(data["next_test_title"], locale)),
+            "next_test_items_html": render_press_points(data["next_test_items"], locale=locale, ordered=True),
+            "pilot_topology": escape(public_ui_text(PIZZA_PRESS_UI, "pilot_topology", locale)),
+            "primary_registry_label": escape(public_ui_text(PIZZA_PRESS_UI, "primary_registry", locale)),
+            "backup_registry_label": escape(public_ui_text(PIZZA_PRESS_UI, "backup_registry", locale)),
+            "screenshots_label": escape(public_localized_text({"da": "Pilot-flader", "en": "Pilot surfaces"}, locale)),
             "screenshots_heading": escape(
-                "Sådan ser den lokale node ud i den kontrollerede pilot"
-                if is_dk
-                else "What the local node looks like in the controlled pilot"
+                public_localized_text(
+                    {"da": "Sådan ser den lokale node ud i den kontrollerede pilot", "en": "What the local node looks like in the controlled pilot"},
+                    locale,
+                )
             ),
             "screenshots_lede": escape(
-                "Det her er ikke det nuværende v0.1-proof. Det er den næste gate: de lokale driftsrum og modulflader, som restauranten selv kontrollerer."
-                if is_dk
-                else "This is not the current v0.1 proof. It is the next gate: the local control rooms and module surfaces the restaurant owns itself."
+                public_localized_text(
+                    {
+                        "da": "Det her er ikke det nuværende v0.1-proof. Det er den næste gate: de lokale driftsrum og modulflader, som restauranten selv kontrollerer.",
+                        "en": "This is not the current v0.1 proof. It is the next gate: the local control rooms and module surfaces the restaurant owns itself.",
+                    },
+                    locale,
+                )
             ),
             "screenshots_html": render_screenshot_cards(press_entries, card_class="press-screenshot-card"),
-            "primary_registry_text": escape(
-                "Første discovery-endpoint." if is_dk else "First discovery endpoint."
-            ),
-            "backup_registry_text": escape(
-                "Separat server, så discovery kan failover."
-                if is_dk
-                else "Separate server for discovery failover."
-            ),
+            "primary_registry_text": escape(public_localized_text({"da": "Første discovery-endpoint.", "en": "First discovery endpoint."}, locale)),
+            "backup_registry_text": escape(public_localized_text({"da": "Separat server, så discovery kan failover.", "en": "Separate server for discovery failover."}, locale)),
             "pilot_node_label": escape("Restaurant-owned node"),
             "pilot_node_text": escape(
-                "Menu, order mode, order state og operator-kontrol."
-                if is_dk
-                else "Menu, order mode, order state and operator control."
+                public_localized_text(
+                    {"da": "Menu, order mode, order state og operator-kontrol.", "en": "Menu, order mode, order state and operator control."},
+                    locale,
+                )
             ),
             "pilot_client_text": escape(
-                "Finder via registry. Taler direkte med node efter discovery."
-                if is_dk
-                else "Finds via registry. Talks directly to node after discovery."
+                public_localized_text(
+                    {"da": "Finder via registry. Taler direkte med node efter discovery.", "en": "Finds via registry. Talks directly to node after discovery."},
+                    locale,
+                )
             ),
-            "verification_label": escape("Teknisk verifikation" if is_dk else "Technical verification"),
-            "verification_heading": escape(data["verification_heading"]),
+            "verification_label": escape(public_localized_text({"da": "Teknisk verifikation", "en": "Technical verification"}, locale)),
+            "verification_heading": escape(public_field_text(data["verification_heading"], locale)),
             "verification_body_html": "\n".join(
-                f"          <p>{escape(paragraph)}</p>"
+                f"          <p>{escape(public_field_text(paragraph, locale))}</p>"
                 for paragraph in data["verification_body"]
             ),
-            "press_angles_label": escape("Pressevinkler" if is_dk else "Press angles"),
-            "press_angles_heading": escape(data["press_angles_heading"]),
-            "press_angles_html": render_press_angles(data["press_angles"]),
+            "press_angles_label": escape(public_localized_text({"da": "Pressevinkler", "en": "Press angles"}, locale)),
+            "press_angles_heading": escape(public_field_text(data["press_angles_heading"], locale)),
+            "press_angles_html": render_press_angles(data["press_angles"], locale=locale),
             "site_url": escape(urls["site"]),
             "umbrella_url": escape(urls["umbrella"]),
             "repo_url": escape(urls["repo"]),
             "just_eat_source_url": escape(urls["just_eat_source"]),
-            "status_line": escape(data["status_line"]),
+            "minimum_api_label": escape(public_ui_text(PIZZA_PRESS_UI, "minimum_api", locale)),
+            "checker_label": escape(public_ui_text(PIZZA_PRESS_UI, "checker", locale)),
+            "contact_card_label": escape(public_ui_text(PIZZA_PRESS_UI, "contact_card", locale)),
+            "links_card_label": escape(public_ui_text(PIZZA_PRESS_UI, "links_card", locale)),
+            "download_da_label": escape(public_ui_text(PIZZA_PRESS_UI, "download_da", locale)),
+            "download_en_label": escape(public_ui_text(PIZZA_PRESS_UI, "download_en", locale)),
+            "provider_catalog_label": escape(public_ui_text(PIZZA_PRESS_UI, "provider_catalog", locale)),
+            "source_link_label": escape(public_ui_text(PIZZA_PRESS_UI, "source_link", locale)),
+            "status_line": escape(public_field_text(data["status_line"], locale)),
         },
     )
 
 
-def providers_html(site_data: dict, providers: list[dict], modules_by_id: dict[str, dict]) -> str:
+def providers_html(site_data: dict, providers: list[dict], modules_by_id: dict[str, dict], *, locale: str) -> str:
     urls = site_data["canonical_urls"]
     contact = site_data["contact"]
+    canonical_url = f'{urls["site"]}providers/' if locale == "en" else f'{urls["site"]}providers/{locale}.html'
     return render_template(
         "providers.html",
         {
+            "lang_attr": escape(locale),
+            "dir_attr": escape(locale_direction(locale)),
             "generated_comment": f"Generated from P4P provider manifests on {datetime.now(timezone.utc).isoformat()}",
             "author_name": escape(contact["name"]),
-            "canonical_url": escape(f'{urls["site"]}providers/'),
+            "page_title": escape(public_ui_text(PIZZA_PROVIDER_UI, "page_title_providers", locale)),
+            "page_description": escape(public_ui_text(PIZZA_PROVIDER_UI, "page_description_providers", locale)),
+            "page_og_description": escape(public_ui_text(PIZZA_PROVIDER_UI, "page_description_providers_og", locale)),
+            "canonical_url": escape(canonical_url),
+            "skip_link": escape(public_ui_text(PIZZA_HOME_UI, "skip", locale)),
+            "brand_home_aria": escape(public_ui_text(PIZZA_HOME_UI, "brand_home", locale)),
+            "nav_label": escape(public_ui_text(PIZZA_HOME_UI, "nav_label", locale)),
+            "nav_home": escape(public_ui_text(PIZZA_MODULES_UI, "nav_home", locale)),
+            "nav_modules": escape(public_ui_text(PIZZA_MODULES_UI, "nav_modules", locale)),
+            "nav_press_dk": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_dk", locale)),
+            "nav_press_en": escape(public_ui_text(PIZZA_MODULES_UI, "nav_press_en", locale)),
+            "nav_proof": escape(public_ui_text(PIZZA_MODULES_UI, "nav_proof", locale)),
+            "nav_code": escape(public_ui_text(PIZZA_MODULES_UI, "nav_code", locale)),
+            "nav_contact": escape(public_ui_text(PIZZA_HOME_UI, "nav_contact", locale)),
+            "locale_switcher_html": render_custom_locale_switcher(
+                locale=locale,
+                label=public_ui_text(PIZZA_HOME_UI, "locale_label", locale) or "Language",
+                href_for_locale=lambda choice_locale: localized_static_page_href("./", choice_locale, default_locale="en"),
+            ),
             "site_url": escape(urls["site"]),
             "repo_url": escape(urls["repo"]),
             "repo_proof_url": escape(urls["repo_proof"]),
             "umbrella_url": escape(urls["umbrella"]),
             "provider_count": escape(str(len(providers))),
-            "providers_html": render_providers(providers, modules_by_id),
+            "providers_html": render_providers(providers, modules_by_id, locale=locale),
             "contact_email": escape(contact["email"]),
+            "hero_eyebrow": escape(public_ui_text(PIZZA_PROVIDER_UI, "hero_eyebrow_providers", locale)),
+            "hero_title": escape(public_ui_text(PIZZA_PROVIDER_UI, "hero_title_providers", locale)),
+            "hero_lede": escape(public_ui_text(PIZZA_PROVIDER_UI, "hero_lede_providers", locale)),
+            "hero_action_module_catalog": escape(public_ui_text(PIZZA_PROVIDER_UI, "hero_action_module_catalog", locale)),
+            "hero_action_broader": escape(public_ui_text(PIZZA_PROVIDER_UI, "hero_action_broader", locale)),
+            "brief_label": escape(public_ui_text(PIZZA_PROVIDER_UI, "brief_label_reality", locale)),
+            "brief_line": escape(public_ui_text(PIZZA_PROVIDER_UI, "brief_line_providers", locale).format(provider_count=len(providers))),
+            "brief_body": escape(public_ui_text(PIZZA_PROVIDER_UI, "brief_body_providers", locale)),
+            "providers_kicker": escape(public_ui_text(PIZZA_PROVIDER_UI, "providers_kicker", locale)),
+            "providers_title": escape(public_ui_text(PIZZA_PROVIDER_UI, "providers_title", locale)),
+            "providers_body_1": escape(public_ui_text(PIZZA_PROVIDER_UI, "providers_body_1", locale)),
+            "providers_body_2": escape(public_ui_text(PIZZA_PROVIDER_UI, "providers_body_2", locale)),
+            "current_catalog": escape(public_ui_text(PIZZA_PROVIDER_UI, "current_catalog", locale)),
+            "provider_cards_title": escape(public_ui_text(PIZZA_PROVIDER_UI, "provider_cards_title", locale)),
+            "contact_title": escape(public_ui_text(PIZZA_PROVIDER_UI, "contact_title_providers", locale)),
+            "contact_body_1": escape(public_ui_text(PIZZA_PROVIDER_UI, "contact_body_providers_1", locale)),
+            "contact_body_2": escape(public_ui_text(PIZZA_PROVIDER_UI, "contact_body_providers_2", locale)),
+            "contact_body_3": escape(public_ui_text(PIZZA_PROVIDER_UI, "contact_body_providers_3", locale)),
+            "footer_left": escape(public_ui_text(PIZZA_PROVIDER_UI, "footer_providers_left", locale)),
+            "footer_right": escape(public_ui_text(PIZZA_MODULES_UI, "footer_next_gate", locale)),
+            "home_href": escape(localized_static_page_href("../", locale, default_locale="en")),
+            "modules_href": escape(localized_static_page_href("../modules/", locale, default_locale="en")),
+            "press_kit_dk_href": escape(localized_static_page_href("../press-kit/", "da", default_locale="da")),
+            "press_kit_en_href": escape(localized_static_page_href("../press-kit/", "en", default_locale="da")),
         },
     )
 
@@ -2320,15 +3584,50 @@ def build() -> None:
         PUBLIC_ROOT / "providers.json",
         json.dumps(provider_catalog_payload(site_data, providers), indent=2) + "\n",
     )
-    write_text(PUBLIC_ROOT / "index.html", homepage_html(site_data, modules, providers, screenshot_pack=screenshot_pack))
-    write_text(PUBLIC_ROOT / "modules/index.html", modules_html(site_data, modules, providers))
-    write_text(PUBLIC_ROOT / "providers/index.html", providers_html(site_data, providers, modules_by_id))
+    write_text(
+        PUBLIC_ROOT / "index.html",
+        homepage_html(site_data, modules, providers, locale="en", screenshot_pack=screenshot_pack),
+    )
+    for locale in ("da", "sv", "tr", "ar", "ku"):
+        write_text(
+            PUBLIC_ROOT / f"{locale}.html",
+            homepage_html(site_data, modules, providers, locale=locale, screenshot_pack=screenshot_pack),
+        )
+    write_text(PUBLIC_ROOT / "modules/index.html", modules_html(site_data, modules, providers, locale="en"))
+    for locale in ("da", "sv", "tr", "ar", "ku"):
+        write_text(PUBLIC_ROOT / "modules" / f"{locale}.html", modules_html(site_data, modules, providers, locale=locale))
+    write_text(PUBLIC_ROOT / "providers/index.html", providers_html(site_data, providers, modules_by_id, locale="en"))
+    for locale in ("da", "sv", "tr", "ar", "ku"):
+        write_text(
+            PUBLIC_ROOT / "providers" / f"{locale}.html",
+            providers_html(site_data, providers, modules_by_id, locale=locale),
+        )
     for entry in modules:
-        write_text(module_page_path(entry["module_id"]), module_page_html(site_data, entry, modules_by_id))
+        write_text(module_page_path(entry["module_id"], locale="en"), module_page_html(site_data, entry, modules_by_id, locale="en"))
+        for locale in ("da", "sv", "tr", "ar", "ku"):
+            write_text(
+                module_page_path(entry["module_id"], locale=locale),
+                module_page_html(site_data, entry, modules_by_id, locale=locale),
+            )
     for entry in providers:
-        write_text(provider_page_path(entry["provider_id"]), provider_page_html(site_data, entry, modules_by_id))
-    write_text(PRESS_ROOT / "index.html", press_kit_html(site_data, modules, providers, lang="dk", screenshot_pack=screenshot_pack))
-    write_text(PRESS_ROOT / "en.html", press_kit_html(site_data, modules, providers, lang="en", screenshot_pack=screenshot_pack))
+        write_text(
+            provider_page_path(entry["provider_id"], locale="en"),
+            provider_page_html(site_data, entry, modules_by_id, locale="en"),
+        )
+        for locale in ("da", "sv", "tr", "ar", "ku"):
+            write_text(
+                provider_page_path(entry["provider_id"], locale=locale),
+                provider_page_html(site_data, entry, modules_by_id, locale=locale),
+            )
+    write_text(
+        PRESS_ROOT / "index.html",
+        press_kit_html(site_data, modules, providers, locale="da", screenshot_pack=screenshot_pack),
+    )
+    for locale in ("en", "sv", "tr", "ar", "ku"):
+        write_text(
+            PRESS_ROOT / f"{locale}.html",
+            press_kit_html(site_data, modules, providers, locale=locale, screenshot_pack=screenshot_pack),
+        )
     write_protocols_module_catalog(screenshot_pack=screenshot_pack)
 
 

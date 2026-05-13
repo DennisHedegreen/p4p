@@ -1,64 +1,72 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang_attr}}" dir="{{dir_attr}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="{{author_name}}">
-  <title>Pizza4People Module Pages</title>
-  <meta name="description" content="Plain-language module pages for the current Pizza4People stack, before raw manifests and GitHub docs.">
+  <title>{{page_title}}</title>
+  <meta name="description" content="{{page_description}}">
   <link rel="canonical" href="{{canonical_url}}">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Pizza4People Module Pages">
-  <meta property="og:description" content="A readable module catalog for the current Pizza4People proof stack.">
+  <meta property="og:title" content="{{page_title}}">
+  <meta property="og:description" content="{{page_og_description}}">
   <meta property="og:url" content="{{canonical_url}}">
   <meta property="og:site_name" content="Pizza4People">
   <link rel="stylesheet" href="../style.css">
+  <style>
+    .locale-switcher { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin-top:1rem; }
+    .locale-switcher-label { font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+    .locale-switcher-links { display:flex; flex-wrap:wrap; gap:.45rem; }
+    .locale-link { display:inline-flex; align-items:center; justify-content:center; min-height:2.1rem; padding:0 .8rem; border-radius:999px; border:1px solid rgba(219,232,216,.2); color:var(--text); text-decoration:none; }
+    .locale-link.active { border-color:rgba(219,232,216,.45); background:rgba(219,232,216,.08); }
+  </style>
 </head>
 <body>
   <!-- {{generated_comment}} -->
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">{{skip_link}}</a>
   <header class="site-header">
-    <a class="brand" href="../" aria-label="Pizza4People home">
+    <a class="brand" href="{{home_href}}" aria-label="{{brand_home_aria}}">
       <span class="brand-mark">P4P</span>
       <span class="brand-copy">Pizza4People</span>
     </a>
-    <nav class="top-nav" aria-label="Primary navigation">
-      <a href="../">Home</a>
-      <a href="../providers/">Providers</a>
-      <a href="../press-kit/">Press kit DK</a>
-      <a href="../press-kit/en.html">Press kit EN</a>
-      <a href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
-      <a href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+    <nav class="top-nav" aria-label="{{nav_label}}">
+      <a href="{{home_href}}">{{nav_home}}</a>
+      <a href="{{providers_href}}">{{nav_providers}}</a>
+      <a href="{{press_kit_dk_href}}">{{nav_press_dk}}</a>
+      <a href="{{press_kit_en_href}}">{{nav_press_en}}</a>
+      <a href="{{repo_proof_url}}" rel="noopener noreferrer">{{nav_proof}}</a>
+      <a href="{{repo_url}}" rel="noopener noreferrer">{{nav_code}}</a>
     </nav>
   </header>
   <main id="main">
     <section class="hero hero-compact" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">Module pages / plain-language stack reading</p>
-        <h1 id="hero-title">Which module matters first?</h1>
-        <p class="hero-lede">This is the human module catalog for the current Pizza4People proof. Start here if you want to understand what the customer sees, what the shop controls, and where payment or trust boundaries sit before opening raw manifests.</p>
+        <p class="eyebrow">{{hero_eyebrow}}</p>
+        <h1 id="hero-title">{{hero_title}}</h1>
+        <p class="hero-lede">{{hero_lede}}</p>
+{{locale_switcher_html}}
         <div class="hero-actions" aria-label="Module links">
-          <a class="button" href="../">Back to homepage</a>
-          <a class="button button-secondary" href="#new-here">New here?</a>
-          <a class="button button-secondary" href="../providers/">Provider pages</a>
-          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+          <a class="button" href="{{home_href}}">{{hero_action_back_home}}</a>
+          <a class="button button-secondary" href="#new-here">{{hero_action_new_here}}</a>
+          <a class="button button-secondary" href="{{providers_href}}">{{hero_action_provider_pages}}</a>
+          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">{{nav_code}}</a>
         </div>
       </div>
       <div class="brief-card">
-        <p class="brief-label">Current scope</p>
-        <p class="brief-line">{{module_count}} module pages across {{provider_count}} shared provider layer.</p>
-        <p>Readable first. Raw manifest and GitHub references only when you need the developer-facing view.</p>
+        <p class="brief-label">{{brief_label}}</p>
+        <p class="brief-line">{{brief_line}}</p>
+        <p>{{brief_body}}</p>
       </div>
     </section>
 
     <section id="new-here" class="section-grid" aria-labelledby="new-here-title">
       <div>
-        <p class="section-kicker">New here?</p>
-        <h2 id="new-here-title">Start with the simple idea, not the raw ids.</h2>
+        <p class="section-kicker">{{new_here_kicker}}</p>
+        <h2 id="new-here-title">{{new_here_title}}</h2>
       </div>
       <div class="section-body">
-        <p>P4P core is the road. Modules are optional tools around the road.</p>
-        <p>Good examples are menus, kitchen screens, pickup boards, alerts, and payment adapters. Bad examples are the registry itself or the direct node order endpoint itself.</p>
+        <p>{{new_here_body_1}}</p>
+        <p>{{new_here_body_2}}</p>
       </div>
       <div class="module-route-grid">
 {{module_reader_cards_html}}
@@ -67,8 +75,8 @@
 
     <section class="section-grid" aria-labelledby="start-title">
       <div>
-        <p class="section-kicker">Start here</p>
-        <h2 id="start-title">Three practical ways into the module stack.</h2>
+        <p class="section-kicker">{{start_kicker}}</p>
+        <h2 id="start-title">{{start_title}}</h2>
       </div>
       <div class="module-route-grid">
 {{module_route_cards_html}}
@@ -77,19 +85,19 @@
 
     <section class="section-grid" aria-labelledby="catalog-title">
       <div>
-        <p class="section-kicker">Catalog</p>
-        <h2 id="catalog-title">Open the current stack by role, not by raw id.</h2>
+        <p class="section-kicker">{{catalog_kicker}}</p>
+        <h2 id="catalog-title">{{catalog_title}}</h2>
       </div>
       <div class="section-body">
-        <p>The grouped list below is still the same narrow proof story. It is just arranged in the order a normal reader can use: customer surfaces first, then shop tools, then payment/trust edges, then internal tests.</p>
-        <p>If you want the exact technical language, GitHub remains the source of truth. This page is the public human layer above it.</p>
+        <p>{{catalog_body_1}}</p>
+        <p>{{catalog_body_2}}</p>
       </div>
     </section>
 
     <section class="module-section" aria-labelledby="groups-title">
       <div class="section-heading">
-        <p class="section-kicker">Current module pages</p>
-        <h2 id="groups-title">Read the current modules as tools, then open the details only when needed.</h2>
+        <p class="section-kicker">{{current_module_pages}}</p>
+        <h2 id="groups-title">{{groups_title}}</h2>
       </div>
       <div class="module-groups">
 {{module_groups_html}}
@@ -97,16 +105,16 @@
     </section>
 
     <section class="contact-section" id="contact" aria-labelledby="contact-title">
-      <p class="section-kicker">Contact</p>
-      <h2 id="contact-title">Questions about the module layer or the current proof boundary?</h2>
-      <p>Questions about module meaning, provider ownership, or the live-pilot boundary: <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
-      <p>Public proof front door: <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
-      <p>Broader protocol-family direction: <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
+      <p class="section-kicker">{{nav_contact}}</p>
+      <h2 id="contact-title">{{contact_title}}</h2>
+      <p>{{contact_body_1}} <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
+      <p>{{contact_body_2}} <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
+      <p>{{contact_body_3}} <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
     </section>
   </main>
   <footer class="site-footer">
-    <span>Pizza4People / Module Pages</span>
-    <span>Public protocol proof. Controlled live pilot next.</span>
+    <span>{{footer_left}}</span>
+    <span>{{footer_right}}</span>
   </footer>
 </body>
 </html>

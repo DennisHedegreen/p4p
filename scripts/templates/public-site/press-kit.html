@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{lang_attr}}">
+<html lang="{{lang_attr}}" dir="{{dir_attr}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,6 +20,7 @@
       </div>
       <div class="hero-grid">
         <div>
+          {{locale_switcher_html}}
           <p class="kicker">{{kicker}}</p>
           <h1>{{headline}}</h1>
           <p class="lede">{{lede}}</p>
@@ -30,11 +31,10 @@
         <aside class="quote-box">
           <p><strong>{{quote}}</strong></p>
           <div class="links">
-            <a href="p4p-press-kit-da.pdf">Download dansk PDF</a>
-            <a href="p4p-press-kit-en.pdf">Download English PDF</a>
-            <a href="{{other_lang_link}}">{{other_lang_label}}</a>
+            <a href="p4p-press-kit-da.pdf">{{download_da_label}}</a>
+            <a href="p4p-press-kit-en.pdf">{{download_en_label}}</a>
             <a href="{{site_url}}">pizza4people.com</a>
-            <a href="{{site_url}}providers/">provider catalog</a>
+            <a href="{{site_url}}providers/">{{provider_catalog_label}}</a>
             <a href="{{umbrella_url}}">protocols4people.com</a>
             <a href="{{repo_url}}">github.com/DennisHedegreen/p4p</a>
           </div>
@@ -65,11 +65,11 @@
       <p class="kicker">{{system_label}}</p>
       <h2>{{system_heading}}</h2>
       <div class="diagram">
-        <p class="diagram-label">Core flow</p>
+        <p class="diagram-label">{{diagram_core_flow}}</p>
         <div class="flow">
-          <div class="client"><h3>Client</h3><p>{{client_flow_text}}</p></div>
+          <div class="client"><h3>{{client_label}}</h3><p>{{client_flow_text}}</p></div>
           <div class="arrow">-&gt;</div>
-          <div class="registry"><h3>Registry</h3><p>{{registry_flow_text}}</p></div>
+          <div class="registry"><h3>{{registry_label}}</h3><p>{{registry_flow_text}}</p></div>
           <div class="arrow">-&gt;</div>
           <div class="node"><h3>{{node_flow_label}}</h3><p>{{node_flow_text}}</p></div>
         </div>
@@ -101,12 +101,12 @@
         </div>
       </div>
       <div class="diagram" style="margin-top:1rem">
-        <p class="diagram-label">Pilot topology</p>
+        <p class="diagram-label">{{pilot_topology}}</p>
         <div class="pilot-map">
-          <div class="registry"><h3>Primary registry</h3><p>{{primary_registry_text}}</p></div>
-          <div class="registry"><h3>Backup registry</h3><p>{{backup_registry_text}}</p></div>
+          <div class="registry"><h3>{{primary_registry_label}}</h3><p>{{primary_registry_text}}</p></div>
+          <div class="registry"><h3>{{backup_registry_label}}</h3><p>{{backup_registry_text}}</p></div>
           <div class="node"><h3>{{pilot_node_label}}</h3><p>{{pilot_node_text}}</p></div>
-          <div class="client"><h3>Client</h3><p>{{pilot_client_text}}</p></div>
+          <div class="client"><h3>{{client_label}}</h3><p>{{pilot_client_text}}</p></div>
         </div>
       </div>
     </section>
@@ -128,7 +128,7 @@
 {{verification_body_html}}
         </div>
         <div class="card">
-          <h3>Minimum node API</h3>
+          <h3>{{minimum_api_label}}</h3>
           <ul>
             <li><code>GET /p4p/info</code></li>
             <li><code>GET /p4p/menu</code></li>
@@ -137,7 +137,7 @@
         </div>
       </div>
       <div class="card" style="margin-top:1rem">
-        <h3>Checker</h3>
+        <h3>{{checker_label}}</h3>
         <p><code>python3 scripts/check-node.py --node-url http://localhost:8101/p4p</code></p>
         <p><code>python3 scripts/check-node.py --node-url http://localhost:8101/p4p --test-order</code></p>
       </div>
@@ -151,16 +151,16 @@
       </div>
       <div class="two-col" style="margin-top:1rem">
         <div class="card">
-          <h3>Contact</h3>
+          <h3>{{contact_card_label}}</h3>
           <p>{{contact_name}}<br>{{contact_org}}<br><a href="mailto:{{contact_email}}">{{contact_email}}</a></p>
         </div>
         <div class="card">
-          <h3>Links</h3>
+          <h3>{{links_card_label}}</h3>
           <div class="source-list">
             <a href="{{site_url}}">{{site_url}}</a>
             <a href="{{umbrella_url}}">{{umbrella_url}}</a>
             <a href="{{repo_url}}">{{repo_url}}</a>
-            <a href="{{just_eat_source_url}}">Just Eat Takeaway.com source</a>
+            <a href="{{just_eat_source_url}}">{{source_link_label}}</a>
           </div>
         </div>
       </div>

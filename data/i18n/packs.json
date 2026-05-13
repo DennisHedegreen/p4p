@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "default_locale": "da",
+  "available_locales": [
+    "da",
+    "sv",
+    "tr",
+    "ar",
+    "ku",
+    "en"
+  ],
+  "custom_scope": null,
+  "status": "pilot-read-slice",
+  "note": "The runtime still relies mostly on shared code locale tables, but a first shell-key slice now reads from data/i18n/core/ with code fallback."
+}

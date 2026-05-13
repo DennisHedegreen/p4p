@@ -1,70 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang_attr}}" dir="{{dir_attr}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="{{author_name}}">
-  <title>Pizza4People Provider Pages</title>
-  <meta name="description" content="Who stands behind the current Pizza4People tools, in plain language before raw manifests.">
+  <title>{{page_title}}</title>
+  <meta name="description" content="{{page_description}}">
   <link rel="canonical" href="{{canonical_url}}">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Pizza4People Provider Pages">
-  <meta property="og:description" content="Plain-language provider pages for the current Pizza4People tools.">
+  <meta property="og:title" content="{{page_title}}">
+  <meta property="og:description" content="{{page_og_description}}">
   <meta property="og:url" content="{{canonical_url}}">
   <meta property="og:site_name" content="Pizza4People">
   <link rel="stylesheet" href="../style.css">
+  <style>
+    .locale-switcher { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin-top:1rem; }
+    .locale-switcher-label { font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+    .locale-switcher-links { display:flex; flex-wrap:wrap; gap:.45rem; }
+    .locale-link { display:inline-flex; align-items:center; justify-content:center; min-height:2.1rem; padding:0 .8rem; border-radius:999px; border:1px solid rgba(219,232,216,.2); color:var(--text); text-decoration:none; }
+    .locale-link.active { border-color:rgba(219,232,216,.45); background:rgba(219,232,216,.08); }
+  </style>
 </head>
 <body>
   <!-- {{generated_comment}} -->
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">{{skip_link}}</a>
   <header class="site-header">
-    <a class="brand" href="../" aria-label="Pizza4People home">
+    <a class="brand" href="{{home_href}}" aria-label="{{brand_home_aria}}">
       <span class="brand-mark">P4P</span>
       <span class="brand-copy">Pizza4People</span>
     </a>
-    <nav class="top-nav" aria-label="Primary navigation">
-      <a href="../">Home</a>
-      <a href="../modules/">Modules</a>
-      <a href="../press-kit/">Press kit DK</a>
-      <a href="../press-kit/en.html">Press kit EN</a>
-      <a href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
-      <a href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+    <nav class="top-nav" aria-label="{{nav_label}}">
+      <a href="{{home_href}}">{{nav_home}}</a>
+      <a href="{{modules_href}}">{{nav_modules}}</a>
+      <a href="{{press_kit_dk_href}}">{{nav_press_dk}}</a>
+      <a href="{{press_kit_en_href}}">{{nav_press_en}}</a>
+      <a href="{{repo_proof_url}}" rel="noopener noreferrer">{{nav_proof}}</a>
+      <a href="{{repo_url}}" rel="noopener noreferrer">{{nav_code}}</a>
     </nav>
   </header>
   <main id="main">
     <section class="hero hero-compact" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">Current tool source / plain-language provider pages</p>
-        <h1 id="hero-title">Who stands behind the current Pizza4People tools?</h1>
-        <p class="hero-lede">Right now the public Pizza4People site points to one shared reference provider. That means the current menu, order, and operator pages come from one in-repo reference stack. This page explains that in plain language before raw manifests and GitHub docs.</p>
+        <p class="eyebrow">{{hero_eyebrow}}</p>
+        <h1 id="hero-title">{{hero_title}}</h1>
+        <p class="hero-lede">{{hero_lede}}</p>
+{{locale_switcher_html}}
         <div class="hero-actions" aria-label="Provider links">
-          <a class="button" href="../modules/">Module catalog</a>
-          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
-          <a class="button button-secondary" href="{{umbrella_url}}" rel="noopener noreferrer">Broader vision</a>
+          <a class="button" href="{{modules_href}}">{{hero_action_module_catalog}}</a>
+          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">{{nav_code}}</a>
+          <a class="button button-secondary" href="{{umbrella_url}}" rel="noopener noreferrer">{{hero_action_broader}}</a>
         </div>
       </div>
       <div class="brief-card">
-        <p class="brief-label">Current reality</p>
-        <p class="brief-line">{{provider_count}} shared provider page in the current public site.</p>
-        <p>Not a broad vendor marketplace yet. One shared reference stack, with the same narrow proof boundary as the rest of the site.</p>
+        <p class="brief-label">{{brief_label}}</p>
+        <p class="brief-line">{{brief_line}}</p>
+        <p>{{brief_body}}</p>
       </div>
     </section>
 
     <section class="section-grid" aria-labelledby="providers-title">
       <div>
-        <p class="section-kicker">Providers</p>
-        <h2 id="providers-title">What a provider page is for.</h2>
+        <p class="section-kicker">{{providers_kicker}}</p>
+        <h2 id="providers-title">{{providers_title}}</h2>
       </div>
       <div class="section-body">
-        <p>A module page explains what a tool does. A provider page explains who publishes that tool family right now. It is the human reading layer beside the raw manifests.</p>
-        <p>This does not certify anyone. It does not turn the registry into a marketplace operator. It simply makes the current source of the tools readable for a shop owner, journalist, or reviewer.</p>
+        <p>{{providers_body_1}}</p>
+        <p>{{providers_body_2}}</p>
       </div>
     </section>
 
     <section class="module-section" aria-labelledby="provider-cards-title">
       <div class="section-heading">
-        <p class="section-kicker">Current catalog</p>
-        <h2 id="provider-cards-title">The current shared provider behind the public tools.</h2>
+        <p class="section-kicker">{{current_catalog}}</p>
+        <h2 id="provider-cards-title">{{provider_cards_title}}</h2>
       </div>
       <div class="provider-grid">
 {{providers_html}}
@@ -72,16 +80,16 @@
     </section>
 
     <section class="contact-section" id="contact" aria-labelledby="contact-title">
-      <p class="section-kicker">Contact</p>
-      <h2 id="contact-title">Questions about who stands behind the current stack?</h2>
-      <p>Questions about provider identity, module ownership, or the current public tool source: <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
-      <p>Source and protocol work: <a href="{{repo_url}}" rel="noopener noreferrer">{{repo_url}}</a>.</p>
-      <p>Public proof front door: <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
+      <p class="section-kicker">{{nav_contact}}</p>
+      <h2 id="contact-title">{{contact_title}}</h2>
+      <p>{{contact_body_1}} <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
+      <p>{{contact_body_2}} <a href="{{repo_url}}" rel="noopener noreferrer">{{repo_url}}</a>.</p>
+      <p>{{contact_body_3}} <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
     </section>
   </main>
   <footer class="site-footer">
-    <span>Pizza4People / Provider Pages</span>
-    <span>Public protocol proof. Controlled live pilot next.</span>
+    <span>{{footer_left}}</span>
+    <span>{{footer_right}}</span>
   </footer>
 </body>
 </html>

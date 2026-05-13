@@ -11,6 +11,24 @@ MODULES_ROOT = Path(__file__).resolve().parents[1] / "modules"
 ALLOWED_DECLARATION_READINESS = {"planned", "test", "live"}
 
 
+def _localized_text_from_value(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        normalized: dict[str, str] = {}
+        for key, raw_text in value.items():
+            locale_id = str(key or "").strip().lower()
+            text = str(raw_text or "").strip()
+            if locale_id and text:
+                normalized[locale_id] = text
+        for candidate in ("en", "da"):
+            text = normalized.get(candidate, "")
+            if text:
+                return text
+        return next((text for text in normalized.values() if text), "")
+    return ""
+
+
 @dataclass(frozen=True)
 class ProviderManifest:
     provider_id: str
@@ -30,8 +48,8 @@ class ProviderManifest:
     def from_payload(cls, payload: dict[str, Any], *, source_path: Path) -> "ProviderManifest":
         return cls(
             provider_id=str(payload["provider_id"]),
-            name=str(payload["name"]),
-            description=str(payload["description"]),
+            name=_localized_text_from_value(payload.get("name")),
+            description=_localized_text_from_value(payload.get("description")),
             website=str(payload["website"]),
             public_key=str(payload["public_key"]) if payload.get("public_key") is not None else None,
             contact=str(payload["contact"]) if payload.get("contact") is not None else None,
@@ -99,9 +117,9 @@ class ModuleManifest:
             failure_modes=tuple(str(value) for value in payload.get("failure_modes", [])),
             suggested_fallbacks=suggested_fallbacks,
             status=str(payload.get("status", "")),
-            description=str(payload.get("description", "")),
+            description=_localized_text_from_value(payload.get("description")),
             readiness=readiness,
-            operator_status=str(public_catalog.get("operator_status", "not enabled")),
+            operator_status=_localized_text_from_value(public_catalog.get("operator_status")) or "not enabled",
             source_path=source_path,
             raw=payload,
         )
@@ -132,9 +150,9 @@ class ModuleManifest:
             "capabilities": list(self.capabilities),
             "data_access": list(self.data_access),
         }
-        customer_notice = self.raw.get("public_catalog", {}).get("customer_notice")
-        if isinstance(customer_notice, str) and customer_notice.strip():
-            declaration["customer_notice"] = customer_notice.strip()
+        customer_notice = _localized_text_from_value(self.raw.get("public_catalog", {}).get("customer_notice"))
+        if customer_notice:
+            declaration["customer_notice"] = customer_notice
         return declaration
 
 

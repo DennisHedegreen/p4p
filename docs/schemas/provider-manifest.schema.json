@@ -16,18 +16,44 @@
     "status",
     "signature"
   ],
+  "$defs": {
+    "localeId": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(?:-[a-z0-9]+)*$"
+    },
+    "localizedText": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/localeId"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "humanText": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "$ref": "#/$defs/localizedText"
+        }
+      ]
+    }
+  },
   "properties": {
     "provider_id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(?:\\.[a-z0-9-]+)+$"
     },
     "name": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "#/$defs/humanText"
     },
     "description": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "#/$defs/humanText"
     },
     "website": {
       "type": "string",

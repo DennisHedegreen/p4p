@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{page_title}}</title>
     <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <script src="/operator/assets/operator-locale-switcher.js" defer></script>
     <style>
       .catalog-list {
         display: grid;
@@ -68,6 +69,12 @@
             <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
           </div>
           <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+          <div class="toolbar-locale">
+            <label for="locale-switcher">
+              <span>{{toolbar_language}}</span>
+              <select id="locale-switcher"></select>
+            </label>
+          </div>
         </div>
       </header>
 
@@ -81,40 +88,61 @@
         <a class="nav-link" href="/operator/import">{{nav_import}}</a>
         <a class="nav-link" href="/operator/node">{{nav_node}}</a>
       </nav>
+      <script id="operator-locale-payload" type="application/json">{{locale_payload_json}}</script>
+      <script id="operator-ui-strings" type="application/json">{{operator_ui_strings_json}}</script>
+      <script>
+        window.P4P_UI = (() => {
+          const node = document.getElementById("operator-ui-strings");
+          if (!node) return {};
+          try {
+            return JSON.parse(node.textContent || "{}");
+          } catch (_error) {
+            return {};
+          }
+        })();
+        window.p4pT = function p4pT(key, fallback = "") {
+          return window.P4P_UI[key] || fallback || key;
+        };
+        document.addEventListener("DOMContentLoaded", () => {
+          document.querySelectorAll("[data-i18n]").forEach((el) => {
+            el.textContent = window.p4pT(el.dataset.i18n, el.textContent);
+          });
+        });
+      </script>
 
       <section class="summary" aria-label="Catalog summary">
         <div class="metric">
-          <span>Node</span>
+          <span data-i18n="common.node">Node</span>
           <strong id="metric-node">-</strong>
         </div>
         <div class="metric">
-          <span>Catalog items</span>
+          <span data-i18n="common.catalog_items">Catalog items</span>
           <strong id="metric-items">-</strong>
         </div>
         <div class="metric">
-          <span>Mode</span>
+          <span data-i18n="common.mode">Mode</span>
           <strong id="metric-mode">-</strong>
         </div>
         <div class="metric">
-          <span>Restart</span>
+          <span data-i18n="common.restart">Restart</span>
           <strong id="metric-restart">-</strong>
         </div>
       </section>
 
       <div id="restart-banner" class="restart-banner" role="status" aria-live="polite">
-        <strong>Restart required</strong>
-        <p>The desired module set differs from the running node. Apply module changes by restarting the node after finishing your catalog work.</p>
+        <strong data-i18n="status.restart_required">Restart required</strong>
+        <p data-i18n="operations.restart_detail">The desired module set differs from the running node. Apply module changes by restarting the node after finishing your catalog work.</p>
       </div>
 
       <div class="layout">
         <div class="stack">
           <section class="panel">
             <div class="panel-head">
-              <h2>Catalog editor</h2>
-              <p class="muted">Edit the structured menu here. Keep live order handling in Operations, not on this page.</p>
+              <h2 data-i18n="catalog.editor_title">Catalog editor</h2>
+              <p class="muted" data-i18n="catalog.editor_body">Edit the structured menu here. Keep live order handling in Operations, not on this page.</p>
               <div class="actions">
-                <button id="add-catalog-item" class="secondary" type="button">Add item</button>
-                <button id="save-catalog" type="button">Save catalog</button>
+                <button id="add-catalog-item" class="secondary" type="button" data-i18n="common.add_item">Add item</button>
+                <button id="save-catalog" type="button" data-i18n="common.save_catalog">Save catalog</button>
               </div>
             </div>
             <div class="panel-body">
@@ -124,17 +152,17 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Photo import</h2>
-              <p class="muted">OCR import is module-owned. Open the OCR module page when that module is enabled on this node.</p>
+              <h2 data-i18n="catalog.photo_import_title">Photo import</h2>
+              <p class="muted" data-i18n="catalog.photo_import_body">OCR import is module-owned. Open the OCR module page when that module is enabled on this node.</p>
             </div>
             <div class="panel-body">
               <div class="route-list">
                 <article class="route-card">
-                  <h3>Catalog OCR import</h3>
+                  <h3 data-i18n="catalog.ocr_card_title">Catalog OCR import</h3>
                   <p class="muted" id="ocr-status-copy">Check the OCR module status in Modules before opening the dedicated import surface.</p>
                   <div class="actions">
-                    <a class="button-link secondary" href="/operator/modules/view/p4p.catalog.import.ocr">Open OCR module page</a>
-                    <a class="button-link secondary" href="/operator/modules">Open modules</a>
+                    <a class="button-link secondary" href="/operator/modules/view/p4p.catalog.import.ocr" data-i18n="common.open_module">Open OCR module page</a>
+                    <a class="button-link secondary" href="/operator/modules" data-i18n="common.open_modules">Open modules</a>
                   </div>
                 </article>
               </div>
@@ -145,7 +173,7 @@
         <aside class="side">
           <section class="panel">
             <div class="panel-head">
-              <h2>Node</h2>
+              <h2 data-i18n="common.node">Node</h2>
             </div>
             <div class="panel-body">
               <dl id="node-details"></dl>
@@ -153,7 +181,7 @@
           </section>
 
           <details class="panel">
-            <summary>Debug JSON</summary>
+            <summary data-i18n="common.debug_json">Debug JSON</summary>
             <div class="panel-body">
               <pre id="raw">{}</pre>
             </div>
@@ -175,6 +203,7 @@
       const nodeDetails = document.getElementById("node-details");
       const restartBanner = document.getElementById("restart-banner");
       const ocrStatusCopy = document.getElementById("ocr-status-copy");
+      const t = window.p4pT || ((key, fallback = "") => fallback || key);
 
       const state = {
         modules: null,
@@ -250,7 +279,7 @@
         if (!items.length) {
           const empty = document.createElement("div");
           empty.className = "empty";
-          empty.textContent = "No catalog items";
+          empty.textContent = t("common.no_catalog_items", "No catalog items");
           catalogEl.appendChild(empty);
           return;
         }
@@ -259,12 +288,12 @@
           row.className = "catalog-row";
           const fields = document.createElement("div");
           fields.className = "catalog-fields";
-          fields.appendChild(catalogInput("ID", "id", item.id));
-          fields.appendChild(catalogInput("Name", "name", item.name));
-          fields.appendChild(catalogInput("Description", "description", item.description));
-          fields.appendChild(catalogInput("Category", "category", item.category));
-          fields.appendChild(catalogInput("Price (minor units)", "price", item.price, "number"));
-          fields.appendChild(catalogInput("Image URL", "image_url", item.image_url));
+          fields.appendChild(catalogInput(t("field.id", "ID"), "id", item.id));
+          fields.appendChild(catalogInput(t("field.name", "Name"), "name", item.name));
+          fields.appendChild(catalogInput(t("field.description", "Description"), "description", item.description));
+          fields.appendChild(catalogInput(t("field.category", "Category"), "category", item.category));
+          fields.appendChild(catalogInput(t("field.price_minor", "Price (minor units)"), "price", item.price, "number"));
+          fields.appendChild(catalogInput(t("field.image_url", "Image URL"), "image_url", item.image_url));
 
           const activeField = document.createElement("label");
           activeField.className = "check-field";
@@ -273,7 +302,7 @@
           active.type = "checkbox";
           active.checked = item.active !== false;
           const activeText = document.createElement("span");
-          activeText.textContent = "Active";
+          activeText.textContent = t("field.active", "Active");
           activeField.appendChild(active);
           activeField.appendChild(activeText);
           fields.appendChild(activeField);
@@ -284,7 +313,7 @@
           const remove = document.createElement("button");
           remove.type = "button";
           remove.className = "secondary";
-          remove.textContent = "Remove";
+          remove.textContent = t("common.remove", "Remove");
           remove.addEventListener("click", () => row.remove());
           actions.appendChild(remove);
           row.appendChild(actions);
@@ -296,7 +325,7 @@
         const items = state.menu?.items ? [...state.menu.items] : [];
         items.push({
           id: `item-${Date.now().toString(36)}`,
-          name: "New item",
+          name: t("common.add_item", "New item"),
           description: "",
           price: 0,
           category: "pizza",
@@ -336,18 +365,18 @@
         metricNode.textContent = node?.node?.node_id || modules?.node_id || "-";
         metricItems.textContent = String(state.menu?.items?.length || 0);
         metricMode.textContent = node?.node?.order_mode || "-";
-        metricRestart.textContent = modules?.restart_required ? "Required" : "No";
+        metricRestart.textContent = modules?.restart_required ? t("common.required", "Required") : t("common.no", "No");
         restartBanner.classList.toggle("visible", Boolean(modules?.restart_required));
         ocrStatusCopy.textContent = ocrEnabled
-          ? "The OCR module is enabled now. Use the dedicated OCR module page for photo-import review."
-          : "The OCR module is not enabled now. Enable it from Modules and restart the node before using photo import.";
+          ? t("catalog.ocr_enabled_now", "The OCR module is enabled now. Use the dedicated OCR module page for photo-import review.")
+          : t("catalog.ocr_disabled_now", "The OCR module is not enabled now. Enable it from Modules and restart the node before using photo import.");
         renderPairs(nodeDetails, [
-          ["Open", node?.node?.open],
-          ["Accepts orders", node?.accepts_orders],
-          ["Running now", currentModuleIds],
-          ["Desired after restart", desiredModuleIds],
-          ["Restart required", modules?.restart_required],
-          ["Checked", modules?.checked_at]
+          [t("common.open", "Open"), node?.node?.open],
+          [t("common.accepts_orders", "Accepts orders"), node?.accepts_orders],
+          [t("common.running_now", "Running now"), currentModuleIds],
+          [t("common.desired_after_restart", "Desired after restart"), desiredModuleIds],
+          [t("status.restart_required", "Restart required"), modules?.restart_required],
+          [t("common.checked", "Checked"), modules?.checked_at]
         ]);
       }
 
@@ -360,24 +389,24 @@
       async function saveCatalog() {
         const items = readCatalogItems();
         if (!items.length) {
-          setStatus("Catalog needs at least one item.", "bad");
+          setStatus(t("catalog.needs_one_item", "Catalog needs at least one item."), "bad");
           return;
         }
-        setStatus("Saving catalog.");
+        setStatus(t("common.loading", "Loading."));
         state.menu = await request("/operator/menu", {
           method: "PUT",
           body: { items }
         });
         await refresh();
-        setStatus("Catalog saved.", "ok");
+        setStatus(t("catalog.saved", "Catalog saved."), "ok");
       }
 
       async function refresh() {
         if (!token()) {
-          setStatus("Waiting for token.", "bad");
+          setStatus(t("common.waiting_for_token", "Waiting for token."), "bad");
           return;
         }
-        setStatus("Loading.");
+        setStatus(t("common.loading", "Loading."));
         const [modules, node, menu] = await Promise.all([
           request("/operator/modules"),
           request("/operator/state"),
@@ -387,7 +416,7 @@
         state.node = node;
         state.menu = menu;
         render();
-        setStatus("Updated.", "ok");
+        setStatus(t("common.updated", "Updated."), "ok");
       }
 
       document.getElementById("save-token").addEventListener("click", () => {
@@ -398,7 +427,7 @@
       document.getElementById("clear-token").addEventListener("click", () => {
         localStorage.removeItem("p4pOperatorToken");
         tokenInput.value = "";
-        setStatus("Token cleared.");
+        setStatus(t("common.token_cleared", "Token cleared."));
       });
 
       document.getElementById("refresh").addEventListener("click", () => {
@@ -412,7 +441,7 @@
 
       document.getElementById("copy-json").addEventListener("click", () => {
         navigator.clipboard.writeText(rawEl.textContent)
-          .then(() => setStatus("Copied JSON.", "ok"))
+          .then(() => setStatus(t("common.copied_json", "Copied JSON."), "ok"))
           .catch((error) => setStatus(error.message, "bad"));
       });
 

@@ -1,35 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang_attr}}" dir="{{dir_attr}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="{{author_name}}">
-  <title>{{module_title}} - Pizza4People Module</title>
+  <title>{{page_title}}</title>
   <meta name="description" content="{{module_summary}}">
   <link rel="canonical" href="{{canonical_url}}">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="{{module_title}} - Pizza4People Module">
+  <meta property="og:title" content="{{page_title}}">
   <meta property="og:description" content="{{module_summary}}">
   <meta property="og:url" content="{{canonical_url}}">
   <meta property="og:site_name" content="Pizza4People">
   <link rel="stylesheet" href="../../style.css">
+  <style>
+    .locale-switcher { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin-top:1rem; }
+    .locale-switcher-label { font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+    .locale-switcher-links { display:flex; flex-wrap:wrap; gap:.45rem; }
+    .locale-link { display:inline-flex; align-items:center; justify-content:center; min-height:2.1rem; padding:0 .8rem; border-radius:999px; border:1px solid rgba(219,232,216,.2); color:var(--text); text-decoration:none; }
+    .locale-link.active { border-color:rgba(219,232,216,.45); background:rgba(219,232,216,.08); }
+  </style>
 </head>
 <body>
   <!-- {{generated_comment}} -->
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">{{skip_link}}</a>
   <header class="site-header">
-    <a class="brand" href="../../" aria-label="Pizza4People home">
+    <a class="brand" href="{{home_href}}" aria-label="{{brand_home_aria}}">
       <span class="brand-mark">P4P</span>
       <span class="brand-copy">Pizza4People</span>
     </a>
-    <nav class="top-nav" aria-label="Primary navigation">
-      <a href="../../">Home</a>
-      <a href="{{module_catalog_url}}">Modules</a>
-      <a href="{{module_provider_catalog_url}}">Providers</a>
-      <a href="../../press-kit/">Press kit DK</a>
-      <a href="../../press-kit/en.html">Press kit EN</a>
-      <a href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
-      <a href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+    <nav class="top-nav" aria-label="{{nav_label}}">
+      <a href="{{home_href}}">{{nav_home}}</a>
+      <a href="{{module_catalog_url}}">{{nav_modules}}</a>
+      <a href="{{module_provider_catalog_url}}">{{nav_providers}}</a>
+      <a href="{{press_kit_dk_href}}">{{nav_press_dk}}</a>
+      <a href="{{press_kit_en_href}}">{{nav_press_en}}</a>
+      <a href="{{repo_proof_url}}" rel="noopener noreferrer">{{nav_proof}}</a>
+      <a href="{{repo_url}}" rel="noopener noreferrer">{{nav_code}}</a>
     </nav>
   </header>
   <main id="main">
@@ -38,56 +45,57 @@
         <p class="eyebrow">{{module_audience}} / {{module_state}}</p>
         <h1 id="hero-title">{{module_title}}</h1>
         <p class="hero-lede">{{module_summary}}</p>
+{{locale_switcher_html}}
         <div class="hero-actions" aria-label="Module links">
-          <a class="button" href="{{module_catalog_url}}">Back to module catalog</a>
-          <a class="button button-secondary" href="{{module_provider_page_url}}">Provider page</a>
-          <a class="button button-secondary" href="{{module_provider_catalog_url}}">Provider catalog</a>
-          <a class="button button-secondary" href="{{module_github_doc_url}}" rel="noopener noreferrer">GitHub module reference</a>
+          <a class="button" href="{{module_catalog_url}}">{{hero_action_back_catalog}}</a>
+          <a class="button button-secondary" href="{{module_provider_page_url}}">{{open_provider_page_label}}</a>
+          <a class="button button-secondary" href="{{module_provider_catalog_url}}">{{nav_providers}}</a>
+          <a class="button button-secondary" href="{{module_github_doc_url}}" rel="noopener noreferrer">{{open_github_module_reference}}</a>
         </div>
       </div>
       <div class="brief-card">
-        <p class="brief-label">For a pizzeria</p>
+        <p class="brief-label">{{brief_label_for_shop}}</p>
         <p class="brief-line">{{module_owner_value}}</p>
       </div>
     </section>
 
     <section class="section-grid" aria-labelledby="fit-title">
       <div>
-        <p class="section-kicker">Where it fits</p>
+        <p class="section-kicker">{{fit_kicker}}</p>
         <h2 id="fit-title">{{module_group_title}}</h2>
       </div>
       <div class="section-body">
         <p>{{module_group_intro}}</p>
-        <p>This page is the readable P4P explanation for one module. It is meant to be understandable before you open the raw manifest.</p>
+        <p>{{module_explainer}}</p>
       </div>
     </section>
 
     <section class="two-column" aria-label="Module boundaries">
       <article class="fact-panel">
-        <p class="section-kicker">What it touches</p>
+        <p class="section-kicker">{{touches_kicker}}</p>
         <p>{{module_touches}}</p>
       </article>
       <article class="fact-panel">
-        <p class="section-kicker warning">What it does not own</p>
+        <p class="section-kicker warning">{{not_owner_kicker}}</p>
         <p>{{module_not_owner}}</p>
       </article>
     </section>
 
     <section class="section-grid" aria-labelledby="state-title">
       <div>
-        <p class="section-kicker">Current state</p>
+        <p class="section-kicker">{{state_kicker}}</p>
         <h2 id="state-title">{{module_state}}</h2>
       </div>
       <div class="section-body">
         <p>{{module_current_state}}</p>
-        <p>Current declared data-access summary: {{module_data_access}}</p>
+        <p>{{state_data_access_line}} {{module_data_access}}</p>
       </div>
     </section>
 
     <section class="section-grid" aria-labelledby="next-title">
       <div>
-        <p class="section-kicker">Read next</p>
-        <h2 id="next-title">Do not stop at one module page.</h2>
+        <p class="section-kicker">{{read_next_kicker}}</p>
+        <h2 id="next-title">{{read_next_title}}</h2>
       </div>
       <div class="module-route-grid">
 {{module_read_next_html}}
@@ -96,26 +104,26 @@
 
     <section class="section-grid" aria-labelledby="tech-title">
       <div>
-        <p class="section-kicker">Technical identity</p>
+        <p class="section-kicker">{{tech_kicker}}</p>
         <h2 id="tech-title"><code>{{module_id}}</code></h2>
       </div>
       <div class="section-body">
-        <p>If you need the developer-facing version, open the GitHub module reference or the raw manifest. The public P4P page stays focused on what the module means operationally.</p>
-        <p class="module-links"><a href="{{module_provider_page_url}}">Open provider page</a> <span>/</span> <a href="{{module_github_doc_url}}" rel="noopener noreferrer">Open GitHub module reference</a> <span>/</span> <a href="{{module_provider_doc_url}}" rel="noopener noreferrer">Open GitHub provider reference</a> <span>/</span> <a href="{{module_manifest_url}}" rel="noopener noreferrer">Open raw manifest</a></p>
+        <p>{{tech_body_1}}</p>
+        <p class="module-links"><a href="{{module_provider_page_url}}">{{open_provider_page_label}}</a> <span>/</span> <a href="{{module_github_doc_url}}" rel="noopener noreferrer">{{open_github_module_reference}}</a> <span>/</span> <a href="{{module_provider_doc_url}}" rel="noopener noreferrer">{{open_github_provider_reference}}</a> <span>/</span> <a href="{{module_manifest_url}}" rel="noopener noreferrer">{{open_raw_manifest}}</a></p>
       </div>
     </section>
 
     <section class="contact-section" id="contact" aria-labelledby="contact-title">
-      <p class="section-kicker">Contact</p>
-      <h2 id="contact-title">This module page is still part of the same narrow proof story.</h2>
-      <p>Questions about this module, the provider layer, or the live-pilot boundary: <a href="mailto:hedegreen.research@gmail.com">hedegreen.research@gmail.com</a>.</p>
-      <p>Public proof front door: <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
-      <p>Broader protocol-family direction: <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
+      <p class="section-kicker">{{nav_contact}}</p>
+      <h2 id="contact-title">{{contact_title}}</h2>
+      <p>{{contact_body_1}} <a href="mailto:hedegreen.research@gmail.com">hedegreen.research@gmail.com</a>.</p>
+      <p>{{contact_body_2}} <a href="{{site_url}}" rel="noopener noreferrer">{{site_url}}</a>.</p>
+      <p>{{contact_body_3}} <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
     </section>
   </main>
   <footer class="site-footer">
-    <span>Pizza4People / {{module_title}}</span>
-    <span>Public protocol proof. Controlled live pilot next.</span>
+    <span>{{footer_left}}</span>
+    <span>{{footer_right}}</span>
   </footer>
 </body>
 </html>

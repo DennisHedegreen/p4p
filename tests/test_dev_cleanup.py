@@ -19,6 +19,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import p4p_core.modules as module_catalog
+import module_catalog as public_module_catalog
 
 from p4p_core import HeartbeatRequest as SharedHeartbeatRequest
 from p4p_core import Location as SharedLocation
@@ -171,9 +172,21 @@ class P4PDevCleanupTests(unittest.TestCase):
         )
         homepage = (WORKSPACE_ROOT / "public/www/pizza4people/index.html").read_text(encoding="utf-8")
         modules_page = (WORKSPACE_ROOT / "public/www/pizza4people/modules/index.html").read_text(encoding="utf-8")
+        modules_page_da = (WORKSPACE_ROOT / "public/www/pizza4people/modules/da.html").read_text(encoding="utf-8")
+        modules_page_ar = (WORKSPACE_ROOT / "public/www/pizza4people/modules/ar.html").read_text(encoding="utf-8")
         providers_page = (WORKSPACE_ROOT / "public/www/pizza4people/providers/index.html").read_text(encoding="utf-8")
+        providers_page_da = (WORKSPACE_ROOT / "public/www/pizza4people/providers/da.html").read_text(encoding="utf-8")
         module_page = (WORKSPACE_ROOT / "public/www/pizza4people/modules/p4p.menu.list/index.html").read_text(encoding="utf-8")
+        module_page_da = (
+            WORKSPACE_ROOT / "public/www/pizza4people/modules/p4p.menu.list/da.html"
+        ).read_text(encoding="utf-8")
+        module_page_ar = (
+            WORKSPACE_ROOT / "public/www/pizza4people/modules/p4p.menu.list/ar.html"
+        ).read_text(encoding="utf-8")
         provider_detail_page = (WORKSPACE_ROOT / "public/www/pizza4people/providers/p4p.reference/index.html").read_text(encoding="utf-8")
+        provider_detail_page_da = (
+            WORKSPACE_ROOT / "public/www/pizza4people/providers/p4p.reference/da.html"
+        ).read_text(encoding="utf-8")
         press_kit_en = (WORKSPACE_ROOT / "public/www/pizza4people/press-kit/en.html").read_text(encoding="utf-8")
         protocols_modules_page = (
             WORKSPACE_ROOT / "public/www/protocols4people/modules/index.html"
@@ -225,7 +238,7 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("modules/p4p.catalog.editor/module.json", first_module["module_manifest_url"])
         self.assertIn("docs/providers/p4p.reference.md", first_module["provider_doc_url"])
         self.assertEqual(protocols_modules_payload["default_locale"], "da")
-        self.assertEqual(protocols_modules_payload["supported_locales"], ["da", "sv", "tr", "ar", "ku"])
+        self.assertEqual(protocols_modules_payload["supported_locales"], ["da", "sv", "tr", "ar", "ku", "en"])
         self.assertEqual(protocols_modules_payload["families"][0]["id"], "shop")
         self.assertIn("p4p.catalog.editor", protocols_modules_payload["families"][0]["recommended_module_ids"])
         self.assertTrue(protocols_modules_payload["modules"])
@@ -252,6 +265,12 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("Open the current stack by role, not by raw id.", modules_page)
         self.assertIn("Start with the customer side", modules_page)
         self.assertIn('href="p4p.menu.list/"', modules_page)
+        self.assertIn('<html lang="da" dir="ltr">', modules_page_da)
+        self.assertIn("Hvilket modul betyder noget først?", modules_page_da)
+        self.assertIn("Hvad kunden ser", modules_page_da)
+        self.assertIn("Klik for detaljer", modules_page_da)
+        self.assertIn('<html lang="ar" dir="rtl">', modules_page_ar)
+        self.assertIn("اللغة", modules_page_ar)
         self.assertIn("Open module page", press_kit_en)
         self.assertIn("provider catalog", press_kit_en)
         self.assertIn("The shop keeps menu and prices", press_kit_en)
@@ -303,6 +322,9 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("Good first pages for a shop", providers_page)
         self.assertIn('details class="module-item provider-item', providers_page)
         self.assertIn("../modules/p4p.menu.list/", providers_page)
+        self.assertIn('<html lang="da" dir="ltr">', providers_page_da)
+        self.assertIn("Hvem står bag de nuværende Pizza4People-værktøjer?", providers_page_da)
+        self.assertIn("Nuværende værktøjskilde", providers_page_da)
         self.assertIn("Simple online menu", module_page)
         self.assertIn("For a pizzeria", module_page)
         self.assertIn("Back to module catalog", module_page)
@@ -311,13 +333,21 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn('href="../p4p.customer.status/"', module_page)
         self.assertIn("Open provider page", module_page)
         self.assertIn("Open GitHub module reference", module_page)
+        self.assertIn('<html lang="da" dir="ltr">', module_page_da)
+        self.assertIn("Tilbage til modul-katalog", module_page_da)
+        self.assertIn('href="../da.html"', module_page_da)
+        self.assertIn('<html lang="ar" dir="rtl">', module_page_ar)
+        self.assertIn("اللغة", module_page_ar)
         self.assertIn("P4P Reference Modules", provider_detail_page)
         self.assertIn("What this covers right now", provider_detail_page)
         self.assertIn("Good first pages for a shop", provider_detail_page)
-        self.assertIn("Module catalog", provider_detail_page)
+        self.assertIn(">Modules<", provider_detail_page)
         self.assertIn("Technical record", provider_detail_page)
         self.assertIn("Simple online menu", provider_detail_page)
         self.assertIn("Open raw provider manifest", provider_detail_page)
+        self.assertIn('<html lang="da" dir="ltr">', provider_detail_page_da)
+        self.assertIn("Tilbage til provider-katalog", provider_detail_page_da)
+        self.assertIn("Teknisk registrering", provider_detail_page_da)
 
     def test_protocols4people_surface_stays_human_readable_but_narrow(self) -> None:
         protocols_site = (WORKSPACE_ROOT / "public/www/protocols4people/index.html").read_text(encoding="utf-8")
@@ -437,6 +467,16 @@ class P4PDevCleanupTests(unittest.TestCase):
         catalog_doc = (REPO_ROOT / "docs/modules/p4p.catalog.editor.md").read_text(encoding="utf-8")
         import_doc = (REPO_ROOT / "docs/modules/p4p.catalog.import.ocr.md").read_text(encoding="utf-8")
         pilot_readme = (REPO_ROOT / "pilot-node/README.md").read_text(encoding="utf-8")
+        i18n_readme = (REPO_ROOT / "data/i18n/README.md").read_text(encoding="utf-8")
+        i18n_packs = json.loads((REPO_ROOT / "data/i18n/packs.json").read_text(encoding="utf-8"))
+        core_da = json.loads((REPO_ROOT / "data/i18n/core/da.json").read_text(encoding="utf-8"))
+        core_sv = json.loads((REPO_ROOT / "data/i18n/core/sv.json").read_text(encoding="utf-8"))
+        core_tr = json.loads((REPO_ROOT / "data/i18n/core/tr.json").read_text(encoding="utf-8"))
+        core_ar = json.loads((REPO_ROOT / "data/i18n/core/ar.json").read_text(encoding="utf-8"))
+        core_ku = json.loads((REPO_ROOT / "data/i18n/core/ku.json").read_text(encoding="utf-8"))
+        core_en = json.loads((REPO_ROOT / "data/i18n/core/en.json").read_text(encoding="utf-8"))
+        custom_da = json.loads((REPO_ROOT / "data/i18n/custom/example-node/da.json").read_text(encoding="utf-8"))
+        custom_tr = json.loads((REPO_ROOT / "data/i18n/custom/example-node/tr.json").read_text(encoding="utf-8"))
         operator_html = (REPO_ROOT / "pilot-node/operator.html").read_text(encoding="utf-8")
         welcome_html = (REPO_ROOT / "pilot-node/operator-welcome.html").read_text(encoding="utf-8")
         setup_html = (REPO_ROOT / "pilot-node/operator-setup.html").read_text(encoding="utf-8")
@@ -457,6 +497,64 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("404", import_doc)
         self.assertIn("p4p.catalog.import.ocr", pilot_readme)
         self.assertIn("docs/HARDWARE-STATE-MODEL.md", pilot_readme)
+        self.assertIn("data/i18n/", pilot_readme)
+        self.assertIn("LANGUAGE-PACKS-v2", i18n_readme)
+        self.assertEqual(i18n_packs["status"], "pilot-read-slice")
+        self.assertEqual(i18n_packs["default_locale"], "da")
+        self.assertEqual(i18n_packs["available_locales"], ["da", "sv", "tr", "ar", "ku", "en"])
+        self.assertEqual(core_da["nav.operations"], "Drift")
+        self.assertEqual(core_sv["nav.operations"], "Drift")
+        self.assertEqual(core_tr["nav.operations"], "Operasyon")
+        self.assertEqual(core_ar["nav.operations"], "التشغيل")
+        self.assertEqual(core_ku["nav.operations"], "Çalakî")
+        self.assertEqual(core_en["nav.operations"], "Operations")
+        self.assertEqual(custom_da["nav.operations"], "Kasse")
+        self.assertEqual(custom_tr["nav.operations"], "Tezgâh")
+        self.assertEqual(public_module_catalog.shell_text("tr", "nav.operations"), "Operasyon")
+        self.assertEqual(public_module_catalog.shell_text("ar", "common.open"), "افتح")
+        self.assertEqual(public_module_catalog.shell_text("sv", "common.next_rooms"), core_sv["common.next_rooms"])
+        self.assertEqual(public_module_catalog.shell_text("en", "catalog.editor_title"), core_en["catalog.editor_title"])
+        self.assertEqual(public_module_catalog.shell_text("ku", "welcome.menu_work_title"), core_ku["welcome.menu_work_title"])
+        self.assertEqual(
+            public_module_catalog.shell_text("sv", "setup.checklist_title"),
+            core_sv["setup.checklist_title"],
+        )
+        self.assertEqual(
+            public_module_catalog.shell_text("tr", "import.local_manifest_title"),
+            core_tr["import.local_manifest_title"],
+        )
+        self.assertEqual(
+            public_module_catalog.shell_text("da", "node.runtime_body"),
+            core_da["node.runtime_body"],
+        )
+        self.assertEqual(
+            public_module_catalog.shell_text("ar", "setup.checklist_title"),
+            core_ar["setup.checklist_title"],
+        )
+        self.assertEqual(
+            public_module_catalog.shell_text("ku", "discover.recommended_title"),
+            core_ku["discover.recommended_title"],
+        )
+        self.assertEqual(
+            public_module_catalog.localized_shell_strings("da")["welcome.this_node_body"],
+            core_da["welcome.this_node_body"],
+        )
+        self.assertEqual(
+            public_module_catalog.localized_shell_strings("tr")["catalog.photo_import_body"],
+            core_tr["catalog.photo_import_body"],
+        )
+        self.assertEqual(
+            public_module_catalog.localized_shell_strings("sv")["discover.recommended_title"],
+            core_sv["discover.recommended_title"],
+        )
+        self.assertEqual(
+            public_module_catalog.localized_shell_strings("ku")["node.runtime_body"],
+            core_ku["node.runtime_body"],
+        )
+        self.assertEqual(
+            public_module_catalog.localized_shell_strings("ar")["modules.state_title"],
+            core_ar["modules.state_title"],
+        )
         self.assertIn("POST /operator/menu/import-preview", pilot_readme)
         self.assertIn("POST /operator/menu/import-image-preview", pilot_readme)
         self.assertIn("requirements-ocr.txt", pilot_readme)
@@ -713,6 +811,13 @@ class P4PDevCleanupTests(unittest.TestCase):
 
         self.assertEqual(provider_schema["title"], "P4P Module Provider Manifest")
         self.assertEqual(module_schema["title"], "P4P Module Manifest")
+        self.assertIn("$defs", provider_schema)
+        self.assertIn("$defs", module_schema)
+        self.assertEqual(provider_schema["properties"]["name"]["$ref"], "#/$defs/humanText")
+        self.assertEqual(provider_schema["properties"]["description"]["$ref"], "#/$defs/humanText")
+        self.assertEqual(module_schema["properties"]["description"]["$ref"], "#/$defs/humanText")
+        self.assertEqual(module_schema["properties"]["public_catalog"]["properties"]["title"]["$ref"], "#/$defs/humanText")
+        self.assertEqual(module_schema["properties"]["public_catalog"]["properties"]["summary"]["$ref"], "#/$defs/humanText")
         self.assertEqual(event_name_schema["title"], "P4P Module Event Name")
         self.assertEqual(node_module_declaration_schema["title"], "P4P Node Module Declaration")
         self.assertEqual(event_schema["title"], "P4P Module Result Event")

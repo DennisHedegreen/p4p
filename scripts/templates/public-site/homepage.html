@@ -1,84 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{lang_attr}}" dir="{{dir_attr}}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="{{author_name}}">
-  <title>Pizza4People - Open Protocol for Direct Restaurant Ordering</title>
-  <meta name="description" content="Pizza4People is a public open-protocol proof and controlled live-pilot path for restaurant discovery, direct menu access, direct ordering, and node-owned identity.">
-  <link rel="canonical" href="{{site_url}}">
+  <title>{{page_title}}</title>
+  <meta name="description" content="{{page_description}}">
+  <link rel="canonical" href="{{canonical_url}}">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Pizza4People - Open Protocol for Direct Restaurant Ordering">
-  <meta property="og:description" content="A public protocol proof and controlled live-pilot path for direct restaurant-customer ordering.">
-  <meta property="og:url" content="{{site_url}}">
+  <meta property="og:title" content="{{og_title}}">
+  <meta property="og:description" content="{{og_description}}">
+  <meta property="og:url" content="{{canonical_url}}">
   <meta property="og:site_name" content="Pizza4People">
   <meta property="og:image" content="https://pizza4people.com/assets/card.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://pizza4people.com/assets/card.png">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .locale-switcher {
+      display: grid;
+      gap: 0.45rem;
+      margin-bottom: 1rem;
+    }
+    .locale-switcher-label {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .locale-switcher-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .locale-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      padding: 0.28rem 0.68rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+    .locale-link.active {
+      border-color: rgba(240, 90, 79, 0.45);
+      background: rgba(240, 90, 79, 0.08);
+      color: var(--white);
+    }
+  </style>
 </head>
 <body>
   <!-- {{generated_comment}} -->
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">{{skip_link}}</a>
   <header class="site-header">
-    <a class="brand" href="./" aria-label="Pizza4People home">
+    <a class="brand" href="./" aria-label="{{brand_home_aria}}">
       <span class="brand-mark">P4P</span>
       <span class="brand-copy">Pizza4People</span>
     </a>
-    <nav class="top-nav" aria-label="Primary navigation">
-      <a href="#owner">For pizzerias</a>
-      <a href="#proof">Proof</a>
-      <a href="modules/">Modules</a>
-      <a href="#story">Story</a>
-      <a href="providers/">Providers</a>
-      <a href="press-kit/">Press kit</a>
-      <a href="#contact">Contact</a>
+    <nav class="top-nav" aria-label="{{nav_label}}">
+      <a href="#owner">{{nav_owner}}</a>
+      <a href="#proof">{{nav_proof}}</a>
+      <a href="modules/">{{nav_modules}}</a>
+      <a href="#story">{{nav_story}}</a>
+      <a href="providers/">{{nav_providers}}</a>
+      <a href="press-kit/">{{nav_press}}</a>
+      <a href="#contact">{{nav_contact}}</a>
     </nav>
   </header>
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
+        {{locale_switcher_html}}
         <p class="eyebrow">{{hero_eyebrow}}</p>
         <h1 id="hero-title">{{hero_title}}</h1>
         <p class="hero-lede">{{hero_lede}}</p>
-        <div class="hero-tags" aria-label="Current shape">
-          <span>Public proof now</span>
-          <span>Pickup-first pilot next</span>
-          <span>Not a marketplace app</span>
+        <div class="hero-tags" aria-label="{{hero_shape_label}}">
+          <span>{{hero_tag_public}}</span>
+          <span>{{hero_tag_pilot}}</span>
+          <span>{{hero_tag_not_marketplace}}</span>
         </div>
         <div class="hero-actions" aria-label="Proof links">
-          <a class="button" href="#owner">If you run a pizzeria</a>
-          <a class="button button-secondary" href="#proof">See the proof</a>
-          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">Code / protocol</a>
+          <a class="button" href="#owner">{{hero_action_owner}}</a>
+          <a class="button button-secondary" href="#proof">{{hero_action_proof}}</a>
+          <a class="button button-secondary" href="{{repo_url}}" rel="noopener noreferrer">{{hero_action_code}}</a>
         </div>
         <p class="hero-links">
-          More routes:
-          <a href="#story">60-second version</a>
+          {{hero_more_routes}}
+          <a href="#story">{{hero_route_story}}</a>
           <span>/</span>
-          <a href="{{repo_proof_url}}" rel="noopener noreferrer">Proof note</a>
+          <a href="{{repo_proof_url}}" rel="noopener noreferrer">{{hero_route_proof}}</a>
           <span>/</span>
-          <a href="{{umbrella_url}}" rel="noopener noreferrer">Broader vision</a>
+          <a href="{{umbrella_url}}" rel="noopener noreferrer">{{hero_route_broader}}</a>
           <span>/</span>
-          <a href="press-kit/">Press kit DK</a>
+          <a href="press-kit/">{{hero_route_press_da}}</a>
           <span>/</span>
-          <a href="press-kit/en.html">Press kit EN</a>
+          <a href="press-kit/en.html">{{hero_route_press_en}}</a>
         </p>
       </div>
       <figure class="proof-figure">
-        <img src="assets/protocol-proof-map.svg" alt="Diagram showing client discovery through registries and direct menu/order flow to the restaurant node.">
-        <figcaption>Discovery can go through registries. Menu and orders go directly to the restaurant node.</figcaption>
+        <img src="assets/protocol-proof-map.svg" alt="{{proof_figure_alt}}">
+        <figcaption>{{proof_figure_caption}}</figcaption>
       </figure>
     </section>
 
     <section class="notice" aria-label="Current status">
-      <p>{{notice}} <a href="{{just_eat_source_url}}" rel="noopener noreferrer">Source</a>.</p>
+      <p>{{notice}} <a href="{{just_eat_source_url}}" rel="noopener noreferrer">{{source_label}}</a>.</p>
     </section>
 
     <section class="owner-brief" id="owner" aria-labelledby="owner-title">
       <div class="section-heading">
-        <p class="section-kicker">If You Run A Pizzeria</p>
-        <h2 id="owner-title">This is the simple version.</h2>
-        <p>Pizza4People is trying to keep the basic digital connection in the restaurant's hands. The first live shape is intentionally small: controlled pickup orders, direct menu control, and simple payment at pickup before anything broader.</p>
+        <p class="section-kicker">{{owner_kicker}}</p>
+        <h2 id="owner-title">{{owner_title}}</h2>
+        <p>{{owner_body}}</p>
       </div>
       <div class="owner-grid">
 {{owner_cards_html}}
@@ -87,13 +126,13 @@
 
     <section id="modules" class="module-section" aria-labelledby="modules-title">
       <div class="section-heading">
-        <p class="section-kicker">How The Pieces Fit</p>
-        <h2 id="modules-title">Start with what matters to the shop, then open the details only if needed.</h2>
-        <p>The list below is intentionally written for first understanding, not for manifest reading. Each box opens into the technical links only when you need them.</p>
-        <p>Payment stays narrow on purpose. P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.</p>
-        <p>If modules make no sense yet, start with the simple guide inside the <a href="modules/#new-here">module pages</a>.</p>
-        <p>If you want the full public reading path for the module layer, open the dedicated <a href="modules/">module pages</a>.</p>
-        <p>The current public catalog points to {{provider_count}} readable provider identity page as a separate human layer: <a href="providers/">open provider catalog</a>.</p>
+        <p class="section-kicker">{{modules_kicker}}</p>
+        <h2 id="modules-title">{{modules_title}}</h2>
+        <p>{{modules_body_1}}</p>
+        <p>{{modules_body_2}}</p>
+        <p>{{modules_body_3}} <a href="modules/#new-here">{{modules_link_new_here}}</a>.</p>
+        <p>{{modules_body_4}} <a href="modules/">{{modules_link_catalog}}</a>.</p>
+        <p>{{modules_body_5}} <a href="providers/">{{modules_link_providers}}</a>.</p>
       </div>
       <div class="module-groups">
 {{module_groups_html}}
@@ -113,20 +152,20 @@
 
     <section class="journalist-brief" id="story" aria-labelledby="story-title">
       <div class="brief-copy">
-        <p class="section-kicker">The story</p>
+        <p class="section-kicker">{{story_kicker}}</p>
         <h2 id="story-title">{{story_heading}}</h2>
         <p>{{story_body}}</p>
       </div>
       <div class="brief-card">
-        <p class="brief-label">In one sentence</p>
+        <p class="brief-label">{{brief_label}}</p>
         <p class="brief-line">{{one_sentence}}</p>
       </div>
     </section>
 
     <section class="plain-demo" aria-labelledby="plain-demo-title">
       <div class="section-heading">
-        <p class="section-kicker">What you can see already</p>
-        <h2 id="plain-demo-title">Four visible things, no protocol knowledge required.</h2>
+        <p class="section-kicker">{{plain_kicker}}</p>
+        <h2 id="plain-demo-title">{{plain_title}}</h2>
       </div>
       <div class="plain-grid">
 {{plain_cards_html}}
@@ -135,7 +174,7 @@
 
     <section class="section-grid" id="problem" aria-labelledby="problem-title">
       <div>
-        <p class="section-kicker">Problem</p>
+        <p class="section-kicker">{{problem_kicker}}</p>
         <h2 id="problem-title">{{problem_heading}}</h2>
       </div>
       <div class="section-body">
@@ -146,8 +185,8 @@
 
     <section class="section-grid" id="proof" aria-labelledby="proof-title">
       <div>
-        <p class="section-kicker">Proof</p>
-        <h2 id="proof-title">The public proof demonstrates one narrow loop.</h2>
+        <p class="section-kicker">{{proof_kicker}}</p>
+        <h2 id="proof-title">{{proof_title}}</h2>
       </div>
       <div class="proof-list" aria-label="Proof flow">
 {{proof_steps_html}}
@@ -155,25 +194,25 @@
     </section>
 
     <section class="press-takeaway" aria-labelledby="press-title">
-      <p class="section-kicker">Press takeaway</p>
+      <p class="section-kicker">{{takeaway_kicker}}</p>
       <h2 id="press-title">{{takeaway_heading}}</h2>
       <p>{{takeaway_body}}</p>
     </section>
 
     <section class="two-column" aria-label="Proof boundaries">
       <article class="fact-panel">
-        <p class="section-kicker">What this proves</p>
+        <p class="section-kicker">{{proves_kicker}}</p>
         {{proves_list_html}}
       </article>
       <article class="fact-panel">
-        <p class="section-kicker warning">What this does not prove</p>
+        <p class="section-kicker warning">{{not_proves_kicker}}</p>
         {{does_not_prove_list_html}}
       </article>
     </section>
 
     <section class="section-grid" id="trust" aria-labelledby="trust-title">
       <div>
-        <p class="section-kicker">Trust direction</p>
+        <p class="section-kicker">{{trust_kicker}}</p>
         <h2 id="trust-title">{{trust_heading}}</h2>
       </div>
       <div class="section-body">
@@ -186,7 +225,7 @@
 
     <section class="section-grid" id="gate" aria-labelledby="gate-title">
       <div>
-        <p class="section-kicker">Proof gate</p>
+        <p class="section-kicker">{{gate_kicker}}</p>
         <h2 id="gate-title">{{proof_gate_heading}}</h2>
       </div>
       <div class="gate-list">
@@ -196,8 +235,8 @@
 
     <section class="section-grid" id="roadmap" aria-labelledby="roadmap-title">
       <div>
-        <p class="section-kicker">Roadmap</p>
-        <h2 id="roadmap-title">From public protocol proof to controlled live pilot.</h2>
+        <p class="section-kicker">{{roadmap_kicker}}</p>
+        <h2 id="roadmap-title">{{roadmap_title}}</h2>
       </div>
       <ol class="roadmap-list">
 {{roadmap_html}}
@@ -206,9 +245,9 @@
 
     <section class="pilot-gallery" aria-labelledby="pilot-gallery-title">
       <div class="section-heading">
-        <p class="section-kicker">Next gate</p>
-        <h2 id="pilot-gallery-title">What the restaurant will control locally in the controlled pilot.</h2>
-        <p>These surfaces are real and already built, but they belong to the pilot-node path after the current public proof. They are not the narrow v0.1 proof loop itself.</p>
+        <p class="section-kicker">{{pilot_kicker}}</p>
+        <h2 id="pilot-gallery-title">{{pilot_title}}</h2>
+        <p>{{pilot_lede}}</p>
       </div>
       <div class="screenshot-grid compact">
 {{pilot_gallery_html}}
@@ -216,12 +255,12 @@
     </section>
 
     <section class="contact-section" id="contact" aria-labelledby="contact-title">
-      <p class="section-kicker">Contact</p>
-      <h2 id="contact-title">This is a public protocol proof and controlled pilot path, not a commercial marketplace launch.</h2>
-      <p>For technical review, protocol questions, or press context: <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
-      <p>Source and protocol work: <a href="{{repo_url}}" rel="noopener noreferrer">{{repo_url}}</a>.</p>
-      <p>Broader protocol-family direction: <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
-      <p class="fine-print">Pizza4People is the concrete restaurant-ordering proof. Protocols4People is the broader protocol-family direction.</p>
+      <p class="section-kicker">{{contact_kicker}}</p>
+      <h2 id="contact-title">{{contact_title}}</h2>
+      <p>{{contact_line}} <a href="mailto:{{contact_email}}">{{contact_email}}</a>.</p>
+      <p>{{contact_source_label}} <a href="{{repo_url}}" rel="noopener noreferrer">{{repo_url}}</a>.</p>
+      <p>{{contact_broader_label}} <a href="{{umbrella_url}}" rel="noopener noreferrer">{{umbrella_url}}</a>.</p>
+      <p class="fine-print">{{contact_fine_print}}</p>
     </section>
   </main>
   <footer class="site-footer">

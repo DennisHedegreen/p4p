@@ -20,6 +20,11 @@ a { color: inherit; text-decoration-color: rgba(31, 127, 167, 0.55); text-underl
 .page:last-child { border-bottom: 0; }
 .topbar, .footer-line, .kicker, .badge, .diagram-label, .download-note { font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
 .topbar { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: 0.76rem; margin-bottom: 2rem; }
+.locale-switcher { display: grid; gap: 0.45rem; margin-bottom: 1rem; }
+.locale-switcher-label { color: var(--muted); font-size: 0.76rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.locale-switcher-links { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.locale-link { display: inline-flex; align-items: center; min-height: 1.9rem; padding: 0.24rem 0.62rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; }
+.locale-link.active { border-color: rgba(0, 0, 0, 0.16); background: rgba(0, 0, 0, 0.03); color: var(--ink); }
 h1, h2, h3, p { margin-top: 0; }
 h1 { max-width: 11ch; color: var(--ink); font-size: clamp(2.6rem, 7vw, 5.5rem); line-height: 0.9; letter-spacing: -0.06em; margin-bottom: 1rem; }
 h2 { color: var(--ink); font-size: clamp(1.55rem, 2.55vw, 2.45rem); line-height: 1.02; letter-spacing: -0.04em; margin-bottom: 1rem; }

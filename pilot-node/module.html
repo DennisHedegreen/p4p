@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{page_title}}</title>
     <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <script src="/operator/assets/operator-locale-switcher.js" defer></script>
     <style>
       .card-grid,
       .action-grid {
@@ -152,6 +153,12 @@
             <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
           </div>
           <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+          <div class="toolbar-locale">
+            <label for="locale-switcher">
+              <span>{{toolbar_language}}</span>
+              <select id="locale-switcher"></select>
+            </label>
+          </div>
         </div>
       </header>
 
@@ -165,6 +172,7 @@
         <a class="nav-link" href="/operator/import">{{nav_import}}</a>
         <a class="nav-link" href="/operator/node">{{nav_node}}</a>
       </nav>
+      <script id="operator-locale-payload" type="application/json">{{locale_payload_json}}</script>
 
       <section class="summary" aria-label="Module summary">
         <div class="metric">

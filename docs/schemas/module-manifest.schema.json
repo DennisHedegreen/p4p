@@ -45,6 +45,32 @@
     "permission": {
       "type": "string",
       "pattern": "^(read|write|emit|store)\\.[a-z0-9_]+(?:\\.[a-z0-9_]+)+$"
+    },
+    "localeId": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(?:-[a-z0-9]+)*$"
+    },
+    "localizedText": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/localeId"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "humanText": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "$ref": "#/$defs/localizedText"
+        }
+      ]
     }
   },
   "properties": {
@@ -73,8 +99,7 @@
       "minLength": 1
     },
     "description": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "#/$defs/humanText"
     },
     "visibility": {
       "type": "string",
@@ -196,24 +221,29 @@
       ],
       "properties": {
         "function": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/humanText"
         },
         "data_access_summary": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/humanText"
         },
         "trust_status": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/humanText"
         },
         "readiness": {
           "type": "string",
           "minLength": 1
         },
         "operator_status": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/humanText"
+        },
+        "title": {
+          "$ref": "#/$defs/humanText"
+        },
+        "summary": {
+          "$ref": "#/$defs/humanText"
+        },
+        "customer_notice": {
+          "$ref": "#/$defs/humanText"
         }
       }
     }

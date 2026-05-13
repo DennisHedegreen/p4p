@@ -36,13 +36,17 @@ from p4p_core import (
 )
 from p4p_core.constants import PROTOCOL_VERSION
 from module_catalog import (
+    DEFAULT_LOCALE,
     PublicCatalogUrls,
     locale_direction,
+    localized_field_text,
     localized_module_catalog,
+    localized_shell_strings,
     localized_text,
     normalize_locale,
     operator_locale_payload,
     shell_text,
+    SUPPORTED_LOCALES,
 )
 
 from pilot_node.config import (
@@ -118,6 +122,7 @@ MODULE_DOCS_ROOT = P4P_ROOT / "docs" / "modules"
 PROVIDER_DOCS_ROOT = P4P_ROOT / "docs" / "providers"
 GITHUB_BLOB_BASE_URL = "https://github.com/DennisHedegreen/p4p/blob/main"
 PUBLIC_CATALOG_URLS = PublicCatalogUrls()
+OPERATOR_LOCALE_COOKIE_NAME = "p4p_operator_locale"
 
 
 def header_value(value: str | None) -> str | None:
@@ -189,13 +194,77 @@ async def import_manifest_request_payload(request: Request) -> tuple[str, bytes]
     return payload.source_name, payload.manifest_json.encode("utf-8")
 
 
-def operator_locale(runtime: PilotRuntime) -> str:
+def persisted_operator_locale(runtime: PilotRuntime) -> str:
     persisted = setup_state(runtime).get("operator_locale")
     return normalize_locale(str(persisted or ""))
 
 
-def operator_page_copy(runtime: PilotRuntime, *, page_title_key: str) -> dict[str, str]:
-    locale = operator_locale(runtime)
+def requested_locale(raw_locale: str | None) -> str | None:
+    normalized = str(raw_locale or "").strip().lower()
+    if normalized in SUPPORTED_LOCALES:
+        return normalized
+    return None
+
+
+def operator_locale_source(runtime: PilotRuntime, request: Request | None = None) -> tuple[str, str]:
+    node_default = persisted_operator_locale(runtime)
+    if request is not None:
+        raw_query_locale = request.query_params.get("lang")
+        if raw_query_locale is not None:
+            query_locale = requested_locale(raw_query_locale)
+            if query_locale is not None:
+                return query_locale, "query"
+            if str(raw_query_locale).strip().lower() in {"", "default", "node"}:
+                return node_default, "node_default"
+        cookie_locale = requested_locale(request.cookies.get(OPERATOR_LOCALE_COOKIE_NAME))
+        if cookie_locale is not None:
+            return cookie_locale, "cookie"
+    return node_default, "node_default"
+
+
+def operator_locale(runtime: PilotRuntime, request: Request | None = None) -> str:
+    return operator_locale_source(runtime, request)[0]
+
+
+def operator_locale_response_payload(runtime: PilotRuntime, locale: str, *, source: str) -> dict[str, Any]:
+    payload = operator_locale_payload(locale)
+    payload["source"] = source
+    payload["node_default"] = persisted_operator_locale(runtime)
+    payload["browser_override_cookie"] = OPERATOR_LOCALE_COOKIE_NAME
+    return payload
+
+
+def apply_operator_locale_cookie(response: Response, request: Request, locale: str) -> None:
+    raw_query_locale = request.query_params.get("lang")
+    if raw_query_locale is None:
+        return
+    normalized_query = str(raw_query_locale).strip().lower()
+    if normalized_query in {"", "default", "node"}:
+        response.delete_cookie(OPERATOR_LOCALE_COOKIE_NAME, path="/")
+        return
+    if requested_locale(normalized_query) is not None:
+        response.set_cookie(
+            OPERATOR_LOCALE_COOKIE_NAME,
+            locale,
+            max_age=60 * 60 * 24 * 365,
+            path="/",
+            samesite="lax",
+        )
+
+
+def operator_page_copy(runtime: PilotRuntime, *, page_title_key: str, locale: str) -> dict[str, str]:
+    locale_payload = operator_locale_response_payload(runtime, locale, source="html")
+    locale_payload["default_option_label"] = localized_text(
+        {
+            "da": "Node-default",
+            "sv": "Nodstandard",
+            "tr": "Düğüm varsayılanı",
+            "ar": "افتراضي العقدة",
+            "ku": "Defaulta nodeyê",
+            "en": "Node default",
+        },
+        locale,
+    )
     return {
         "page_lang": locale,
         "page_dir": locale_direction(locale),
@@ -214,6 +283,30 @@ def operator_page_copy(runtime: PilotRuntime, *, page_title_key: str) -> dict[st
         "toolbar_refresh": shell_text(locale, "toolbar.refresh"),
         "toolbar_copy_json": shell_text(locale, "toolbar.copy_json"),
         "toolbar_waiting": shell_text(locale, "toolbar.waiting"),
+        "toolbar_language": localized_text(
+            {
+                "da": "Sprog",
+                "sv": "Språk",
+                "tr": "Dil",
+                "ar": "اللغة",
+                "ku": "Ziman",
+                "en": "Language",
+            },
+            locale,
+        ),
+        "toolbar_node_default_language": localized_text(
+            {
+                "da": "Følg node-default",
+                "sv": "Följ nodstandard",
+                "tr": "Düğüm varsayılanını izle",
+                "ar": "اتبع افتراضي العقدة",
+                "ku": "Defaulta nodeyê bişopîne",
+                "en": "Follow node default",
+            },
+            locale,
+        ),
+        "locale_payload_json": json.dumps(locale_payload, ensure_ascii=False),
+        "operator_ui_strings_json": json.dumps(localized_shell_strings(locale), ensure_ascii=False),
     }
 
 
@@ -222,14 +315,17 @@ def render_operator_page(
     runtime: PilotRuntime,
     *,
     page_title_key: str,
+    request: Request | None = None,
     extra_context: dict[str, str] | None = None,
 ) -> str:
     rendered = path.read_text(encoding="utf-8")
-    context = operator_page_copy(runtime, page_title_key=page_title_key)
+    locale = operator_locale(runtime, request)
+    context = operator_page_copy(runtime, page_title_key=page_title_key, locale=locale)
     if extra_context:
         context.update(extra_context)
     for key, value in context.items():
-        rendered = rendered.replace(f"{{{{{key}}}}}", html.escape(value))
+        replacement = value if key.endswith("_json") else html.escape(value)
+        rendered = rendered.replace(f"{{{{{key}}}}}", replacement)
     return rendered
 
 
@@ -1511,11 +1607,17 @@ def public_info(runtime: PilotRuntime) -> dict[str, Any]:
     }
 
 
-def operator_state(runtime: PilotRuntime) -> dict[str, Any]:
+def operator_state(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
     node = node_state(runtime)
     active_payment_module_id = effective_payment_module_id(runtime)
+    effective_locale = locale or persisted_operator_locale(runtime)
     return {
-        "locale": operator_locale_payload(operator_locale(runtime)),
+        "locale": operator_locale_response_payload(runtime, effective_locale, source=locale_source),
         "node": node.model_dump(mode="json", exclude_none=True),
         "accepts_orders": node_accepts_orders(runtime, node),
         "hardware": {
@@ -1550,27 +1652,33 @@ def operator_state(runtime: PilotRuntime) -> dict[str, Any]:
     }
 
 
-def operator_gui(runtime: PilotRuntime) -> str:
+def operator_gui(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_OPERATIONS_HTML_PATH,
         runtime,
         page_title_key="page.operations.title",
+        request=request,
     )
 
 
-def operator_welcome_page(runtime: PilotRuntime) -> str:
+def operator_welcome_page(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_WELCOME_HTML_PATH,
         runtime,
         page_title_key="page.welcome.title",
+        request=request,
+        extra_context={
+            "setup_baseline_module_ids_json": json.dumps(list(SETUP_BASELINE_MODULE_IDS)),
+        },
     )
 
 
-def operator_setup_page(runtime: PilotRuntime) -> str:
+def operator_setup_page(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_SETUP_HTML_PATH,
         runtime,
         page_title_key="page.setup.title",
+        request=request,
     )
 
 
@@ -1586,12 +1694,18 @@ SETUP_BASELINE_MODULE_IDS = (
 SETUP_RECOMMENDED_MODULE_IDS = (KITCHEN_SCREEN_MODULE_ID,)
 
 
-def operator_setup(runtime: PilotRuntime) -> dict[str, Any]:
-    modules = operator_modules(runtime)
-    node = operator_state(runtime)
+def operator_setup(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
+    effective_locale = locale or persisted_operator_locale(runtime)
+    modules = operator_modules(runtime, locale=effective_locale, locale_source=locale_source)
+    node = operator_state(runtime, locale=effective_locale, locale_source=locale_source)
     menu = operator_menu(runtime)
     persisted = setup_state(runtime)
-    locale = operator_locale(runtime)
+    locale = effective_locale
 
     current = set(modules.get("current_module_ids") or [])
     desired = set(modules.get("desired_module_ids") or [])
@@ -1926,7 +2040,7 @@ def operator_setup(runtime: PilotRuntime) -> dict[str, Any]:
 
     return {
         "node_id": modules.get("node_id") or node.get("node", {}).get("node_id"),
-        "locale": operator_locale_payload(locale),
+        "locale": operator_locale_response_payload(runtime, locale, source=locale_source),
         "setup": persisted,
         "hardware_profiles": persisted.get("available_hardware_profiles") or [runtime.config.hardware_profile],
         "hardware_base_profiles": persisted.get("hardware_base_profiles") or [],
@@ -1945,7 +2059,13 @@ def operator_setup(runtime: PilotRuntime) -> dict[str, Any]:
     }
 
 
-def operator_update_setup(runtime: PilotRuntime, payload: OperatorSetupUpdate) -> dict[str, Any]:
+def operator_update_setup(
+    runtime: PilotRuntime,
+    payload: OperatorSetupUpdate,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
     set_setup_state(
         runtime,
         operator_locale=payload.operator_locale,
@@ -1955,53 +2075,58 @@ def operator_update_setup(runtime: PilotRuntime, payload: OperatorSetupUpdate) -
         catalog_ready=payload.catalog_ready,
         local_tests_run=payload.local_tests_run,
     )
-    summary = operator_setup(runtime)
+    summary = operator_setup(runtime, locale=locale, locale_source=locale_source)
     setup_complete = bool(summary["summary"]["ready_for_menu_only"])
     set_setup_state(runtime, completed=setup_complete)
-    return operator_setup(runtime)
+    return operator_setup(runtime, locale=locale, locale_source=locale_source)
 
 
-def operator_catalog_page(runtime: PilotRuntime) -> str:
+def operator_catalog_page(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_CATALOG_HTML_PATH,
         runtime,
         page_title_key="page.catalog.title",
+        request=request,
     )
 
 
-def operator_modules_page(runtime: PilotRuntime) -> str:
+def operator_modules_page(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_MODULES_HTML_PATH,
         runtime,
         page_title_key="page.modules.title",
+        request=request,
     )
 
 
-def operator_discover_page(runtime: PilotRuntime) -> str:
+def operator_discover_page(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_DISCOVER_HTML_PATH,
         runtime,
         page_title_key="page.discover.title",
+        request=request,
     )
 
 
-def operator_import_page(runtime: PilotRuntime) -> str:
+def operator_import_page(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_IMPORT_HTML_PATH,
         runtime,
         page_title_key="page.import.title",
+        request=request,
     )
 
 
-def operator_node_page(runtime: PilotRuntime) -> str:
+def operator_node_page(runtime: PilotRuntime, *, request: Request | None = None) -> str:
     return render_operator_page(
         OPERATOR_NODE_HTML_PATH,
         runtime,
         page_title_key="page.node.title",
+        request=request,
     )
 
 
-def operator_module_view_page(runtime: PilotRuntime, module_id: str) -> str:
+def operator_module_view_page(runtime: PilotRuntime, module_id: str, *, request: Request | None = None) -> str:
     normalized_module_id = module_id.strip()
     if not normalized_module_id:
         raise HTTPException(status_code=404, detail="Unknown module_id")
@@ -2011,6 +2136,7 @@ def operator_module_view_page(runtime: PilotRuntime, module_id: str) -> str:
         MODULE_HTML_PATH,
         runtime,
         page_title_key="page.modules.title",
+        request=request,
     )
 
 
@@ -2357,6 +2483,7 @@ def operator_module_entry(
     runtime: PilotRuntime,
     manifest,
     *,
+    locale: str,
     enabled_now: bool,
     desired_enabled: bool,
 ) -> dict[str, Any]:
@@ -2404,13 +2531,17 @@ def operator_module_entry(
         "visibility": manifest.visibility,
         "readiness": manifest.readiness,
         "status": manifest.status,
-        "description": manifest.description,
-        "operator_status": manifest.operator_status,
+        "description": localized_field_text(manifest.raw.get("description"), locale, default=manifest.description),
+        "operator_status": localized_field_text(
+            public_catalog.get("operator_status"),
+            locale,
+            default=manifest.operator_status,
+        ),
         "depends_on": module_requires(manifest),
         "dependents": module_dependents(runtime, manifest.module_id),
-        "owner_function": str(public_catalog.get("function") or "").strip(),
-        "data_access_summary": str(public_catalog.get("data_access_summary") or "").strip(),
-        "trust_status": str(public_catalog.get("trust_status") or "").strip(),
+        "owner_function": localized_field_text(public_catalog.get("function"), locale),
+        "data_access_summary": localized_field_text(public_catalog.get("data_access_summary"), locale),
+        "trust_status": localized_field_text(public_catalog.get("trust_status"), locale),
         "data_access": list(manifest.data_access),
         "input_events": list(manifest.input_events),
         "output_events": list(manifest.output_events),
@@ -2522,8 +2653,13 @@ def undeclared_module_entry(runtime: PilotRuntime, module_id: str) -> dict[str, 
     }
 
 
-def module_catalog_summary(runtime: PilotRuntime) -> dict[str, Any]:
-    locale = operator_locale(runtime)
+def module_catalog_summary(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
+    effective_locale = locale or persisted_operator_locale(runtime)
     active_payment_module_id = effective_payment_module_id(runtime)
     desired_payment_id = desired_payment_module_id(runtime)
     desired_ids = desired_module_ids(runtime)
@@ -2532,6 +2668,7 @@ def module_catalog_summary(runtime: PilotRuntime) -> dict[str, Any]:
         operator_module_entry(
             runtime,
             manifest,
+            locale=effective_locale,
             enabled_now=True,
             desired_enabled=manifest.module_id in desired_ids,
         )
@@ -2546,6 +2683,7 @@ def module_catalog_summary(runtime: PilotRuntime) -> dict[str, Any]:
         operator_module_entry(
             runtime,
             manifest,
+            locale=effective_locale,
             enabled_now=False,
             desired_enabled=manifest.module_id in desired_ids,
         )
@@ -2567,7 +2705,7 @@ def module_catalog_summary(runtime: PilotRuntime) -> dict[str, Any]:
     return {
         "node_id": runtime.config.node_id,
         "checked_at": utc_now().isoformat(),
-        "locale": operator_locale_payload(locale),
+        "locale": operator_locale_response_payload(runtime, effective_locale, source=locale_source),
         "current_module_ids": current_ids,
         "desired_module_ids": desired_ids,
         "desired_module_ids_updated_at": desired_module_ids_updated_at(runtime),
@@ -2593,9 +2731,14 @@ def module_catalog_summary(runtime: PilotRuntime) -> dict[str, Any]:
     }
 
 
-def operator_modules(runtime: PilotRuntime) -> dict[str, Any]:
-    summary = module_catalog_summary(runtime)
-    imported = imported_manifest_summaries(runtime)
+def operator_modules(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
+    summary = module_catalog_summary(runtime, locale=locale, locale_source=locale_source)
+    imported = imported_manifest_summaries(runtime, locale=summary["locale"]["current"])
     summary["imported_manifest_count"] = len(imported)
     summary["imported_manifests"] = imported
     return summary
@@ -2603,30 +2746,15 @@ def operator_modules(runtime: PilotRuntime) -> dict[str, Any]:
 
 def _imported_manifest_title(manifest, locale: str) -> str:
     public_catalog = manifest.raw.get("public_catalog") or {}
-    raw_title = public_catalog.get("title")
-    if isinstance(raw_title, dict):
-        title = localized_text({str(key): str(value) for key, value in raw_title.items()}, locale)
-        if title:
-            return title
-    if isinstance(raw_title, str) and raw_title.strip():
-        return raw_title.strip()
-    return manifest.module_id
+    return localized_field_text(public_catalog.get("title"), locale, default=manifest.module_id)
 
 
 def _imported_manifest_summary_text(manifest, locale: str) -> str:
     public_catalog = manifest.raw.get("public_catalog") or {}
-    raw_summary = public_catalog.get("summary")
-    if isinstance(raw_summary, dict):
-        summary = localized_text({str(key): str(value) for key, value in raw_summary.items()}, locale)
-        if summary:
-            return summary
-    if isinstance(raw_summary, str) and raw_summary.strip():
-        return raw_summary.strip()
-    return manifest.description.strip()
+    return localized_field_text(public_catalog.get("summary"), locale, default=manifest.description.strip())
 
 
-def _imported_manifest_summary(runtime: PilotRuntime, record: dict[str, str]) -> dict[str, Any]:
-    locale = operator_locale(runtime)
+def _imported_manifest_summary(runtime: PilotRuntime, record: dict[str, str], *, locale: str) -> dict[str, Any]:
     try:
         payload = json.loads(record["manifest_json"])
         if not isinstance(payload, dict):
@@ -2671,15 +2799,21 @@ def _imported_manifest_summary(runtime: PilotRuntime, record: dict[str, str]) ->
     }
 
 
-def imported_manifest_summaries(runtime: PilotRuntime) -> list[dict[str, Any]]:
+def imported_manifest_summaries(runtime: PilotRuntime, *, locale: str | None = None) -> list[dict[str, Any]]:
+    effective_locale = locale or persisted_operator_locale(runtime)
     return [
-        _imported_manifest_summary(runtime, record)
+        _imported_manifest_summary(runtime, record, locale=effective_locale)
         for record in runtime.store.list_imported_module_manifest_records()
     ]
 
 
-def operator_import(runtime: PilotRuntime) -> dict[str, Any]:
-    modules = operator_modules(runtime)
+def operator_import(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
+    modules = operator_modules(runtime, locale=locale, locale_source=locale_source)
     return {
         "node_id": runtime.config.node_id,
         "checked_at": modules["checked_at"],
@@ -2697,8 +2831,13 @@ def operator_import(runtime: PilotRuntime) -> dict[str, Any]:
     }
 
 
-def operator_imported_manifests(runtime: PilotRuntime) -> dict[str, Any]:
-    return operator_import(runtime)
+def operator_imported_manifests(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
+    return operator_import(runtime, locale=locale, locale_source=locale_source)
 
 
 def _imported_module_id_collision(runtime: PilotRuntime, module_id: str) -> bool:
@@ -2708,6 +2847,7 @@ def _imported_module_id_collision(runtime: PilotRuntime, module_id: str) -> bool
 def operator_import_module_manifest(
     runtime: PilotRuntime,
     *,
+    locale: str | None = None,
     source_name: str,
     content_bytes: bytes,
 ) -> dict[str, Any]:
@@ -2758,7 +2898,11 @@ def operator_import_module_manifest(
     )
     return {
         "replaced": existing_import is not None,
-        "manifest": _imported_manifest_summary(runtime, record),
+        "manifest": _imported_manifest_summary(
+            runtime,
+            record,
+            locale=locale or persisted_operator_locale(runtime),
+        ),
         "imported_manifest_count": len(runtime.store.list_imported_module_manifest_records()),
     }
 
@@ -2777,10 +2921,15 @@ def operator_delete_imported_module_manifest(runtime: PilotRuntime, module_id: s
     }
 
 
-def operator_discover(runtime: PilotRuntime) -> dict[str, Any]:
-    locale = operator_locale(runtime)
-    summary = module_catalog_summary(runtime)
-    catalog = localized_module_catalog(locale, urls=PUBLIC_CATALOG_URLS)
+def operator_discover(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
+    effective_locale = locale or persisted_operator_locale(runtime)
+    summary = module_catalog_summary(runtime, locale=effective_locale, locale_source=locale_source)
+    catalog = localized_module_catalog(effective_locale, urls=PUBLIC_CATALOG_URLS)
     current_lookup = {entry["module_id"]: entry for entry in summary["modules"]}
     available_lookup = {entry["module_id"]: entry for entry in summary["available_modules"]}
     current_ids = set(summary["current_module_ids"])
@@ -2828,7 +2977,7 @@ def operator_discover(runtime: PilotRuntime) -> dict[str, Any]:
     return {
         "node_id": runtime.config.node_id,
         "checked_at": summary["checked_at"],
-        "locale": operator_locale_payload(locale),
+        "locale": operator_locale_response_payload(runtime, effective_locale, source=locale_source),
         "family": catalog["family"],
         "categories": categories,
         "modules": discover_modules,
@@ -2846,16 +2995,21 @@ def operator_discover(runtime: PilotRuntime) -> dict[str, Any]:
     }
 
 
-def operator_node(runtime: PilotRuntime) -> dict[str, Any]:
-    locale = operator_locale(runtime)
+def operator_node(
+    runtime: PilotRuntime,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
+    effective_locale = locale or persisted_operator_locale(runtime)
     setup = setup_state(runtime)
-    state = operator_state(runtime)
-    modules = module_catalog_summary(runtime)
+    state = operator_state(runtime, locale=effective_locale, locale_source=locale_source)
+    modules = module_catalog_summary(runtime, locale=effective_locale, locale_source=locale_source)
     completed_steps = [str(step).strip() for step in setup.get("completed_steps") or [] if str(step).strip()]
     return {
         "node_id": runtime.config.node_id,
         "checked_at": modules["checked_at"],
-        "locale": operator_locale_payload(locale),
+        "locale": operator_locale_response_payload(runtime, effective_locale, source=locale_source),
         "state": state,
         "modules": {
             "current_module_ids": modules["current_module_ids"],
@@ -2894,12 +3048,18 @@ def operator_node(runtime: PilotRuntime) -> dict[str, Any]:
     }
 
 
-def module_detail_entry(runtime: PilotRuntime, module_id: str) -> dict[str, Any]:
+def module_detail_entry(
+    runtime: PilotRuntime,
+    module_id: str,
+    *,
+    locale: str | None = None,
+    locale_source: str = "node_default",
+) -> dict[str, Any]:
     normalized_module_id = module_id.strip()
     if not normalized_module_id:
         raise HTTPException(status_code=404, detail="Unknown module_id")
 
-    summary = module_catalog_summary(runtime)
+    summary = module_catalog_summary(runtime, locale=locale, locale_source=locale_source)
     for entry in summary["modules"]:
         if entry["module_id"] == normalized_module_id:
             doc_payload = module_doc_payload(normalized_module_id, entry.get("provider_id"))
@@ -2922,6 +3082,7 @@ def module_detail_entry(runtime: PilotRuntime, module_id: str) -> dict[str, Any]
     entry = operator_module_entry(
         runtime,
         manifest,
+        locale=summary["locale"]["current"],
         enabled_now=False,
         desired_enabled=normalized_module_id in summary["desired_module_ids"],
     )
@@ -3282,12 +3443,18 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         return public_info(runtime)
 
     @app.get("/operator", response_class=HTMLResponse)
-    def operator_gui_route() -> str:
-        return operator_gui(runtime)
+    def operator_gui_route(request: Request) -> HTMLResponse:
+        locale, _ = operator_locale_source(runtime, request)
+        response = HTMLResponse(operator_gui(runtime, request=request))
+        apply_operator_locale_cookie(response, request, locale)
+        return response
 
     @app.get("/operator/welcome", response_class=HTMLResponse)
-    def operator_welcome_route() -> str:
-        return operator_welcome_page(runtime)
+    def operator_welcome_route(request: Request) -> HTMLResponse:
+        locale, _ = operator_locale_source(runtime, request)
+        response = HTMLResponse(operator_welcome_page(runtime, request=request))
+        apply_operator_locale_cookie(response, request, locale)
+        return response
 
     @app.get("/operator/setup", response_model=None)
     def operator_setup_route(
@@ -3296,13 +3463,20 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> Any:
         if request_prefers_html(request):
-            return HTMLResponse(operator_setup_page(runtime))
+            locale, _ = operator_locale_source(runtime, request)
+            response = HTMLResponse(operator_setup_page(runtime, request=request))
+            apply_operator_locale_cookie(response, request, locale)
+            return response
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_setup(runtime)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_setup(runtime, locale=locale, locale_source=source)
 
     @app.get("/operator/catalog", response_class=HTMLResponse)
-    def operator_catalog_route() -> str:
-        return operator_catalog_page(runtime)
+    def operator_catalog_route(request: Request) -> HTMLResponse:
+        locale, _ = operator_locale_source(runtime, request)
+        response = HTMLResponse(operator_catalog_page(runtime, request=request))
+        apply_operator_locale_cookie(response, request, locale)
+        return response
 
     @app.get("/operator/discover", response_model=None)
     def operator_discover_route(
@@ -3311,9 +3485,13 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> Any:
         if request_prefers_html(request):
-            return HTMLResponse(operator_discover_page(runtime))
+            locale, _ = operator_locale_source(runtime, request)
+            response = HTMLResponse(operator_discover_page(runtime, request=request))
+            apply_operator_locale_cookie(response, request, locale)
+            return response
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_discover(runtime)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_discover(runtime, locale=locale, locale_source=source)
 
     @app.get("/operator/import", response_model=None)
     def operator_import_route(
@@ -3322,9 +3500,13 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> Any:
         if request_prefers_html(request):
-            return HTMLResponse(operator_import_page(runtime))
+            locale, _ = operator_locale_source(runtime, request)
+            response = HTMLResponse(operator_import_page(runtime, request=request))
+            apply_operator_locale_cookie(response, request, locale)
+            return response
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_import(runtime)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_import(runtime, locale=locale, locale_source=source)
 
     @app.get("/operator/node", response_model=None)
     def operator_node_route(
@@ -3333,9 +3515,13 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> Any:
         if request_prefers_html(request):
-            return HTMLResponse(operator_node_page(runtime))
+            locale, _ = operator_locale_source(runtime, request)
+            response = HTMLResponse(operator_node_page(runtime, request=request))
+            apply_operator_locale_cookie(response, request, locale)
+            return response
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_node(runtime)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_node(runtime, locale=locale, locale_source=source)
 
     @app.get("/operator/modules", response_model=None)
     def operator_modules_route(
@@ -3344,13 +3530,20 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> Any:
         if request_prefers_html(request):
-            return HTMLResponse(operator_modules_page(runtime))
+            locale, _ = operator_locale_source(runtime, request)
+            response = HTMLResponse(operator_modules_page(runtime, request=request))
+            apply_operator_locale_cookie(response, request, locale)
+            return response
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_modules(runtime)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_modules(runtime, locale=locale, locale_source=source)
 
     @app.get("/operator/modules/view/{module_id}", response_class=HTMLResponse)
-    def operator_module_view_route(module_id: str) -> str:
-        return operator_module_view_page(runtime, module_id)
+    def operator_module_view_route(request: Request, module_id: str) -> HTMLResponse:
+        locale, _ = operator_locale_source(runtime, request)
+        response = HTMLResponse(operator_module_view_page(runtime, module_id, request=request))
+        apply_operator_locale_cookie(response, request, locale)
+        return response
 
     @app.get("/operator/pickup-board", response_class=HTMLResponse)
     def operator_pickup_board_route() -> str:
@@ -3358,28 +3551,34 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
 
     @app.get("/operator/state")
     def operator_state_route(
+        request: Request,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_state(runtime)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_state(runtime, locale=locale, locale_source=source)
 
     @app.get("/operator/modules/{module_id}")
     def operator_module_detail_route(
+        request: Request,
         module_id: str,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return module_detail_entry(runtime, module_id)
+        locale, source = operator_locale_source(runtime, request)
+        return module_detail_entry(runtime, module_id, locale=locale, locale_source=source)
 
     @app.get("/operator/modules/imports")
     def operator_module_imports_route(
+        request: Request,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_imported_manifests(runtime)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_imported_manifests(runtime, locale=locale, locale_source=source)
 
     @app.post("/operator/modules/import-manifest")
     async def operator_import_manifest_route(
@@ -3391,6 +3590,7 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         source_name, content_bytes = await import_manifest_request_payload(request)
         return operator_import_module_manifest(
             runtime,
+            locale=operator_locale(runtime, request),
             source_name=source_name,
             content_bytes=content_bytes,
         )
@@ -3423,39 +3623,50 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
 
     @app.patch("/operator/modules/payment")
     def operator_update_payment_module_route(
+        request: Request,
         payload: OperatorPaymentModuleUpdate,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_update_payment_module(runtime, payload)
+        locale, source = operator_locale_source(runtime, request)
+        set_effective_payment_module_id(runtime, payload.module_id)
+        return operator_modules(runtime, locale=locale, locale_source=source)
 
     @app.patch("/operator/modules/set")
     def operator_update_module_set_route(
+        request: Request,
         payload: OperatorModuleSetUpdate,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_update_module_set(runtime, payload)
+        operator_update_module_set(runtime, payload)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_modules(runtime, locale=locale, locale_source=source)
 
     @app.patch("/operator/setup")
     def operator_update_setup_route(
+        request: Request,
         payload: OperatorSetupUpdate,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return operator_update_setup(runtime, payload)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_update_setup(runtime, payload, locale=locale, locale_source=source)
 
     @app.patch("/operator/state")
     async def operator_update_state_route(
+        request: Request,
         payload: OperatorStateUpdate,
         authorization: str | None = Header(default=None),
         x_p4p_operator_token: str | None = Header(default=None),
     ) -> dict[str, Any]:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
-        return await operator_update_state(runtime, payload)
+        await operator_update_state(runtime, payload)
+        locale, source = operator_locale_source(runtime, request)
+        return operator_state(runtime, locale=locale, locale_source=source)
 
     @app.get("/operator/menu", response_model=Menu)
     def operator_menu_route(

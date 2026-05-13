@@ -124,6 +124,7 @@ h3 {
 .toolbar,
 .token-row,
 .actions,
+.toolbar-locale,
 .summary,
 .layout,
 .stack,
@@ -156,6 +157,17 @@ h3 {
 
 .status-line {
   min-height: 24px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.toolbar-locale {
+  max-width: 18rem;
+}
+
+.toolbar-locale label {
+  display: grid;
+  gap: 6px;
   color: var(--muted);
   font-size: 0.9rem;
 }

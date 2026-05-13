@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{page_title}}</title>
     <link rel="stylesheet" href="/operator/assets/operator-shell.css">
+    <script src="/operator/assets/operator-locale-switcher.js" defer></script>
     <style>
       .discover-list,
       .discover-categories,
@@ -59,6 +60,12 @@
             <button id="copy-json" class="secondary" type="button">{{toolbar_copy_json}}</button>
           </div>
           <div class="status-line" id="status-line">{{toolbar_waiting}}</div>
+          <div class="toolbar-locale">
+            <label for="locale-switcher">
+              <span>{{toolbar_language}}</span>
+              <select id="locale-switcher"></select>
+            </label>
+          </div>
         </div>
       </header>
 
@@ -72,22 +79,50 @@
         <a class="nav-link" href="/operator/import">{{nav_import}}</a>
         <a class="nav-link" href="/operator/node">{{nav_node}}</a>
       </nav>
+      <script id="operator-locale-payload" type="application/json">{{locale_payload_json}}</script>
+      <script id="operator-ui-strings" type="application/json">{{operator_ui_strings_json}}</script>
+      <script>
+        window.P4P_UI = (() => {
+          const node = document.getElementById("operator-ui-strings");
+          if (!node) return {};
+          try {
+            return JSON.parse(node.textContent || "{}");
+          } catch (_error) {
+            return {};
+          }
+        })();
+        window.p4pT = function p4pT(key, fallback = "") {
+          return window.P4P_UI[key] || fallback || key;
+        };
+        window.p4pFormat = function p4pFormat(key, vars = {}, fallback = "") {
+          let text = window.p4pT(key, fallback);
+          for (const [name, value] of Object.entries(vars)) {
+            text = text.replaceAll(`{${name}}`, String(value));
+          }
+          return text;
+        };
+        document.addEventListener("DOMContentLoaded", () => {
+          document.querySelectorAll("[data-i18n]").forEach((el) => {
+            el.textContent = window.p4pT(el.dataset.i18n, el.textContent);
+          });
+        });
+      </script>
 
       <section class="summary" aria-label="Discover summary">
         <div class="metric">
-          <span>Node</span>
+          <span data-i18n="common.node">Node</span>
           <strong id="metric-node">-</strong>
         </div>
         <div class="metric">
-          <span>Running now</span>
+          <span data-i18n="common.running_now">Running now</span>
           <strong id="metric-current">-</strong>
         </div>
         <div class="metric">
-          <span>Family</span>
+          <span data-i18n="common.family">Family</span>
           <strong id="metric-family">-</strong>
         </div>
         <div class="metric">
-          <span>Restart</span>
+          <span data-i18n="common.restart">Restart</span>
           <strong id="metric-restart">-</strong>
         </div>
       </section>
@@ -98,8 +133,8 @@
         <div class="stack">
           <section class="panel">
             <div class="panel-head">
-              <h2>Recommended for this kind of shop</h2>
-              <p class="muted" id="family-summary">The first public family is the generic shop family, not a pizza-only frame.</p>
+              <h2 data-i18n="discover.recommended_title">Recommended for this kind of shop</h2>
+              <p class="muted" id="family-summary" data-i18n="discover.family_summary_default">The first public family is the generic shop family, not a pizza-only frame.</p>
             </div>
             <div class="panel-body">
               <div id="recommended-modules" class="discover-list"></div>
@@ -108,8 +143,8 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Browse module groups</h2>
-              <p class="muted">Read the public module catalog here, then use Modules to change the desired local set or Import to bring in a local manifest file.</p>
+              <h2 data-i18n="discover.groups_title">Browse module groups</h2>
+              <p class="muted" data-i18n="discover.groups_body">Read the public module catalog here, then use Modules to change the desired local set or Import to bring in a local manifest file.</p>
             </div>
             <div class="panel-body">
               <div id="discover-categories" class="discover-categories"></div>
@@ -120,7 +155,7 @@
         <aside class="side">
           <section class="panel">
             <div class="panel-head">
-              <h2>Current modules</h2>
+              <h2 data-i18n="common.current_modules">Current modules</h2>
             </div>
             <div class="panel-body">
               <div id="current-modules" class="inline-list"></div>
@@ -129,7 +164,7 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Public reading</h2>
+              <h2 data-i18n="common.public_reading">Public reading</h2>
             </div>
             <div class="panel-body">
               <div class="route-list" id="public-links"></div>
@@ -137,7 +172,7 @@
           </section>
 
           <details class="panel">
-            <summary>Debug JSON</summary>
+            <summary data-i18n="common.debug_json">Debug JSON</summary>
             <div class="panel-body">
               <pre id="raw">{}</pre>
             </div>
@@ -161,6 +196,14 @@
       const discoverCategories = document.getElementById("discover-categories");
       const currentModules = document.getElementById("current-modules");
       const publicLinks = document.getElementById("public-links");
+      const t = window.p4pT || ((key, fallback = "") => fallback || key);
+      const formatText = window.p4pFormat || ((key, vars = {}, fallback = "") => {
+        let text = t(key, fallback);
+        for (const [name, value] of Object.entries(vars)) {
+          text = text.replaceAll(`{${name}}`, String(value));
+        }
+        return text;
+      });
 
       const state = { payload: null };
       tokenInput.value = localStorage.getItem("p4pOperatorToken") || "";
@@ -211,7 +254,7 @@
           return;
         }
         restartBanner.hidden = false;
-        restartBanner.innerHTML = "<strong>Restart required.</strong><p>The desired module set differs from the running node. Keep discovery read-only here, then apply changes from Modules and restart when the shop is ready.</p>";
+        restartBanner.innerHTML = `<strong>${t("status.restart_required", "Restart required")}</strong><p>${t("discover.restart_detail", "The desired module set differs from the running node. Keep discovery read-only here, then apply changes from Modules and restart when the shop is ready.")}</p>`;
       }
 
       function renderModuleCard(entry) {
@@ -226,9 +269,9 @@
         title.appendChild(badge(entry.readiness));
         title.appendChild(badge(entry.health || "available", healthTone(entry.health)));
         if (entry.enabled_now) {
-          title.appendChild(badge("running now", "ok"));
+          title.appendChild(badge(t("common.running_now", "running now"), "ok"));
         } else if (entry.desired_enabled) {
-          title.appendChild(badge("desired", "warn"));
+          title.appendChild(badge(t("common.desired_after_restart", "desired"), "warn"));
         }
         const p = document.createElement("p");
         p.className = "muted";
@@ -242,7 +285,7 @@
         const openModule = document.createElement("a");
         openModule.className = "button-link secondary";
         openModule.href = entry.open_module_url;
-        openModule.textContent = "Open module";
+        openModule.textContent = t("common.open_module", "Open module");
         actions.appendChild(openModule);
 
         const publicDoc = document.createElement("a");
@@ -250,7 +293,7 @@
         publicDoc.href = entry.proof_page_url;
         publicDoc.target = "_blank";
         publicDoc.rel = "noopener noreferrer";
-        publicDoc.textContent = "Open public page";
+        publicDoc.textContent = t("common.open_public_page", "Open public page");
         actions.appendChild(publicDoc);
 
         article.appendChild(title);
@@ -275,7 +318,7 @@
           const h3 = document.createElement("h3");
           h3.textContent = category.title;
           head.appendChild(h3);
-          head.appendChild(badge(`${category.module_count} modules`));
+          head.appendChild(badge(formatText("discover.module_count", { count: category.module_count }, `${category.module_count} modules`)));
           const summary = document.createElement("p");
           summary.className = "muted";
           summary.textContent = category.summary;
@@ -297,10 +340,10 @@
       function renderPublicLinks(payload) {
         publicLinks.innerHTML = "";
         [
-          ["Public module catalog", payload?.links?.public_catalog_url],
-          ["Shop family", payload?.links?.shop_family_url],
-          ["Open local Modules room", payload?.links?.modules_room_url],
-          ["Import your own manifest", payload?.links?.import_room_url]
+          [t("discover.public_catalog", "Public module catalog"), payload?.links?.public_catalog_url],
+          [t("discover.shop_family", "Shop family"), payload?.links?.shop_family_url],
+          [t("discover.open_local_modules_room", "Open local Modules room"), payload?.links?.modules_room_url],
+          [t("discover.import_your_manifest", "Import your own manifest"), payload?.links?.import_room_url]
         ].forEach(([label, href]) => {
           if (!href) return;
           const card = document.createElement("article");
@@ -324,7 +367,7 @@
         metricNode.textContent = payload.node_id || "-";
         metricCurrent.textContent = String((payload.current_module_ids || []).length);
         metricFamily.textContent = payload.family?.title || "-";
-        metricRestart.textContent = payload.restart_required ? "Yes" : "No";
+        metricRestart.textContent = payload.restart_required ? t("common.yes", "Yes") : t("common.no", "No");
         familySummary.textContent = payload.family?.summary || "";
         renderRestartBanner(payload);
         renderRecommended(payload.recommended_modules || []);
@@ -336,13 +379,13 @@
 
       async function refresh() {
         if (!token()) {
-          setStatus("Waiting for token.", "bad");
+          setStatus(t("common.waiting_for_token", "Waiting for token."), "bad");
           return;
         }
-        setStatus("Loading.");
+        setStatus(t("common.loading", "Loading."));
         state.payload = await request("/operator/discover");
         render();
-        setStatus("Updated.", "ok");
+        setStatus(t("common.updated", "Updated."), "ok");
       }
 
       document.getElementById("save-token").addEventListener("click", () => {
@@ -353,7 +396,7 @@
       document.getElementById("clear-token").addEventListener("click", () => {
         localStorage.removeItem("p4pOperatorToken");
         tokenInput.value = "";
-        setStatus("Token cleared.");
+        setStatus(t("common.token_cleared", "Token cleared."));
       });
 
       document.getElementById("refresh").addEventListener("click", () => {
@@ -363,7 +406,7 @@
       document.getElementById("copy-json").addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(rawEl.textContent);
-          setStatus("Copied JSON.", "ok");
+          setStatus(t("common.copied_json", "Copied JSON."), "ok");
         } catch (error) {
           setStatus(error.message || "Could not copy JSON.", "bad");
         }

@@ -4792,6 +4792,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
             self.assertEqual(updated["setup"]["operator_locale"], "tr")
             self.assertEqual(updated["setup"]["locale"]["current"], "tr")
+            self.assertIn("en", [choice["id"] for choice in updated["setup"]["locale"]["choices"]])
             self.assertEqual(updated["setup"]["hardware_profile"], "box_v1_counter")
             self.assertEqual(updated["setup"]["hardware_base_profile"], "counter_box")
             self.assertEqual(
@@ -4865,6 +4866,102 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(node_room["links"]["modules_url"], "/operator/modules")
             self.assertEqual(node_room["links"]["setup_url"], "/operator/setup")
             pilot.store.close()
+
+    def test_pilot_node_operator_locale_prefers_query_then_cookie_then_node_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_MODULES": "p4p.payment.cash",
+                "P4P_OPERATOR_TOKEN": "operator-secret",
+            }
+            pilot = load_module("pilot-node/pilot_node.py", env)
+            routes = load_module("pilot_node/routes.py", env)
+
+            pilot.operator_update_setup(
+                pilot.OperatorSetupUpdate(operator_locale="tr"),
+                authorization="Bearer operator-secret",
+            )
+
+            async def receive() -> dict[str, object]:
+                return {"type": "http.request", "body": b"", "more_body": False}
+
+            cookie_request = Request(
+                {
+                    "type": "http",
+                    "method": "GET",
+                    "path": "/operator/setup",
+                    "query_string": b"",
+                    "headers": [(b"cookie", b"p4p_operator_locale=sv")],
+                },
+                receive,
+            )
+            query_request = Request(
+                {
+                    "type": "http",
+                    "method": "GET",
+                    "path": "/operator/setup",
+                    "query_string": b"lang=ar",
+                    "headers": [(b"cookie", b"p4p_operator_locale=sv")],
+                },
+                receive,
+            )
+            clear_request = Request(
+                {
+                    "type": "http",
+                    "method": "GET",
+                    "path": "/operator/setup",
+                    "query_string": b"lang=default",
+                    "headers": [(b"cookie", b"p4p_operator_locale=sv")],
+                },
+                receive,
+            )
+
+            cookie_locale, cookie_source = routes.operator_locale_source(pilot._app.RUNTIME, cookie_request)
+            query_locale, query_source = routes.operator_locale_source(pilot._app.RUNTIME, query_request)
+            clear_locale, clear_source = routes.operator_locale_source(pilot._app.RUNTIME, clear_request)
+
+            self.assertEqual((cookie_locale, cookie_source), ("sv", "cookie"))
+            self.assertEqual((query_locale, query_source), ("ar", "query"))
+            self.assertEqual((clear_locale, clear_source), ("tr", "node_default"))
+
+            response = Response()
+            routes.apply_operator_locale_cookie(response, query_request, query_locale)
+            self.assertIn("p4p_operator_locale=ar", response.headers.get("set-cookie", ""))
+
+            clear_response = Response()
+            routes.apply_operator_locale_cookie(clear_response, clear_request, clear_locale)
+            self.assertIn("p4p_operator_locale=\"\"", clear_response.headers.get("set-cookie", ""))
+            pilot.store.close()
+
+    def test_pilot_node_reference_manifests_accept_localized_human_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_MODULES": "p4p.payment.cash",
+                "P4P_OPERATOR_TOKEN": "operator-secret",
+            }
+            core = load_module("p4p_core/modules.py", env)
+            manifest_payload = json.loads((REPO_ROOT / "modules/p4p.menu.list/module.json").read_text(encoding="utf-8"))
+            provider_payload = json.loads((REPO_ROOT / "modules/p4p.menu.list/provider.json").read_text(encoding="utf-8"))
+
+            manifest_payload["description"] = {"da": "Direkte menu", "en": "Direct menu"}
+            manifest_payload["public_catalog"]["function"] = {"da": "Vis menu", "en": "Show menu"}
+            manifest_payload["public_catalog"]["summary"] = {"da": "Kort tekst", "en": "Short text"}
+            manifest_payload["public_catalog"]["operator_status"] = {"da": "Ikke aktiveret", "en": "Not enabled"}
+            provider_payload["name"] = {"da": "P4P Reference", "en": "P4P Reference"}
+            provider_payload["description"] = {"da": "Referenceprovider", "en": "Reference provider"}
+
+            manifest = core.ModuleManifest.from_payload(manifest_payload, source_path=REPO_ROOT / "modules/p4p.menu.list/module.json")
+            provider = core.ProviderManifest.from_payload(provider_payload, source_path=REPO_ROOT / "modules/p4p.menu.list/provider.json")
+
+            self.assertEqual(manifest.description, "Direct menu")
+            self.assertEqual(manifest.operator_status, "Not enabled")
+            self.assertEqual(provider.name, "P4P Reference")
+            self.assertEqual(provider.description, "Reference provider")
 
     def test_pilot_node_operator_import_manifest_persists_metadata_only_without_touching_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -5929,7 +6026,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIn('request("/operator/modules")', html)
             self.assertIn("/operator/modules/view/", html)
             self.assertIn('request("/operator/state")', html)
-            self.assertIn('request("/operator/menu")', html)
+            self.assertNotIn('request("/operator/menu")', html)
             self.assertIn("renderModuleStateSummary", html)
             self.assertIn("Current modules", html)
             self.assertIn("Available modules", html)
