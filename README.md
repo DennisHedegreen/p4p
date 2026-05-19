@@ -1,6 +1,14 @@
 # P4P
 
-An open protocol for direct restaurant-customer discovery and ordering.
+P4P is an open protocol for direct restaurant-customer discovery and ordering.
+
+The shortest honest version is:
+
+- the restaurant node announces itself to a registry
+- the customer discovers the node through that registry
+- the menu comes directly from the node
+- the order goes directly to the node
+- after discovery, the registry is out of the loop
 
 P4P is a phone book, not a marketplace.
 
@@ -9,6 +17,37 @@ P4P is the socket, not the appliances.
 P4P does not hold funds, process payments, store payment credentials, settle money, or act as merchant of record.
 
 Payment modules are adapters chosen by the restaurant or node operator.
+
+## If You Land Here Cold
+
+If you are seeing this repo for the first time, start with these three questions:
+
+1. What is P4P trying to prove?
+2. What is already public proof, and what is only next-gate pilot work?
+3. Where should I click first if I do not want to read the whole repo?
+
+Short answers:
+
+- current public claim: a restaurant can stay directly reachable without a marketplace middleman owning first contact
+- current status: advanced prototype with a real public proof surface and a larger pilot/runtime layer behind it
+- next gate: controlled live pilot on a restaurant-owned node
+
+If you want the shortest route in:
+
+1. [`PROOF.md`](PROOF.md)
+2. [`docs/WHITEPAPER-v0.1.md`](docs/WHITEPAPER-v0.1.md)
+3. [`docs/PROOF-STATUS.md`](docs/PROOF-STATUS.md)
+
+If you want to click something public before reading code:
+
+- public proof reading layer: <https://protocols4people.com/modules/shop/>
+- public P4P proof surface: <https://pizza4people.com/>
+
+If you want to inspect the code after that:
+
+1. [`SPEC.md`](SPEC.md)
+2. [`ARCHITECTURE.md`](ARCHITECTURE.md)
+3. [`docs/GITHUB-READER-GUIDE.md`](docs/GITHUB-READER-GUIDE.md)
 
 ## What To Believe Right Now
 
