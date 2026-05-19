@@ -42,6 +42,10 @@ TEMPLATE_ROOT = P4P_ROOT / "scripts/templates/public-site"
 PUBLIC_CATALOG_URLS = PublicCatalogUrls()
 PIZZA_SCREENSHOT_ROOT = PUBLIC_ROOT / "assets" / "screenshots"
 PROTOCOLS_SCREENSHOT_ROOT = PROTOCOLS_ROOT / "assets" / "screenshots"
+PUBLIC_HIDDEN_MODULE_IDS = {
+    "p4p.payment.godpay-mock",
+    "p4p.payment.chaospay-mock",
+}
 
 SCREENSHOT_STAGE_LABELS = {
     "next_gate": {
@@ -740,20 +744,20 @@ PIZZA_MODULES_UI = {
         "en": "Open the current stack by role, not by raw id.",
     },
     "catalog_body_modules_1": {
-        "da": "Den grupperede liste nedenfor er stadig den samme smalle proof-fortælling. Den er bare arrangeret i den rækkefølge en normal læser kan bruge: kundeflader først, derefter butiksværktøjer, derefter betalings-/tillidskanter, derefter interne tests.",
-        "sv": "Den grupperade listan nedan är fortfarande samma smala proof-berättelse. Den är bara ordnad i den ordning en vanlig läsare kan använda: kundytor först, sedan butiksverktyg, sedan betal-/tillitskanter och därefter interna tester.",
-        "tr": "Aşağıdaki gruplanmış liste hâlâ aynı dar proof hikâyesidir. Sadece normal bir okuyucunun kullanabileceği sıraya göre düzenlenmiştir: önce müşteri yüzeyleri, sonra dükkân araçları, sonra ödeme/güven kenarları, ardından iç testler.",
-        "ar": "القائمة المجمّعة أدناه ما تزال رواية الإثبات الضيقة نفسها. لكنها مرتّبة فقط بالترتيب الذي يمكن لقارئ عادي استخدامه: واجهات العميل أولاً، ثم أدوات المحل، ثم حواف الدفع/الثقة، ثم الاختبارات الداخلية.",
-        "ku": "Lîsteya komkirî ya li jêr hîn jî heman çîroka teng a proofê ye. Tenê bi rêza ku xwendevanek asayî dikare bikar bîne hate rêzkirin: pêşî rûyên mişterî, paşê amûrên dikanê, paşê kêlên dravdanê/baweriyê, û paşê testên navxweyî.",
-        "en": "The grouped list below is still the same narrow proof story. It is just arranged in the order a normal reader can use: customer surfaces first, then shop tools, then payment/trust edges, then internal tests.",
+        "da": "Den grupperede liste nedenfor er stadig den samme smalle proof-fortælling. Den er bare arrangeret i den rækkefølge en normal læser kan bruge: kundeflader først, derefter butiksværktøjer, derefter betalings-/tillidskanter. De dybere interne testspor bliver liggende på GitHub.",
+        "sv": "Den grupperade listan nedan är fortfarande samma smala proof-berättelse. Den är bara ordnad i den ordning en vanlig läsare kan använda: kundytor först, sedan butiksverktyg och därefter betal-/tillitskanter. De djupare interna testspåren stannar på GitHub.",
+        "tr": "Aşağıdaki gruplanmış liste hâlâ aynı dar proof hikâyesidir. Sadece normal bir okuyucunun kullanabileceği sıraya göre düzenlenmiştir: önce müşteri yüzeyleri, sonra dükkân araçları, sonra ödeme/güven kenarları. Daha derin dahili test yolları GitHub’da kalır.",
+        "ar": "القائمة المجمّعة أدناه ما تزال رواية الإثبات الضيقة نفسها. لكنها مرتّبة فقط بالترتيب الذي يمكن لقارئ عادي استخدامه: واجهات العميل أولاً، ثم أدوات المحل، ثم حواف الدفع/الثقة. أما مسارات الاختبار الداخلية الأعمق فتبقى على GitHub.",
+        "ku": "Lîsteya komkirî ya li jêr hîn jî heman çîroka teng a proofê ye. Tenê bi rêza ku xwendevanek asayî dikare bikar bîne hate rêzkirin: pêşî rûyên mişterî, paşê amûrên dikanê, paşê kêlên dravdanê/baweriyê. Rêyên testê yên navxweyî yên kûrtir li GitHub dimînin.",
+        "en": "The grouped list below is still the same narrow proof story. It is just arranged in the order a normal reader can use: customer surfaces first, then shop tools, then payment/trust edges. The deeper internal test lanes stay on GitHub.",
     },
     "catalog_body_modules_2": {
-        "da": "Hvis du vil have det præcise tekniske sprog, er GitHub stadig source of truth. Den her side er det offentlige menneskelige lag oven på.",
-        "sv": "Om du vill ha det exakta tekniska språket är GitHub fortfarande source of truth. Den här sidan är det offentliga mänskliga lagret ovanpå.",
-        "tr": "Tam teknik dili istiyorsan GitHub hâlâ source of truth’tur. Bu sayfa onun üstündeki kamusal insan katmanıdır.",
-        "ar": "إذا أردت اللغة التقنية الدقيقة، فما يزال GitHub هو source of truth. هذه الصفحة هي الطبقة البشرية العامة فوق ذلك.",
-        "ku": "Heke tu zimanê teknîkî yê rast dixwazî, GitHub hîn jî source of truth e. Ev rûpel qata giştî ya mirovî ye li ser wê.",
-        "en": "If you want the exact technical language, GitHub remains the source of truth. This page is the public human layer above it.",
+        "da": "Hvis du vil have det præcise tekniske sprog eller de interne mocks, er GitHub stadig source of truth. Den her side holder sig til det offentlige og pilotnære menneskelige lag oven på.",
+        "sv": "Om du vill ha det exakta tekniska språket eller de interna mockarna är GitHub fortfarande source of truth. Den här sidan håller sig till det offentliga och pilotnära mänskliga lagret ovanpå.",
+        "tr": "Tam teknik dili ya da dahili mock'ları istiyorsan GitHub hâlâ source of truth’tur. Bu sayfa onun üstündeki kamusal ve pilota yakın insan katmanında kalır.",
+        "ar": "إذا أردت اللغة التقنية الدقيقة أو الـ mockات الداخلية، فما يزال GitHub هو source of truth. هذه الصفحة تلتزم بالطبقة البشرية العامة والقريبة من الطيار فوق ذلك.",
+        "ku": "Heke tu zimanê teknîkî yê rast an mockên navxweyî dixwazî, GitHub hîn jî source of truth e. Ev rûpel li ser qata mirovî ya giştî û nêzî pilotê disekine.",
+        "en": "If you want the exact technical language or the internal mocks, GitHub remains the source of truth. This page stays with the public, pilot-near human layer above it.",
     },
     "current_module_pages": {
         "da": "Nuværende modulsider",
@@ -809,6 +813,16 @@ PIZZA_MODULES_UI = {
     },
     "toggle_hint": {"da": "Klik for detaljer", "sv": "Klicka för detaljer", "tr": "Ayrıntılar için tıkla", "ar": "اضغط للتفاصيل", "ku": "Ji bo hûrguliyan biteke", "en": "Click for details"},
     "owner_prefix": {"da": "For et pizzeria:", "sv": "För en pizzeria:", "tr": "Bir pizzacı için:", "ar": "بالنسبة لمحل بيتزا:", "ku": "Ji bo pizzeriyayek:", "en": "For a pizzeria:"},
+    "start_here_if": {"da": "Start her hvis:", "sv": "Börja här om:", "tr": "Buradan başla eğer:", "ar": "ابدأ هنا إذا:", "ku": "Li vir dest pê bike heke:", "en": "Start here if:"},
+    "invite_title": {"da": "Hvorfor åbne den her side nu?", "sv": "Varför öppna den här sidan nu?", "tr": "Bu sayfayı neden şimdi açmalı?", "ar": "لماذا تفتح هذه الصفحة الآن؟", "ku": "Çima niha vê rûpelê veke?", "en": "Why open this page now?"},
+    "invite_followup": {
+        "da": "Brug siden til at få modulets rolle på plads først. Åbn først GitHub-manifestet bagefter hvis du faktisk har brug for den rå kontrakt.",
+        "sv": "Använd sidan för att få modulens roll på plats först. Öppna GitHub-manifestet först efteråt om du faktiskt behöver det råa kontraktet.",
+        "tr": "Önce modülün rolünü netleştirmek için bu sayfayı kullan. Ham sözleşmeye gerçekten ihtiyacın varsa ancak ondan sonra GitHub manifestini aç.",
+        "ar": "استخدم هذه الصفحة أولاً لتثبيت دور الوحدة في ذهنك. افتح manifest الخاص بـ GitHub بعد ذلك فقط إذا كنت تحتاج فعلاً إلى العقد الخام.",
+        "ku": "Pêşî ji bo ku rola modulê rûne bike vê rûpelê bikar bîne. Tenê paşê manifesta GitHub veke heke rastî hewceyê te bi peymana xav hebe.",
+        "en": "Use this page to place the module's role first. Open the GitHub manifest afterwards only if you actually need the raw contract.",
+    },
     "touches": {"da": "Berører", "sv": "Berör", "tr": "Dokunur", "ar": "يمسّ", "ku": "Tê digihe", "en": "Touches"},
     "does_not_own": {"da": "Ejer ikke", "sv": "Äger inte", "tr": "Sahip değildir", "ar": "لا يملك", "ku": "Xwediyê ne", "en": "Does not own"},
     "current_state": {"da": "Nuværende tilstand", "sv": "Nuvarande läge", "tr": "Geçerli durum", "ar": "الحالة الحالية", "ku": "Rewşa niha", "en": "Current state"},
@@ -2401,12 +2415,18 @@ def load_site_data() -> dict:
     return load_json(SITE_DATA_PATH)
 
 
+def module_visible_on_public_site(module_id: str) -> bool:
+    return module_id not in PUBLIC_HIDDEN_MODULE_IDS
+
+
 def load_modules() -> list[dict]:
     modules: list[dict] = []
     for manifest_path in sorted(MODULES_ROOT.glob("*/module.json")):
         payload = load_json(manifest_path)
         public_catalog = payload.get("public_catalog", {})
         module_id = payload["module_id"]
+        if not module_visible_on_public_site(module_id):
+            continue
         provider_id = payload["provider_id"]
         modules.append(
             {
@@ -2469,6 +2489,14 @@ def load_providers(modules: list[dict]) -> list[dict]:
 def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def remove_stale_detail_dirs(root: Path, keep_ids: set[str]) -> None:
+    if not root.exists():
+        return
+    for child in root.iterdir():
+        if child.is_dir() and child.name not in keep_ids:
+            shutil.rmtree(child)
 
 
 def module_page_path(module_id: str, *, locale: str = "en") -> Path:
@@ -3167,6 +3195,40 @@ def module_state(entry: dict, locale: str) -> tuple[str, str]:
 
 
 def module_presentation(entry: dict, locale: str) -> dict[str, str]:
+    invitation_by_group = {
+        "customer": {
+            "da": "Start her hvis du vil se den kundevendte flade, før du dykker ned i operator- eller betalingslaget.",
+            "sv": "Börja här om du vill se den kundvända ytan innan du går ner i operatörs- eller betalningslagret.",
+            "tr": "Operatör ya da ödeme katmanına inmeden önce müşteri yüzeyini görmek istiyorsan buradan başla.",
+            "ar": "ابدأ هنا إذا أردت رؤية واجهة العميل قبل أن تنزل إلى طبقة المشغّل أو الدفع.",
+            "ku": "Li vir dest pê bike heke tu dixwazî rûyê mişterî bibînî berî ku tu biçî qata operator an dravdanê.",
+            "en": "Start here if you want to see the customer-facing surface before dropping into operator or payment layers.",
+        },
+        "shop": {
+            "da": "Start her hvis du vil forstå hvad butikken selv styrer lokalt bag disken.",
+            "sv": "Börja här om du vill förstå vad butiken själv styr lokalt bakom disken.",
+            "tr": "Dükkânın tezgâh arkasında yerel olarak neyi yönettiğini anlamak istiyorsan buradan başla.",
+            "ar": "ابدأ هنا إذا أردت فهم ما الذي يديره المحل محلياً خلف المنضدة.",
+            "ku": "Li vir dest pê bike heke tu dixwazî fam bikî dikan li pişt pêşxanê bi herêmî çi kontrol dike.",
+            "en": "Start here if you want to understand what the shop itself controls locally behind the counter.",
+        },
+        "payment_trust": {
+            "da": "Start her hvis du vil se betalings- eller tillidsgrænsen uden at foregive at P4P ejer mere end det gør.",
+            "sv": "Börja här om du vill se betal- eller tillitsgränsen utan att låtsas att P4P äger mer än det gör.",
+            "tr": "P4P'nin sahip olduğundan fazlasına sahipmiş gibi davranmadan ödeme ya da güven sınırını görmek istiyorsan buradan başla.",
+            "ar": "ابدأ هنا إذا أردت رؤية حدّ الدفع أو الثقة من دون الادعاء بأن P4P يملك أكثر مما يملكه فعلاً.",
+            "ku": "Li vir dest pê bike heke tu dixwazî sînorê dravdanê an baweriyê bibînî bêyî ku P4P zêdetir ji ya rastîn xwedî be.",
+            "en": "Start here if you want to see the payment or trust boundary without pretending P4P owns more than it does.",
+        },
+        "internal": {
+            "da": "Det her er et reference-spor. De egentlige interne mocks bliver holdt på GitHub og vises ikke i den offentlige site-læsning.",
+            "sv": "Det här är ett referensspår. De verkliga interna mockarna hålls på GitHub och visas inte i den offentliga sajt-läsningen.",
+            "tr": "Bu bir referans yoludur. Gerçek dahili mock'lar GitHub'da tutulur ve kamusal site okumasında gösterilmez.",
+            "ar": "هذا مسار مرجعي. الـ mockات الداخلية الحقيقية تُحفظ على GitHub ولا تظهر في القراءة العامة للموقع.",
+            "ku": "Ev rêyek referansê ye. Mockên navxweyî yên rastîn li GitHub têne girtin û di xwendina giştî ya malperê de nayên nîşandan.",
+            "en": "This is a reference lane. The real internal mocks stay on GitHub and are not shown in the public site reading path.",
+        },
+    }
     fallback = {
         "group": "internal",
         "title": public_field_text(entry.get("title", entry["module_id"]), locale),
@@ -3181,6 +3243,7 @@ def module_presentation(entry: dict, locale: str) -> dict[str, str]:
     }
     payload = dict(fallback)
     payload.update(MODULE_PRESENTATION.get(entry["module_id"], {}))
+    invitation = payload.get("invitation") or invitation_by_group.get(str(payload["group"]), invitation_by_group["internal"])
     return {
         "group": str(payload["group"]),
         "title": public_field_text(payload["title"], locale),
@@ -3189,6 +3252,7 @@ def module_presentation(entry: dict, locale: str) -> dict[str, str]:
         "owner_value": public_field_text(payload["owner_value"], locale),
         "touches": public_field_text(payload["touches"], locale),
         "not_owner": public_field_text(payload["not_owner"], locale),
+        "invitation": public_field_text(invitation, locale),
     }
 
 
@@ -3349,6 +3413,7 @@ def render_module_groups(
             </summary>
             <div class="module-body">
               <p class="module-owner-line"><strong>{escape(public_ui_text(PIZZA_MODULES_UI, "owner_prefix", locale))}</strong> {escape(presentation["owner_value"])}</p>
+              <p class="module-owner-line"><strong>{escape(public_ui_text(PIZZA_MODULES_UI, "start_here_if", locale))}</strong> {escape(presentation["invitation"])}</p>
               <dl>
                 <div><dt>{escape(public_ui_text(PIZZA_MODULES_UI, "touches", locale))}</dt><dd>{escape(presentation["touches"])}</dd></div>
                 <div><dt>{escape(public_ui_text(PIZZA_MODULES_UI, "does_not_own", locale))}</dt><dd>{escape(presentation["not_owner"])}</dd></div>
@@ -3360,6 +3425,8 @@ def render_module_groups(
           </details>"""
             )
 
+        if not items:
+            continue
         output.append(
             f"""        <section class="module-group">
           <div class="module-group-header">
@@ -3642,6 +3709,7 @@ def module_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, dict
             "module_id": escape(entry["module_id"]),
             "module_group_title": escape(public_field_text(group["title"], locale)),
             "module_group_intro": escape(public_field_text(group["intro"], locale)),
+            "module_invitation": escape(presentation["invitation"]),
             "module_data_access": escape(public_field_text(entry["data_access"], locale)),
             "module_read_next_html": render_module_read_next(entry, modules_by_id, locale=locale),
             "module_catalog_url": escape(localized_static_page_href("../", locale, default_locale="en")),
@@ -3654,6 +3722,9 @@ def module_page_html(site_data: dict, entry: dict, modules_by_id: dict[str, dict
             "brief_label_for_shop": escape(public_ui_text(PIZZA_PROVIDER_UI, "brief_label_for_shop", locale)),
             "fit_kicker": escape(public_localized_text({"da": "Hvor den passer", "sv": "Var den passar", "tr": "Nereye oturur", "ar": "أين يناسب", "ku": "Li ku tê cihkirin", "en": "Where it fits"}, locale)),
             "module_explainer": escape(public_localized_text({"da": "Den her side er P4P’s læsbare forklaring af ét modul. Den er lavet til at kunne forstås før du åbner det rå manifest.", "sv": "Den här sidan är P4P:s läsbara förklaring av en modul. Den är gjord för att kunna förstås innan du öppnar det råa manifestet.", "tr": "Bu sayfa, tek bir modülün okunabilir P4P açıklamasıdır. Ham manifesti açmadan önce anlaşılabilmesi için yapılmıştır.", "ar": "هذه الصفحة هي الشرح المقروء من P4P لوحدة واحدة. صُمّمت لكي تُفهم قبل أن تفتح الـ manifest الخام.", "ku": "Ev rûpel ravekirina xwendewar a P4P ji bo yek modulê ye. Ew hatiye çêkirin da ku berî vekirina manifesta xav were fêmkirin.", "en": "This page is the readable P4P explanation for one module. It is meant to be understandable before you open the raw manifest."}, locale)),
+            "invite_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "start_here_if", locale)),
+            "invite_title": escape(public_ui_text(PIZZA_MODULES_UI, "invite_title", locale)),
+            "invite_followup": escape(public_ui_text(PIZZA_MODULES_UI, "invite_followup", locale)),
             "touches_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "touches", locale)),
             "not_owner_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "does_not_own", locale)),
             "state_kicker": escape(public_ui_text(PIZZA_MODULES_UI, "current_state", locale)),
@@ -4312,6 +4383,8 @@ def build() -> None:
     modules = load_modules()
     providers = load_providers(modules)
     modules_by_id = {entry["module_id"]: entry for entry in modules}
+    remove_stale_detail_dirs(PUBLIC_ROOT / "modules", {entry["module_id"] for entry in modules})
+    remove_stale_detail_dirs(PUBLIC_ROOT / "providers", {entry["provider_id"] for entry in providers})
     write_text(
         PUBLIC_ROOT / "modules.json",
         json.dumps(module_catalog_payload(site_data, modules), indent=2) + "\n",

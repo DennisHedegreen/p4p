@@ -228,14 +228,14 @@ class P4PDevCleanupTests(unittest.TestCase):
                 "p4p.order.print",
                 "p4p.order.print.backup",
                 "p4p.payment.cash",
-                "p4p.payment.chaospay-mock",
-                "p4p.payment.godpay-mock",
                 "p4p.payment.mobilepay",
                 "p4p.pickup.board.basic",
                 "p4p.stock.basic",
                 "p4p.trust.cvr-basic",
             ],
         )
+        self.assertNotIn("p4p.payment.godpay-mock", module_ids)
+        self.assertNotIn("p4p.payment.chaospay-mock", module_ids)
         first_module = modules_payload["modules"][0]
         self.assertIn("module_page_url", first_module)
         self.assertIn("provider_page_url", first_module)
@@ -273,6 +273,7 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("Open simple module guide", modules_page)
         self.assertIn("Three practical ways into the module stack.", modules_page)
         self.assertIn("Open the current stack by role, not by raw id.", modules_page)
+        self.assertIn("internal mocks", modules_page)
         self.assertIn("Start with the customer side", modules_page)
         self.assertIn('href="p4p.menu.list/"', modules_page)
         self.assertIn('<html lang="da" dir="ltr">', modules_page_da)
@@ -343,6 +344,8 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("ما الغرض من صفحة المزوّد؟", providers_page_ar)
         self.assertIn("Simple online menu", module_page)
         self.assertIn("For a pizzeria", module_page)
+        self.assertIn("Why open this page now?", module_page)
+        self.assertIn("Start here if you want to see the customer-facing surface", module_page)
         self.assertIn("Back to module catalog", module_page)
         self.assertIn("Do not stop at one module page.", module_page)
         self.assertIn("See what happens after the order", module_page)
@@ -358,6 +361,8 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("افتح صفحة حالة الطلب", module_page_ar)
         self.assertIn('<html lang="ar" dir="rtl">', backup_print_module_page_ar)
         self.assertIn("مسار الطابعة الاحتياطية", backup_print_module_page_ar)
+        self.assertFalse((WORKSPACE_ROOT / "public/www/pizza4people/modules/p4p.payment.godpay-mock").exists())
+        self.assertFalse((WORKSPACE_ROOT / "public/www/pizza4people/modules/p4p.payment.chaospay-mock").exists())
         self.assertIn("افتح تنبيه SMS للمشغّل", backup_print_module_page_ar)
         self.assertIn('<html lang="ar" dir="rtl">', notify_sms_module_page_ar)
         self.assertIn("تنبيه SMS للمشغّل", notify_sms_module_page_ar)
@@ -1065,6 +1070,8 @@ class P4PDevCleanupTests(unittest.TestCase):
             "settle money, or act as merchant of record."
         )
         self.assertIn("Every current module manifest under `modules/` should have exactly one human-readable page in this directory.", index)
+        self.assertIn("The public website only shows the current public and pilot-near reading path.", index)
+        self.assertIn("Open this if...", index)
 
         for module_dir in sorted(path for path in module_root.iterdir() if path.is_dir()):
             module_payload = json.loads((module_dir / "module.json").read_text(encoding="utf-8"))

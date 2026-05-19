@@ -12,6 +12,14 @@ It is not proof that a module is safe for real restaurant use.
 
 The purpose is narrower: make every current module understandable to a new developer or operator without forcing them to inspect raw JSON first.
 
+GitHub is also where the internal mock modules stay visible on purpose.
+
+The public website only shows the current public and pilot-near reading path.
+
+If you only want that public human reading layer first, start at:
+
+- <https://pizza4people.com/modules/>
+
 If you are new to the whole module idea, start here first:
 
 - [`../MODULES-START-HERE.md`](../MODULES-START-HERE.md)
@@ -83,26 +91,26 @@ If you are a skeptical reviewer:
 
 ## Current Modules
 
-| Module | Family | Lane | Visibility | Runtime reading |
-| --- | --- | --- | --- | --- |
-| [`p4p.catalog.editor`](p4p.catalog.editor.md) | reference | operator | operator-only | Pilot-node operator catalog editor for local item truth and menu maintenance. |
-| [`p4p.catalog.import.ocr`](p4p.catalog.import.ocr.md) | reference | operator | operator-only | Optional draft OCR/scanned-menu helper beside the catalog editor. |
-| [`p4p.customer.status`](p4p.customer.status.md) | reference | public capability | public | Pilot-node customer order-status page/API. |
-| [`p4p.kitchen.screen`](p4p.kitchen.screen.md) | reference | operator | operator-only | Pilot-node operator order queue and status updater. |
-| [`p4p.menu.list`](p4p.menu.list.md) | reference | public capability | public | Pilot-node customer list menu. |
-| [`p4p.menu.photo-map`](p4p.menu.photo-map.md) | reference | public capability | public | Pilot-node paper-menu style clickable menu. |
-| [`p4p.notify.email`](p4p.notify.email.md) | planned | operator | operator-only | Placeholder notification manifest. |
-| [`p4p.notify.sms`](p4p.notify.sms.md) | planned | operator | operator-only | Placeholder phone/SMS fallback notification manifest. |
-| [`p4p.order.alert.basic`](p4p.order.alert.basic.md) | test | operator | operator-only | Builtin bell/light self-test lane for operator hardware checks. |
-| [`p4p.order.print`](p4p.order.print.md) | planned | operator | operator-only | Placeholder printer/POS handoff manifest. |
-| [`p4p.order.print.backup`](p4p.order.print.backup.md) | test | operator | operator-only | Builtin backup-printer or spool self-test lane. |
-| [`p4p.payment.cash`](p4p.payment.cash.md) | reference | public capability | public | Built-in pay-at-pickup/direct-payment adapter. |
-| [`p4p.payment.chaospay-mock`](p4p.payment.chaospay-mock.md) | internal-mock/planned | public capability | operator-only | Declared chaos mock; scenario executor intentionally not enabled yet. |
-| [`p4p.payment.godpay-mock`](p4p.payment.godpay-mock.md) | internal-mock | public capability | operator-only | Built-in random success/failure payment debug mock. |
-| [`p4p.payment.mobilepay`](p4p.payment.mobilepay.md) | planned | public capability | public | External-developer invitation for a MobilePay-style payment-adapter manifest. |
-| [`p4p.pickup.board.basic`](p4p.pickup.board.basic.md) | test | operator | operator-only | Builtin local pickup-board operator surface. |
-| [`p4p.stock.basic`](p4p.stock.basic.md) | reference | operator | operator-only | Pilot-node stock validation lane. |
-| [`p4p.trust.cvr-basic`](p4p.trust.cvr-basic.md) | planned | trust | trust-only | Placeholder trust-claim/CVR lookup manifest. |
+| Module | Family | Lane | Visibility | Runtime reading | Open this if... |
+| --- | --- | --- | --- | --- | --- |
+| [`p4p.catalog.editor`](p4p.catalog.editor.md) | reference | operator | operator-only | Pilot-node operator catalog editor for local item truth and menu maintenance. | you want to understand where the shop itself owns menu truth locally. |
+| [`p4p.catalog.import.ocr`](p4p.catalog.import.ocr.md) | reference | operator | operator-only | Optional draft OCR/scanned-menu helper beside the catalog editor. | you want to see how paper-menu intake stays draft-only before a human saves truth. |
+| [`p4p.customer.status`](p4p.customer.status.md) | reference | public capability | public | Pilot-node customer order-status page/API. | you want the customer follow-up side after a direct order has been sent. |
+| [`p4p.kitchen.screen`](p4p.kitchen.screen.md) | reference | operator | operator-only | Pilot-node operator order queue and status updater. | you want to see the kitchen-side state that drives customer status changes. |
+| [`p4p.menu.list`](p4p.menu.list.md) | reference | public capability | public | Pilot-node customer list menu. | you want to start from the plainest customer menu lane in the current proof. |
+| [`p4p.menu.photo-map`](p4p.menu.photo-map.md) | reference | public capability | public | Pilot-node paper-menu style clickable menu. | you want the more visual paper-menu-style customer surface beside the plain list menu. |
+| [`p4p.notify.email`](p4p.notify.email.md) | planned | operator | operator-only | Placeholder notification manifest. | you want to inspect one of the operator-side fallback alert directions, not the public customer loop. |
+| [`p4p.notify.sms`](p4p.notify.sms.md) | planned | operator | operator-only | Placeholder phone/SMS fallback notification manifest. | you want to inspect a harsher human fallback lane behind the main operator flow. |
+| [`p4p.order.alert.basic`](p4p.order.alert.basic.md) | test | operator | operator-only | Builtin bell/light self-test lane for operator hardware checks. | you want the smallest local alert lane for order-attention hardware. |
+| [`p4p.order.print`](p4p.order.print.md) | planned | operator | operator-only | Placeholder printer/POS handoff manifest. | you want to inspect the printer/POS handoff direction behind the queue. |
+| [`p4p.order.print.backup`](p4p.order.print.backup.md) | test | operator | operator-only | Builtin backup-printer or spool self-test lane. | you want to see what the operator fallback looks like when the first print lane is not enough. |
+| [`p4p.payment.cash`](p4p.payment.cash.md) | reference | public capability | public | Built-in pay-at-pickup/direct-payment adapter. | you want the live payment boundary explained without pretending P4P is a payment company. |
+| [`p4p.payment.chaospay-mock`](p4p.payment.chaospay-mock.md) | internal-mock/planned | public capability | operator-only | Declared chaos mock; scenario executor intentionally not enabled yet. | you are reviewing internal failure-testing only. This module stays on GitHub, not the public website. |
+| [`p4p.payment.godpay-mock`](p4p.payment.godpay-mock.md) | internal-mock | public capability | operator-only | Built-in random success/failure payment debug mock. | you are reviewing internal payment-debug scaffolding only. This module stays on GitHub, not the public website. |
+| [`p4p.payment.mobilepay`](p4p.payment.mobilepay.md) | planned | public capability | public | External-developer invitation for a MobilePay-style payment-adapter manifest. | you want to inspect a future adapter direction without reading it as a live payment claim. |
+| [`p4p.pickup.board.basic`](p4p.pickup.board.basic.md) | test | operator | operator-only | Builtin local pickup-board operator surface. | you want to see the local handoff layer between kitchen state and physical pickup. |
+| [`p4p.stock.basic`](p4p.stock.basic.md) | reference | operator | operator-only | Pilot-node stock validation lane. | you want to inspect how local stock checks can sit behind the direct ordering flow. |
+| [`p4p.trust.cvr-basic`](p4p.trust.cvr-basic.md) | planned | trust | trust-only | Placeholder trust-claim/CVR lookup manifest. | you want to inspect the future business-trust direction without confusing it with the current proof. |
 
 ## How To Read A Module Page
 
