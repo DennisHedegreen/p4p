@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "planned",
-  "description": "Connects a node identity claim to a Danish CVR lookup or trust claim.",
+  "description": {
+    "da": "Kobler et node-identitetsclaim til et dansk CVR-opslag eller trust-claim.",
+    "sv": "Kopplar ett node-identitetsanspråk till en dansk CVR-sökning eller trust-claim.",
+    "tr": "Bir node kimlik iddiasını Danimarka CVR sorgusuna ya da trust claim’e bağlar.",
+    "ar": "يربط ادعاء هوية node ببحث CVR دنماركي أو بادعاء ثقة.",
+    "ku": "Daxwaza nasnameya nodeyê bi lêgerîna Danîmarkî ya CVR an trust-claim ve girêdide.",
+    "en": "Connects a node identity claim to a Danish CVR lookup or trust claim."
+  },
   "visibility": "trust_only",
   "capabilities": ["lookup_cvr_claim", "emit_trust_claim"],
   "input_events": ["TRUST_CLAIM_REQUESTED", "NODE_IDENTITY_DECLARED"],
@@ -28,10 +35,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Connects a node identity claim to a Danish CVR lookup or trust claim.",
-    "data_access_summary": "Declared CVR/company identifiers and node public identity data.",
-    "trust_status": "planned trust module",
+    "function": {
+      "da": "Kobler et node-identitetsclaim til et dansk CVR-opslag eller trust-claim.",
+      "sv": "Kopplar ett node-identitetsanspråk till en dansk CVR-sökning eller trust-claim.",
+      "tr": "Bir node kimlik iddiasını Danimarka CVR sorgusuna ya da trust claim’e bağlar.",
+      "ar": "يربط ادعاء هوية node ببحث CVR دنماركي أو بادعاء ثقة.",
+      "ku": "Daxwaza nasnameya nodeyê bi lêgerîna Danîmarkî ya CVR an trust-claim ve girêdide.",
+      "en": "Connects a node identity claim to a Danish CVR lookup or trust claim."
+    },
+    "data_access_summary": {
+      "da": "Deklarerede CVR-/virksomhedsidentifikatorer og offentlige node-identitetsdata.",
+      "sv": "Deklarerade CVR-/företagsidentifikatorer och offentliga node-identitetsdata.",
+      "tr": "Beyan edilen CVR/şirket tanımlayıcıları ve kamusal node kimlik verisi.",
+      "ar": "معرّفات CVR/الشركة المعلنة وبيانات هوية node العامة.",
+      "ku": "Nasnavên CVR/şirketê yên hatine ragihandin û daneyên giştî yên nasnameya nodeyê.",
+      "en": "Declared CVR/company identifiers and node public identity data."
+    },
+    "trust_status": {
+      "da": "planlagt trust-modul",
+      "sv": "planerad trust-modul",
+      "tr": "planlanan güven modülü",
+      "ar": "وحدة ثقة مخططة",
+      "ku": "modula trustê ya plankirî",
+      "en": "planned trust module"
+    },
     "readiness": "planned",
-    "operator_status": "not enabled"
+    "operator_status": {
+      "da": "ikke aktiveret",
+      "sv": "inte aktiverad",
+      "tr": "etkin değil",
+      "ar": "غير مفعّل",
+      "ku": "ne çalak e",
+      "en": "not enabled"
+    }
   }
 }

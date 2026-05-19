@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Restaurant accepts cash or direct in-person payment outside the P4P protocol.",
+  "description": {
+    "da": "Restauranten accepterer kontant eller direkte fysisk betaling uden for P4P-protokollen.",
+    "sv": "Restaurangen accepterar kontanter eller direkt fysisk betalning utanför P4P-protokollet.",
+    "tr": "Restoran P4P protokolü dışında nakit ya da yüz yüze doğrudan ödeme kabul eder.",
+    "ar": "يقبل المطعم النقد أو الدفع المباشر حضورياً خارج بروتوكول P4P.",
+    "ku": "Restaurant li derveyî protokola P4P cash an dravdana rasterast a kesane qebûl dike.",
+    "en": "Restaurant accepts cash or direct in-person payment outside the P4P protocol."
+  },
   "visibility": "public",
   "capabilities": ["mark_pay_at_pickup", "report_payment_mode"],
   "input_events": ["PAYMENT_REQUIRED", "PAYMENT_FAILED"],
@@ -26,10 +33,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Marks a node as accepting cash payment at pickup or delivery.",
-    "data_access_summary": "Order total and fulfillment type. No card or account data.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Markerer en node som en der accepterer kontant betaling ved afhentning eller levering.",
+      "sv": "Markerar en nod som en som accepterar kontant betalning vid hämtning eller leverans.",
+      "tr": "Bir düğümü, teslim alma ya da teslimat sırasında nakit ödeme kabul eden olarak işaretler.",
+      "ar": "يعلّم العقدة على أنها تقبل الدفع النقدي عند الاستلام أو التسليم.",
+      "ku": "Nodeyê wek yekî ku dravdana cash dema wergirtinê an gihandinê qebûl dike nîşan dide.",
+      "en": "Marks a node as accepting cash payment at pickup or delivery."
+    },
+    "data_access_summary": {
+      "da": "Ordretotal og fulfillment-type. Ingen kort- eller kontodata.",
+      "sv": "Ordertotal och fulfillment-typ. Ingen kort- eller kontodata.",
+      "tr": "Sipariş toplamı ve fulfillment türü. Kart ya da hesap verisi yoktur.",
+      "ar": "إجمالي الطلب ونوع التسليم. لا توجد بيانات بطاقة أو حساب.",
+      "ku": "Tevahiya fermanê û cureya fulfillment. Dane ya kart an hesab tune ye.",
+      "en": "Order total and fulfillment type. No card or account data."
+    },
+    "trust_status": {
+      "da": "reference-manifest, usigneret provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifest, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manifesta referansê, providerê bê îmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "enabled in the demo node and executable in the pilot node when enabled"
+    "operator_status": {
+      "da": "slået til i demo-noden og kørbar i pilot-noden når den er aktiveret",
+      "sv": "aktiverad i demonoden och körbar i pilot-noden när den är aktiverad",
+      "tr": "demo düğümünde etkin ve etkinleştirildiğinde pilot düğümünde çalıştırılabilir",
+      "ar": "مفعّلة في عقدة العرض وقابلة للتشغيل في عقدة التجريب عندما تُفعّل",
+      "ku": "di demo node de çalak e û dema çalak bibe di pilot node de dikare were xebitandin",
+      "en": "enabled in the demo node and executable in the pilot node when enabled"
+    }
   }
 }

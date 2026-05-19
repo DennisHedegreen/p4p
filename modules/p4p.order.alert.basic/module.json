@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "test",
-  "description": "Triggers a local bell, buzzer, or light when a new order or hardware failure needs attention.",
+  "description": {
+    "da": "Udløser en lokal klokke, buzzer eller lampe når en ny ordre eller hardwarefejl kræver opmærksomhed.",
+    "sv": "Utlöser en lokal klocka, summer eller lampa när en ny beställning eller hårdvarufel kräver uppmärksamhet.",
+    "tr": "Yeni bir sipariş ya da donanım arızası dikkat gerektirdiğinde yerel bir zil, buzzer ya da ışık tetikler.",
+    "ar": "يفعّل جرساً أو صفّارة أو ضوءاً محلياً عندما يحتاج طلب جديد أو عطل عتاد إلى انتباه.",
+    "ku": "Demê ku fermanek nû an çewtiyek hardware hewceyê baldariyê be zeng, buzzer an ronahiyek herêmî dixebitîne.",
+    "en": "Triggers a local bell, buzzer, or light when a new order or hardware failure needs attention."
+  },
   "visibility": "operator_only",
   "capabilities": ["trigger_local_alert", "report_status"],
   "input_events": [
@@ -38,10 +45,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Triggers a local bell, buzzer, or light when an order or hardware problem needs fast attention.",
-    "data_access_summary": "Order summary and configured alert target.",
-    "trust_status": "reference self-test lane",
+    "function": {
+      "da": "Udløser en lokal klokke, buzzer eller lampe når en ordre eller hardwarefejl kræver hurtig opmærksomhed.",
+      "sv": "Utlöser en lokal klocka, summer eller lampa när en beställning eller hårdvaruproblem kräver snabb uppmärksamhet.",
+      "tr": "Bir sipariş ya da donanım sorunu hızlı dikkat gerektirdiğinde yerel bir zil, buzzer ya da ışık tetikler.",
+      "ar": "يفعّل جرساً أو صفّارة أو ضوءاً محلياً عندما تحتاج مشكلة طلب أو عتاد إلى انتباه سريع.",
+      "ku": "Demê ku pirsgirêkek ferman an hardware hewceyê baldariya zû be zeng, buzzer an ronahiyek herêmî dixebitîne.",
+      "en": "Triggers a local bell, buzzer, or light when an order or hardware problem needs fast attention."
+    },
+    "data_access_summary": {
+      "da": "Ordresammendrag og konfigureret alarmmål.",
+      "sv": "Ordersammanfattning och konfigurerat varningsmål.",
+      "tr": "Sipariş özeti ve yapılandırılmış uyarı hedefi.",
+      "ar": "ملخص الطلب وهدف التنبيه المهيأ.",
+      "ku": "Kurteya fermanê û armanca hişyariyê ya mîhengkirî.",
+      "en": "Order summary and configured alert target."
+    },
+    "trust_status": {
+      "da": "reference self-test-lane",
+      "sv": "referens självtest-lane",
+      "tr": "referans öz-test hattı",
+      "ar": "مسار اختبار ذاتي مرجعي",
+      "ku": "lane-ya self-test a referansê",
+      "en": "reference self-test lane"
+    },
     "readiness": "test",
-    "operator_status": "builtin operator self-test lane when enabled and configured"
+    "operator_status": {
+      "da": "indbygget operator-self-test-lane når den er aktiveret og konfigureret",
+      "sv": "inbyggd operatörs-självtest-lane när den är aktiverad och konfigurerad",
+      "tr": "etkinleştirildiğinde ve yapılandırıldığında yerleşik operatör öz-test hattı",
+      "ar": "مسار اختبار ذاتي مدمج للمشغّل عندما يكون مفعّلاً ومهيأً",
+      "ku": "dema ku were çalakirin û mîhengkirin lane-ya self-test a operatorê ya avakirî ye",
+      "en": "builtin operator self-test lane when enabled and configured"
+    }
   }
 }

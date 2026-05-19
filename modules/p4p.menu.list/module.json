@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Customer-facing list menu built from the node's active structured catalog items.",
+  "description": {
+    "da": "Kundevendt listemenu bygget fra nodens aktive strukturerede katalogvarer.",
+    "sv": "Kundvänd listmeny byggd från nodens aktiva strukturerade katalogvaror.",
+    "tr": "Düğümün aktif yapılandırılmış katalog öğelerinden kurulan müşteri dönük liste menüsü.",
+    "ar": "قائمة موجّهة للعميل مبنية من عناصر الكاتالوغ المنظّمة والنشطة على العقدة.",
+    "ku": "Menuya lîsteyê ya ji bo mişterî ku ji tiştên katalogê yên çalak û sazûmanî yên nodeyê hatiye çêkirin.",
+    "en": "Customer-facing list menu built from the node's active structured catalog items."
+  },
   "visibility": "public",
   "capabilities": [
     "view_active_menu_items",
@@ -40,10 +47,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Shows a classic customer menu list from the active catalog and posts ordinary order requests to the node.",
-    "data_access_summary": "Active item ids, names, descriptions, prices, and categories only. It does not own prices, inventory, payment, or operator data.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Viser en klassisk kundemenuliste fra det aktive katalog og sender almindelige ordreanmodninger til noden.",
+      "sv": "Visar en klassisk kundmenylista från den aktiva katalogen och skickar vanliga beställningsförfrågningar till noden.",
+      "tr": "Aktif katalogdan klasik bir müşteri menü listesi gösterir ve düğüme sıradan sipariş istekleri gönderir.",
+      "ar": "يعرض قائمة طعام كلاسيكية للعميل من الكاتالوغ النشط ويرسل طلبات الشراء العادية إلى العقدة.",
+      "ku": "Ji kataloga çalak menuya klasîk a mişterî nîşan dide û daxwazên fermana asayî dişîne nodeyê.",
+      "en": "Shows a classic customer menu list from the active catalog and posts ordinary order requests to the node."
+    },
+    "data_access_summary": {
+      "da": "Kun aktive vare-id’er, navne, beskrivelser, priser og kategorier. Den ejer ikke priser, lager, betaling eller operatørdata.",
+      "sv": "Endast aktiva varu-id:n, namn, beskrivningar, priser och kategorier. Den äger inte priser, lager, betalning eller operatörsdata.",
+      "tr": "Yalnızca aktif ürün id’leri, adlar, açıklamalar, fiyatlar ve kategoriler. Fiyatlara, stoğa, ödemeye ya da operatör verilerine sahip değildir.",
+      "ar": "معرّفات العناصر النشطة والأسماء والأوصاف والأسعار والفئات فقط. لا تملك الأسعار أو المخزون أو الدفع أو بيانات المشغّل.",
+      "ku": "Tenê nasnavên tiştan yên çalak, nav, danasîn, biha û kategorî. Ew ne xwediyê bihayan, stokê, dravdanê an daneyên operatorê ye.",
+      "en": "Active item ids, names, descriptions, prices, and categories only. It does not own prices, inventory, payment, or operator data."
+    },
+    "trust_status": {
+      "da": "reference-manifest, usigneret provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifest, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manifesta referansê, providerê bê îmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "available as the pilot-node customer menu list route when enabled"
+    "operator_status": {
+      "da": "tilgængelig som pilot-node-ruten for kundemenulisten når den er slået til",
+      "sv": "tillgänglig som pilot-node-rutten för kundmenylistan när den är aktiverad",
+      "tr": "etkinleştirildiğinde pilot-node müşteri menü listesi rotası olarak kullanılabilir",
+      "ar": "متاحة كمسار قائمة العميل في الـ pilot-node عندما تكون مفعّلة",
+      "ku": "dema çalak be wek rêça lîsteya menûya mişterî ya pilot-node heye",
+      "en": "available as the pilot-node customer menu list route when enabled"
+    }
   }
 }

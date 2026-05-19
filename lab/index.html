@@ -1,168 +1,159 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>P4P Lab</title>
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f4f6f5;
-        --panel: #ffffff;
-        --ink: #12201d;
-        --muted: #566662;
-        --line: #cfd8d5;
-        --soft: #eef4f2;
-        --accent: #00796b;
-        --accent-strong: #00594f;
-        --warn: #9b5c00;
-        --bad: #9b1c1c;
-        --terminal: #101819;
+        color-scheme: dark;
+        --bg: #071119;
+        --panel: #0d1a24;
+        --panel-2: #132433;
+        --line: #294458;
+        --text: #e6f0f6;
+        --muted: #8ea6b7;
+        --good: #89e2b0;
+        --warn: #ffd166;
+        --bad: #ff7f7f;
+        --accent: #6dd3ff;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--ink);
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #08131c, #071119 35%);
+        color: var(--text);
       }
       main {
-        max-width: 1360px;
+        max-width: 1680px;
         margin: 0 auto;
-        padding: 18px;
+        padding: 28px;
       }
       header {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 16px;
-        align-items: end;
-        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 20px;
+        margin-bottom: 22px;
       }
-      h1, h2, h3, p {
+      h1, h2, h3 {
         margin: 0;
       }
       h1 {
-        font-size: 1.8rem;
-        line-height: 1.05;
+        font-size: 2rem;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin-bottom: 10px;
+      }
+      p {
+        margin: 0;
       }
       .muted {
         color: var(--muted);
       }
-      .layout {
+      .error {
+        color: var(--bad);
+        margin-bottom: 16px;
+      }
+      .section-grid {
         display: grid;
-        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 18px;
+        margin-bottom: 18px;
       }
-      @media (min-width: 1080px) {
-        .layout {
-          grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
-          align-items: start;
-        }
-      }
-      .panel, .scenario, .service {
-        background: var(--panel);
+      .panel, .card, .service {
+        background: rgba(13, 26, 36, 0.95);
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: 16px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
       }
       .panel {
-        padding: 14px;
+        padding: 18px;
+      }
+      .card, .service {
+        padding: 16px;
       }
       .stack {
         display: grid;
-        gap: 10px;
+        gap: 14px;
       }
-      .scenario, .service {
-        padding: 12px;
-      }
-      .scenario header, .service header {
+      .card header, .service header {
         display: flex;
         justify-content: space-between;
+        gap: 16px;
         align-items: start;
-        gap: 10px;
-        margin: 0 0 10px;
+        margin-bottom: 10px;
       }
-      button, a.button {
-        min-height: 38px;
-        border: 1px solid var(--accent);
-        border-radius: 7px;
-        background: var(--accent);
-        color: #fff;
-        cursor: pointer;
-        font: inherit;
-        font-weight: 700;
-        padding: 8px 11px;
-        text-decoration: none;
-        text-align: center;
-      }
-      button.secondary, a.button.secondary {
-        background: #fff;
-        color: var(--accent-strong);
-      }
-      button.danger {
-        border-color: var(--bad);
-        color: var(--bad);
-      }
-      .actions, .links {
+      .meta, .tags {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-top: 10px;
+        margin: 10px 0;
       }
       .pill {
-        display: inline-flex;
-        align-items: center;
-        min-height: 24px;
         border-radius: 999px;
-        background: var(--soft);
+        border: 1px solid var(--line);
+        padding: 3px 9px;
+        font-size: 0.78rem;
         color: var(--muted);
-        font-size: 0.82rem;
-        font-weight: 700;
-        padding: 2px 8px;
       }
       .pill.ok {
-        background: #e8f6ef;
-        color: var(--accent-strong);
-      }
-      .pill.bad {
-        background: #fbeaea;
-        color: var(--bad);
+        color: var(--good);
+        border-color: rgba(137, 226, 176, 0.4);
       }
       .pill.warn {
-        background: #fff3d8;
         color: var(--warn);
+        border-color: rgba(255, 209, 102, 0.35);
       }
-      .meta {
+      .pill.bad {
+        color: var(--bad);
+        border-color: rgba(255, 127, 127, 0.35);
+      }
+      .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin: 8px 0;
+        gap: 10px;
+        margin-top: 12px;
       }
-      .command, .terminal, pre {
-        overflow: auto;
-        border-radius: 8px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 0.82rem;
-        line-height: 1.45;
-        white-space: pre-wrap;
+      button, a.button {
+        appearance: none;
+        border: 1px solid rgba(109, 211, 255, 0.32);
+        background: rgba(109, 211, 255, 0.08);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        text-decoration: none;
+        font: inherit;
       }
-      .command {
-        background: var(--soft);
-        border: 1px solid var(--line);
-        padding: 9px;
-        color: #21312d;
+      button.secondary, a.button.secondary {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--line);
       }
-      .terminal {
-        min-height: 110px;
-        max-height: 260px;
-        background: var(--terminal);
-        color: #d7ebe6;
-        padding: 10px;
+      button.danger {
+        border-color: rgba(255, 127, 127, 0.32);
+        background: rgba(255, 127, 127, 0.08);
       }
       details {
         margin-top: 10px;
       }
       summary {
         cursor: pointer;
-        font-weight: 700;
+        color: var(--accent);
+      }
+      .command, .terminal, .run-json {
+        margin: 8px 0 0;
+        background: #08131b;
+        border-radius: 12px;
+        padding: 12px;
+        overflow: auto;
+        font: 0.85rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+        border: 1px solid rgba(255, 255, 255, 0.04);
       }
       .link-list {
         display: grid;
@@ -170,23 +161,138 @@
         margin-top: 10px;
       }
       .link-row {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 2px;
-        border-left: 3px solid var(--line);
-        padding-left: 9px;
       }
       .link-row a {
-        color: var(--accent-strong);
-        font-weight: 750;
+        color: var(--accent);
+        text-decoration: none;
       }
-      .error {
-        margin: 0 0 12px;
-        color: var(--bad);
-        font-weight: 700;
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 2fr 1.2fr;
+        gap: 18px;
       }
-      @media (max-width: 760px) {
-        header {
+      .section-note {
+        margin-top: 8px;
+        margin-bottom: 14px;
+      }
+      ul {
+        padding-left: 18px;
+        margin: 10px 0 0;
+      }
+      .run-summary {
+        display: grid;
+        gap: 6px;
+      }
+      .top-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      input, select, textarea {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #08131b;
+        color: var(--text);
+        padding: 10px 12px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 84px;
+        resize: vertical;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+      }
+      .form-grid .full {
+        grid-column: 1 / -1;
+      }
+      .builder-block {
+        display: grid;
+        gap: 8px;
+      }
+      .builder-rows {
+        display: grid;
+        gap: 8px;
+      }
+      .builder-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: end;
+      }
+      .builder-row.dual {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+      }
+      .builder-row.quad {
+        grid-template-columns:
+          minmax(0, 1fr)
+          minmax(0, 1fr)
+          minmax(0, 1fr)
+          minmax(0, 1fr)
+          auto;
+      }
+      .builder-row button {
+        white-space: nowrap;
+      }
+      .wizard {
+        display: grid;
+        gap: 14px;
+      }
+      .wizard-step {
+        border: 1px solid rgba(109, 211, 255, 0.14);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(8, 19, 27, 0.55);
+      }
+      .wizard-step h3 {
+        font-size: 0.98rem;
+        margin-bottom: 4px;
+      }
+      .wizard-help {
+        color: var(--muted);
+        font-size: 0.92rem;
+        margin-bottom: 12px;
+      }
+      .preview-panel {
+        border: 1px dashed rgba(109, 211, 255, 0.28);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(109, 211, 255, 0.04);
+      }
+      .preview-panel h3 {
+        font-size: 0.95rem;
+        margin-bottom: 6px;
+      }
+      .preview-lines {
+        display: grid;
+        gap: 8px;
+      }
+      .preview-line strong {
+        color: var(--text);
+      }
+      @media (max-width: 1100px) {
+        .grid-2 {
           grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 720px) {
+        main {
+          padding: 18px;
+        }
+        header {
+          flex-direction: column;
         }
         .actions button, .actions a.button {
           width: 100%;
@@ -199,30 +305,333 @@
       <header>
         <div>
           <h1>P4P Lab</h1>
-          <p class="muted">Config-driven local test panel. Scenarios, commands, links, and explanations come from <code>lab/scenarios.json</code>.</p>
+          <p class="muted">Seed-driven local controller for registries, node templates, persistent node instances, customer fixtures, and repeatable flow runs from <code>lab/scenarios.json</code> plus local lab state.</p>
         </div>
-        <button class="secondary" id="refresh">Refresh</button>
+        <div class="top-links">
+          <a class="button secondary" href="/nodes">Open Nodes room</a>
+          <a class="button secondary" href="/runs">Open Runs room</a>
+          <a class="button secondary" href="/control">Open Control Rooms</a>
+          <a class="button secondary" href="/topology">Open Topology page</a>
+          <a class="button secondary" href="/servers">Open Servers page</a>
+          <button class="secondary" id="refresh">Refresh</button>
+        </div>
       </header>
 
       <p class="error" id="error" hidden></p>
 
-      <div class="layout">
-        <section class="panel">
-          <h2>Scenarios</h2>
-          <p class="muted">Start a complete local stack, or use a single configured service.</p>
-          <div class="stack" id="scenarios"></div>
-        </section>
+      <div class="grid-2">
+        <div class="stack">
+          <section class="panel">
+            <h2>Infrastructure</h2>
+            <p class="muted section-note">Primary, secondary, and backup registries are real local processes. Start or stop them independently.</p>
+            <div class="stack" id="infrastructure"></div>
+          </section>
 
-        <section class="panel">
-          <h2>Services</h2>
-          <p class="muted">Each service shows command, health, links, and latest terminal output.</p>
-          <div class="stack" id="services"></div>
-        </section>
+          <section class="panel">
+            <h2>Node Templates</h2>
+            <p class="muted section-note">Seeded node shapes. These are the reusable local templates the lab ships with.</p>
+            <div class="stack" id="templates"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Node Instances</h2>
+            <p class="muted section-note">Persistent local node records. Seeded instances and generated instances are both launchable through their own instance routes when they have ports and derived surfaces.</p>
+            <form id="instance-form" class="stack">
+              <div class="wizard">
+                <section class="wizard-step">
+                  <h3>Step 1 · Choose the node seed</h3>
+                  <p class="wizard-help">Start from one shipped node template and give the local lane a remembered id before you worry about deeper runtime shape.</p>
+                  <div class="form-grid">
+                    <div>
+                      <label for="instance-template">Template</label>
+                      <select id="instance-template" name="template_id"></select>
+                    </div>
+                    <div>
+                      <label for="instance-id">Instance id</label>
+                      <input id="instance-id" name="instance_id" placeholder="custom-pizza-lab-001" />
+                    </div>
+                    <div class="full">
+                      <label for="instance-title">Title</label>
+                      <input id="instance-title" name="title" placeholder="Custom Pizza Lab Instance" />
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 2 · Say why this lane exists</h3>
+                  <p class="wizard-help">Keep the local meaning visible before you start editing categories, modules, or topology later.</p>
+                  <div class="form-grid">
+                    <div class="full">
+                      <label for="instance-description">Description</label>
+                      <textarea id="instance-description" name="description" placeholder="Saved draft for a future node instance."></textarea>
+                    </div>
+                    <div class="full">
+                      <label for="instance-notes">Notes</label>
+                      <textarea id="instance-notes" name="notes" placeholder="Optional local notes for this instance."></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="preview-panel" id="instance-create-preview">
+                  <h3>Node draft preview</h3>
+                  <div class="preview-lines"></div>
+                </section>
+              </div>
+              <div class="actions">
+                <button type="submit">Create launchable instance</button>
+              </div>
+            </form>
+            <div class="stack" id="instances"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Customer Surfaces</h2>
+            <p class="muted section-note">Real public shop surfaces for testing the whole pizzeria lane: menu, order, and public order-status routes.</p>
+            <div class="stack" id="customer-surfaces"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Customer Fixtures</h2>
+            <p class="muted section-note">HTTP-driven synthetic customer actors. They hit the real menu, order, and status endpoints.</p>
+            <form id="fixture-form" class="stack" style="margin-bottom:14px;">
+              <div class="wizard">
+                <section class="wizard-step">
+                  <h3>Step 1 · Name the fixture</h3>
+                  <p class="wizard-help">Give the test a readable local identity. This stays in local lab state and makes later flow-building easier.</p>
+                  <div class="form-grid">
+                    <div>
+                      <label for="fixture-id">Fixture id</label>
+                      <input id="fixture-id" name="instance_id" placeholder="local-pizza-fixture-001" />
+                    </div>
+                    <div>
+                      <label for="fixture-title">Title</label>
+                      <input id="fixture-title" name="title" placeholder="Local pizza pickup fixture" />
+                    </div>
+                    <div class="full">
+                      <label for="fixture-description">Description</label>
+                      <input id="fixture-description" name="description" placeholder="Runs a local pickup order against a chosen test node." />
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 2 · Choose the target lane</h3>
+                  <p class="wizard-help">Pick the node this synthetic customer should hit and which public menu surface key the fixture conceptually belongs to.</p>
+                  <div class="form-grid">
+                    <div>
+                      <label for="fixture-target-ref">Target node</label>
+                      <select id="fixture-target-ref" name="target_ref" data-builder-input="fixture_target"></select>
+                    </div>
+                    <div>
+                      <label for="fixture-menu-surface">Menu surface key</label>
+                      <input id="fixture-menu-surface" name="menu_surface" value="list_menu" placeholder="list_menu" />
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 3 · Describe the customer</h3>
+                  <p class="wizard-help">This is the human-facing order actor: who is ordering, how they want the order, and any short note.</p>
+                  <div class="form-grid">
+                    <div>
+                      <label for="fixture-customer-name">Customer name</label>
+                      <input id="fixture-customer-name" name="customer_name" placeholder="Anna Hansen" />
+                    </div>
+                    <div>
+                      <label for="fixture-customer-contact">Customer contact</label>
+                      <input id="fixture-customer-contact" name="customer_contact" placeholder="+4512345678" />
+                    </div>
+                    <div>
+                      <label for="fixture-fulfillment">Fulfillment</label>
+                      <select id="fixture-fulfillment" name="fulfillment">
+                        <option value="pickup">pickup</option>
+                        <option value="delivery">delivery</option>
+                      </select>
+                    </div>
+                    <div class="full">
+                      <label for="fixture-note">Order note</label>
+                      <input id="fixture-note" name="note" placeholder="No onions" />
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 4 · Build the order</h3>
+                  <p class="wizard-help">Add the menu items the synthetic customer should place. Keep it small and legible; the goal is test clarity, not cart complexity.</p>
+                  <div class="builder-block">
+                    <div class="builder-rows" data-builder-kind="fixture_items"></div>
+                    <div class="actions">
+                      <button type="button" class="secondary" data-add-builder-row="fixture_items">Add order item</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 5 · Define the expected result</h3>
+                  <p class="wizard-help">Say what counts as success. You can keep polling on for a richer status truth or turn it off for fast order smoke tests.</p>
+                  <div class="form-grid">
+                    <div>
+                      <label for="fixture-expected-accepted">Expected accepted</label>
+                      <select id="fixture-expected-accepted" name="expected_accepted">
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="fixture-final-status">Expected final status</label>
+                      <input id="fixture-final-status" name="final_status" placeholder="received" />
+                    </div>
+                    <div>
+                      <label for="fixture-poll-enabled">Poll status</label>
+                      <select id="fixture-poll-enabled" name="poll_enabled">
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="fixture-poll-attempts">Poll attempts</label>
+                      <input id="fixture-poll-attempts" name="poll_attempts" type="number" min="1" max="20" value="4" />
+                    </div>
+                    <div>
+                      <label for="fixture-poll-interval">Poll interval ms</label>
+                      <input id="fixture-poll-interval" name="poll_interval_ms" type="number" min="0" max="30000" value="250" />
+                    </div>
+                  </div>
+                </section>
+                <section class="preview-panel" id="fixture-preview">
+                  <h3>Fixture preview</h3>
+                  <div class="preview-lines"></div>
+                </section>
+              </div>
+              <div class="actions">
+                <button type="submit">Create local fixture</button>
+              </div>
+            </form>
+            <div class="stack" id="fixtures"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Flow Scenarios</h2>
+            <p class="muted section-note">Composed local test flows: infrastructure + node profiles + synthetic customer runs + explicit checks.</p>
+            <form id="flow-form" class="stack" style="margin-bottom:14px;">
+              <div class="wizard">
+                <section class="wizard-step">
+                  <h3>Step 1 · Name the flow</h3>
+                  <p class="wizard-help">Treat a flow as a saved local test recipe. Give it a stable id and a human title so you can reuse it later.</p>
+                  <div class="form-grid">
+                    <div>
+                      <label for="flow-id">Flow id</label>
+                      <input id="flow-id" name="instance_id" placeholder="local-pizza-smoke-001" />
+                    </div>
+                    <div>
+                      <label for="flow-title">Title</label>
+                      <input id="flow-title" name="title" placeholder="Local pizza smoke" />
+                    </div>
+                    <div class="full">
+                      <label for="flow-description">Description</label>
+                      <input id="flow-description" name="description" placeholder="Starts selected services, starts selected nodes, and runs selected fixtures." />
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 2 · Choose infrastructure</h3>
+                  <p class="wizard-help">Pick the local services the flow should ensure are running before anything else happens.</p>
+                  <div class="builder-block">
+                    <div class="builder-rows" data-builder-kind="services"></div>
+                    <div class="actions">
+                      <button type="button" class="secondary" data-add-builder-row="services">Add service</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 3 · Choose node targets</h3>
+                  <p class="wizard-help">Pick the actual restaurant lanes this flow depends on. These can be shipped profiles or generated node instances.</p>
+                  <div class="builder-block">
+                    <div class="builder-rows" data-builder-kind="node_refs"></div>
+                    <div class="actions">
+                      <button type="button" class="secondary" data-add-builder-row="node_refs">Add node target</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 4 · Choose customer runs</h3>
+                  <p class="wizard-help">Attach the customer fixtures this flow should perform. You can override the target node per run if needed.</p>
+                  <div class="builder-block">
+                    <div class="builder-rows" data-builder-kind="fixture_runs"></div>
+                    <div class="actions">
+                      <button type="button" class="secondary" data-add-builder-row="fixture_runs">Add fixture run</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 5 · Define checks</h3>
+                  <p class="wizard-help">Checks are the explicit local success contract for the flow. Refresh the suggested checks or keep your own manual truth.</p>
+                  <div class="builder-block">
+                    <div class="builder-rows" data-builder-kind="checks"></div>
+                    <div class="actions">
+                      <button type="button" class="secondary" data-sync-flow-checks="true">Refresh suggested checks</button>
+                      <button type="button" class="secondary" data-add-builder-row="checks">Add manual check</button>
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 6 · Keep local notes</h3>
+                  <p class="wizard-help">Use notes for the human meaning of the flow: what it is proving, what you expect to learn, or what might break.</p>
+                  <div class="form-grid">
+                    <div class="full">
+                      <label for="flow-notes">Notes</label>
+                      <textarea id="flow-notes" name="notes" placeholder="One note per line"></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="preview-panel" id="flow-preview">
+                  <h3>Flow preview</h3>
+                  <div class="preview-lines"></div>
+                </section>
+              </div>
+              <div class="actions">
+                <button type="submit">Create local flow</button>
+              </div>
+            </form>
+            <div class="stack" id="flows"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Legacy Proof</h2>
+            <p class="muted section-note">Classic proof lanes kept for compatibility and historical checks. No longer the main workflow.</p>
+            <div class="stack" id="legacy"></div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="panel">
+            <h2>Recent Runs</h2>
+            <p class="muted section-note">Newest fixture and flow results live in memory only for this local lab session.</p>
+            <div class="preview-panel" id="runs-summary" style="margin-bottom:14px;">
+              <h3>What the recent runs say</h3>
+              <div class="preview-lines"></div>
+            </div>
+            <div class="stack" id="runs"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Services &amp; Logs</h2>
+            <p class="muted section-note">Raw process truth: command, cwd, health JSON, and terminal output.</p>
+            <div class="stack" id="services"></div>
+          </section>
+        </div>
       </div>
     </main>
 
     <script>
-      let scenarioData = { scenarios: [], services: {} };
+      let labData = {
+        services: {},
+        registry_profiles: [],
+        node_templates: [],
+        node_instances: [],
+        node_profiles: [],
+        customer_fixtures: [],
+        customer_fixture_instances: [],
+        flow_scenarios: [],
+        flow_scenario_instances: [],
+        legacy_scenarios: []
+      };
+      let statusData = { services: [] };
+      let runData = { runs: [], summary: {} };
 
       async function api(url, options = {}) {
         const response = await fetch(url, {
@@ -265,34 +674,1515 @@
         `;
       }
 
-      function renderScenario(scenario) {
-        const serviceDefs = scenario.services
-          .map((name) => scenarioData.services[name])
-          .filter(Boolean);
+      function formatListForTextarea(items) {
+        return (items || []).join("\n");
+      }
+
+      function formatMenuSeedForTextarea(menuSeed) {
+        return JSON.stringify(menuSeed || { items: [] }, null, 2);
+      }
+
+      function flowServiceOptions() {
+        return Object.values(labData.services || {})
+          .map((service) => ({
+            value: service.name,
+            label: `${service.name} (${service.kind || "service"})`
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      }
+
+      function flowCheckKindOptions() {
+        return [
+          { value: "service_usable", label: "Service usable" },
+          { value: "service_running", label: "Service running" },
+          { value: "stop_service", label: "Stop service" },
+          { value: "service_stopped", label: "Service stopped" },
+          { value: "fixture_succeeded", label: "Fixture succeeded" },
+        ];
+      }
+
+      function flowTargetOptions() {
+        const templateList = (labData.node_templates && labData.node_templates.length) ? labData.node_templates : (labData.node_profiles || []);
+        const options = [];
+        const seen = new Set();
+        for (const profile of templateList) {
+          options.push({
+            value: profile.id,
+            label: `${profile.title} (${profile.id})`,
+          });
+          seen.add(profile.id);
+        }
+        for (const instance of (labData.node_instances || [])) {
+          if (seen.has(instance.id)) continue;
+          options.push({
+            value: instance.id,
+            label: `${instance.title} (${instance.id})`,
+          });
+        }
+        return options.sort((a, b) => a.label.localeCompare(b.label));
+      }
+
+      function flowTargetData(targetRef) {
+        if (!targetRef) return null;
+        const templateList = (labData.node_templates && labData.node_templates.length) ? labData.node_templates : (labData.node_profiles || []);
+        for (const profile of templateList) {
+          if (profile.id === targetRef) return profile;
+        }
+        for (const instance of (labData.node_instances || [])) {
+          if (instance.id === targetRef) return instance;
+        }
+        return null;
+      }
+
+      function nodeTemplateData(templateId) {
+        if (!templateId) return null;
+        const templateList = (labData.node_templates && labData.node_templates.length) ? labData.node_templates : (labData.node_profiles || []);
+        return templateList.find((template) => template.id === templateId) || null;
+      }
+
+      function fixtureData(fixtureId) {
+        if (!fixtureId) return null;
+        return [...(labData.customer_fixtures || []), ...(labData.customer_fixture_instances || [])]
+          .find((fixture) => fixture.id === fixtureId) || null;
+      }
+
+      function targetOwnerStory(target) {
+        if (!target) return "No target owner chosen yet";
+        if (target.owner_story) return target.owner_story;
+        if (target.generated || target.kind === "node_instance") {
+          return `Generated node instance ${target.title || target.id}`;
+        }
+        return `Seeded node template ${target.title || target.id}`;
+      }
+
+      function targetSurfaceKey(target, preferredKey = "") {
+        if (!target) return preferredKey || "public_shop";
+        if (preferredKey && target.customer_urls && target.customer_urls[preferredKey]) {
+          return preferredKey;
+        }
+        return target.public_surface_key || preferredKey || "public_shop";
+      }
+
+      function targetSurfaceStory(target, preferredKey = "") {
+        if (!target) return "No public/customer layer chosen yet";
+        const surfaceKey = targetSurfaceKey(target, preferredKey);
+        const parts = [surfaceKeyLabel(surfaceKey)];
+        if (target.order_mode) {
+          parts.push(`mode ${target.order_mode}`);
+        }
+        return parts.join(" · ");
+      }
+
+      function targetRegistryStory(target) {
+        if (!target) return "No registry path chosen yet";
+        const registryTargets = (target.registry_targets || []).filter(Boolean);
+        const visibilityExpectations = (target.visibility_expectations || []).filter(Boolean);
+        const announce = registryTargets.length ? registryTargets.join(", ") : "no announce lanes";
+        const visible = visibilityExpectations.length ? visibilityExpectations.join(", ") : "no visibility lanes";
+        return `Announces ${announce}; visible through ${visible}`;
+      }
+
+      function renderStaticPreviewLines(lines) {
         return `
-          <article class="scenario">
+          <div class="preview-lines">
+            ${lines.map((line) => `
+              <div class="preview-line">
+                <strong>${escapeHtml(line.label)}</strong>
+                <span>${escapeHtml(line.value)}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function distinctSummary(values, fallback = "Nothing selected yet") {
+        const cleaned = [...new Set((values || []).filter(Boolean))];
+        return summarizeList(cleaned, fallback);
+      }
+
+      function runOwnerStories(run) {
+        const stories = [];
+        if (run.owner_story) stories.push(run.owner_story);
+        for (const target of (run.resolved_targets || [])) {
+          if (target && target.owner_story) stories.push(target.owner_story);
+        }
+        return [...new Set(stories.filter(Boolean))];
+      }
+
+      function runSurfaceLabels(run) {
+        const labels = [];
+        if (run.public_surface_key) labels.push(surfaceKeyLabel(run.public_surface_key));
+        for (const target of (run.resolved_targets || [])) {
+          if (target && target.public_surface_key) labels.push(surfaceKeyLabel(target.public_surface_key));
+        }
+        return [...new Set(labels.filter(Boolean))];
+      }
+
+      function runRegistryLabels(run) {
+        const labels = [];
+        for (const target of (run.registry_targets || [])) {
+          if (target) labels.push(`announces ${target}`);
+        }
+        for (const target of (run.resolved_targets || [])) {
+          for (const lane of (target?.registry_targets || [])) {
+            if (lane) labels.push(`announces ${lane}`);
+          }
+          for (const lane of (target?.visibility_expectations || [])) {
+            if (lane) labels.push(`visible ${lane}`);
+          }
+        }
+        return [...new Set(labels.filter(Boolean))];
+      }
+
+      function runKindLabel(kind) {
+        return prettifyLabel(kind || "run");
+      }
+
+      function renderRunsSummary(summary) {
+        const runKinds = Object.entries(summary?.kinds || {}).map(([kind, count]) => `${runKindLabel(kind)} ${count}`);
+        const lines = [
+          {
+            label: "Success mix",
+            value: summary?.total_runs
+              ? `${summary.success_count || 0} successful, ${summary.failed_count || 0} failed, ${summary.total_runs || 0} total`
+              : "No recent runs yet",
+          },
+          {
+            label: "Run kinds",
+            value: runKinds.length ? summarizeList(runKinds) : "No flow or fixture runs recorded yet",
+          },
+          {
+            label: "Owners touched",
+            value: (summary?.owner_stories || []).length
+              ? summarizeList(summary.owner_stories)
+              : "No owner-truth recorded yet",
+          },
+          {
+            label: "Public/customer layers",
+            value: (summary?.surface_keys || []).length
+              ? summarizeList(summary.surface_keys.map((key) => surfaceKeyLabel(key)))
+              : "No public/customer layers recorded yet",
+          },
+          {
+            label: "Registry lanes",
+            value: (summary?.registry_lanes || []).length
+              ? summarizeList(summary.registry_lanes)
+              : "No registry path recorded yet",
+          },
+        ];
+        return renderStaticPreviewLines(lines);
+      }
+
+      function flowTargetRefsFromFixtureRuns(fixtureRuns) {
+        const refs = [];
+        for (const run of fixtureRuns || []) {
+          const fixture = fixtureData(run.fixture_id);
+          const targetRef = String(run.profile_id || fixture?.target_ref || fixture?.target_profile || "").trim();
+          if (targetRef) {
+            refs.push(targetRef);
+          }
+        }
+        return refs;
+      }
+
+      function fixtureOptions() {
+        return [...(labData.customer_fixtures || []), ...(labData.customer_fixture_instances || [])]
+          .map((fixture) => ({
+            value: fixture.id,
+            label: `${fixture.title} (${fixture.id})`,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      }
+
+      function renderSelectOptions(options, selectedValue, blankLabel) {
+        const rows = [];
+        if (blankLabel) {
+          rows.push(`<option value="">${escapeHtml(blankLabel)}</option>`);
+        }
+        for (const option of options) {
+          rows.push(
+            `<option value="${escapeHtml(option.value)}"${option.value === selectedValue ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+          );
+        }
+        return rows.join("");
+      }
+
+      function optionLabel(options, value, fallback = "Not chosen yet") {
+        if (!value) return fallback;
+        return options.find((option) => option.value === value)?.label || value;
+      }
+
+      function summarizeList(items, fallback = "Nothing selected yet") {
+        const values = (items || []).filter(Boolean);
+        if (!values.length) return fallback;
+        if (values.length <= 3) return values.join(", ");
+        return `${values.slice(0, 3).join(", ")} +${values.length - 3} more`;
+      }
+
+      function setPreviewLinesTarget(target, lines) {
+        if (!target) return;
+        target.innerHTML = lines.map((line) => `
+          <div class="preview-line">
+            <strong>${escapeHtml(line.label)}</strong>
+            <span>${escapeHtml(line.value)}</span>
+          </div>
+        `).join("");
+      }
+
+      function setPreviewLines(panelId, lines) {
+        const target = document.querySelector(`#${panelId} .preview-lines`);
+        setPreviewLinesTarget(target, lines);
+      }
+
+      function renderBuilderRemoveButton() {
+        return `<button type="button" class="secondary danger" data-remove-builder-row="true">Remove</button>`;
+      }
+
+      function renderFlowServiceRow(selectedValue = "") {
+        return `
+          <div class="builder-row" data-builder-row="services">
+            <select data-builder-input="service">
+              ${renderSelectOptions(flowServiceOptions(), selectedValue, "Select service")}
+            </select>
+            ${renderBuilderRemoveButton()}
+          </div>
+        `;
+      }
+
+      function renderFlowTargetRow(selectedValue = "") {
+        return `
+          <div class="builder-row" data-builder-row="node_refs">
+            <select data-builder-input="node_ref">
+              ${renderSelectOptions(flowTargetOptions(), selectedValue, "Select node target")}
+            </select>
+            ${renderBuilderRemoveButton()}
+          </div>
+        `;
+      }
+
+      function renderFlowFixtureRunRow(item = {}) {
+        return `
+          <div class="builder-row dual" data-builder-row="fixture_runs">
+            <select data-builder-input="fixture_id">
+              ${renderSelectOptions(fixtureOptions(), item.fixture_id || "", "Select fixture")}
+            </select>
+            <select data-builder-input="profile_id">
+              ${renderSelectOptions(flowTargetOptions(), item.profile_id || "", "Use fixture default target")}
+            </select>
+            ${renderBuilderRemoveButton()}
+          </div>
+        `;
+      }
+
+      function renderFlowCheckRow(item = {}) {
+        return `
+          <div class="builder-row quad" data-builder-row="checks">
+            <select data-builder-input="check_kind">
+              ${renderSelectOptions(flowCheckKindOptions(), item.kind || "", "Select check kind")}
+            </select>
+            <select data-builder-input="check_service">
+              ${renderSelectOptions(flowServiceOptions(), item.service || "", "No service")}
+            </select>
+            <select data-builder-input="check_fixture">
+              ${renderSelectOptions(fixtureOptions(), item.fixture_id || "", "No fixture")}
+            </select>
+            <select data-builder-input="check_profile">
+              ${renderSelectOptions(flowTargetOptions(), item.profile_id || "", "No profile override")}
+            </select>
+            ${renderBuilderRemoveButton()}
+          </div>
+        `;
+      }
+
+      function renderFixtureItemRow(item = {}) {
+        const quantity = Number.isFinite(Number(item.quantity)) && Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+        return `
+          <div class="builder-row dual" data-builder-row="fixture_items">
+            <input data-builder-input="item_id" placeholder="margherita" value="${escapeHtml(item.id || "")}" />
+            <input data-builder-input="quantity" type="number" min="1" value="${quantity}" />
+            ${renderBuilderRemoveButton()}
+          </div>
+        `;
+      }
+
+      function renderBuilderRows(kind, items) {
+        if (kind === "services") {
+          const values = Array.isArray(items) && items.length ? items : [""];
+          return values.map((value) => renderFlowServiceRow(value)).join("");
+        }
+        if (kind === "node_refs") {
+          const values = Array.isArray(items) && items.length ? items : [""];
+          return values.map((value) => renderFlowTargetRow(value)).join("");
+        }
+        if (kind === "fixture_items") {
+          const values = Array.isArray(items) && items.length ? items : [{}];
+          return values.map((value) => renderFixtureItemRow(value)).join("");
+        }
+        if (kind === "checks") {
+          const values = Array.isArray(items) && items.length ? items : [];
+          return values.map((value) => renderFlowCheckRow(value)).join("");
+        }
+        const values = Array.isArray(items) && items.length ? items : [{}];
+        return values.map((value) => renderFlowFixtureRunRow(value)).join("");
+      }
+
+      function refreshBuilderSelectOptions(scope = document) {
+        for (const select of scope.querySelectorAll("select[data-builder-input]")) {
+          const currentValue = select.value;
+          const inputKind = select.dataset.builderInput;
+          if (inputKind === "service") {
+            select.innerHTML = renderSelectOptions(flowServiceOptions(), currentValue, "Select service");
+          } else if (inputKind === "node_ref") {
+            select.innerHTML = renderSelectOptions(flowTargetOptions(), currentValue, "Select node target");
+          } else if (inputKind === "fixture_id") {
+            select.innerHTML = renderSelectOptions(fixtureOptions(), currentValue, "Select fixture");
+          } else if (inputKind === "profile_id") {
+            select.innerHTML = renderSelectOptions(flowTargetOptions(), currentValue, "Use fixture default target");
+          } else if (inputKind === "fixture_target") {
+            select.innerHTML = renderSelectOptions(flowTargetOptions(), currentValue, "Select node target");
+          } else if (inputKind === "check_kind") {
+            select.innerHTML = renderSelectOptions(flowCheckKindOptions(), currentValue, "Select check kind");
+          } else if (inputKind === "check_service") {
+            select.innerHTML = renderSelectOptions(flowServiceOptions(), currentValue, "No service");
+          } else if (inputKind === "check_fixture") {
+            select.innerHTML = renderSelectOptions(fixtureOptions(), currentValue, "No fixture");
+          } else if (inputKind === "check_profile") {
+            select.innerHTML = renderSelectOptions(flowTargetOptions(), currentValue, "No profile override");
+          }
+        }
+      }
+
+      function seedFlowBuilderForm(form, reset = false) {
+        if (!form) return;
+        const serviceRows = form.querySelector('[data-builder-kind="services"]');
+        const nodeRows = form.querySelector('[data-builder-kind="node_refs"]');
+        const fixtureRows = form.querySelector('[data-builder-kind="fixture_runs"]');
+        const checkRows = form.querySelector('[data-builder-kind="checks"]');
+        if (reset || !serviceRows.children.length) {
+          serviceRows.innerHTML = renderBuilderRows("services", [""]);
+        }
+        if (reset || !nodeRows.children.length) {
+          nodeRows.innerHTML = renderBuilderRows("node_refs", [""]);
+        }
+        if (reset || !fixtureRows.children.length) {
+          fixtureRows.innerHTML = renderBuilderRows("fixture_runs", [{}]);
+        }
+        if (checkRows && reset) {
+          checkRows.innerHTML = "";
+        }
+        if (form.id === "flow-form" && !form.dataset.flowChecksMode) {
+          form.dataset.flowChecksMode = "auto";
+        }
+        refreshBuilderSelectOptions(form);
+        if (checkRows && form.dataset.flowChecksMode !== "manual") {
+          syncFlowChecksFromPlan(form, true);
+        }
+      }
+
+      function seedFixtureBuilderForm(form, reset = false, items = null) {
+        if (!form) return;
+        const itemRows = form.querySelector('[data-builder-kind="fixture_items"]');
+        if (itemRows && (reset || !itemRows.children.length)) {
+          itemRows.innerHTML = renderBuilderRows("fixture_items", items || [{}]);
+        }
+        refreshBuilderSelectOptions(form);
+      }
+
+      function addBuilderRow(form, kind) {
+        const container = form.querySelector(`[data-builder-kind="${kind}"]`);
+        if (!container) return;
+        const wrapper = document.createElement("div");
+        if (kind === "services") {
+          wrapper.innerHTML = renderFlowServiceRow("");
+        } else if (kind === "node_refs") {
+          wrapper.innerHTML = renderFlowTargetRow("");
+        } else if (kind === "checks") {
+          wrapper.innerHTML = renderFlowCheckRow({});
+        } else if (kind === "fixture_items") {
+          wrapper.innerHTML = renderFixtureItemRow({});
+        } else {
+          wrapper.innerHTML = renderFlowFixtureRunRow({});
+        }
+        const row = wrapper.firstElementChild;
+        if (row) {
+          container.append(row);
+          refreshBuilderSelectOptions(container);
+        }
+      }
+
+      function collectBuilderRows(form, kind) {
+        if (kind === "services") {
+          return Array.from(form.querySelectorAll('[data-builder-kind="services"] [data-builder-row="services"]'))
+            .map((row) => row.querySelector('[data-builder-input="service"]')?.value.trim() || "")
+            .filter(Boolean);
+        }
+        if (kind === "node_refs") {
+          return Array.from(form.querySelectorAll('[data-builder-kind="node_refs"] [data-builder-row="node_refs"]'))
+            .map((row) => row.querySelector('[data-builder-input="node_ref"]')?.value.trim() || "")
+            .filter(Boolean);
+        }
+        if (kind === "fixture_items") {
+          return Array.from(form.querySelectorAll('[data-builder-kind="fixture_items"] [data-builder-row="fixture_items"]'))
+            .map((row) => {
+              const itemId = row.querySelector('[data-builder-input="item_id"]')?.value.trim() || "";
+              const quantity = Number.parseInt(row.querySelector('[data-builder-input="quantity"]')?.value || "0", 10);
+              return {
+                id: itemId,
+                quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+              };
+            })
+            .filter((row) => row.id);
+        }
+        if (kind === "checks") {
+          return Array.from(form.querySelectorAll('[data-builder-kind="checks"] [data-builder-row="checks"]'))
+            .map((row) => ({
+              kind: row.querySelector('[data-builder-input="check_kind"]')?.value.trim() || "",
+              service: row.querySelector('[data-builder-input="check_service"]')?.value.trim() || null,
+              fixture_id: row.querySelector('[data-builder-input="check_fixture"]')?.value.trim() || null,
+              profile_id: row.querySelector('[data-builder-input="check_profile"]')?.value.trim() || null,
+            }))
+            .filter((row) => row.kind);
+        }
+        return Array.from(form.querySelectorAll('[data-builder-kind="fixture_runs"] [data-builder-row="fixture_runs"]'))
+          .map((row) => ({
+            fixture_id: row.querySelector('[data-builder-input="fixture_id"]')?.value.trim() || "",
+            profile_id: row.querySelector('[data-builder-input="profile_id"]')?.value.trim() || null,
+          }))
+          .filter((row) => row.fixture_id);
+      }
+
+      function defaultFlowChecksFromPlan(form) {
+        const services = collectBuilderRows(form, "services");
+        const nodeRefs = collectBuilderRows(form, "node_refs");
+        const fixtureRuns = collectBuilderRows(form, "fixture_runs");
+        const checks = [];
+        for (const service of services) {
+          checks.push({ kind: "service_usable", service, fixture_id: null, profile_id: null });
+        }
+        for (const nodeRef of nodeRefs) {
+          const target = flowTargetData(nodeRef);
+          if (target && target.service_name) {
+            checks.push({ kind: "service_usable", service: target.service_name, fixture_id: null, profile_id: nodeRef });
+          }
+        }
+        for (const run of fixtureRuns) {
+          const fixture = [...(labData.customer_fixtures || []), ...(labData.customer_fixture_instances || [])]
+            .find((item) => item.id === run.fixture_id);
+          checks.push({
+            kind: "fixture_succeeded",
+            service: null,
+            fixture_id: run.fixture_id,
+            profile_id: run.profile_id || fixture?.target_ref || fixture?.target_profile || null,
+          });
+        }
+        return checks;
+      }
+
+      function syncFlowChecksFromPlan(form, force = false) {
+        if (!form) return;
+        const container = form.querySelector('[data-builder-kind="checks"]');
+        if (!container) return;
+        if (!force && form.dataset.flowChecksMode === "manual") return;
+        const defaults = defaultFlowChecksFromPlan(form);
+        container.innerHTML = renderBuilderRows("checks", defaults);
+        refreshBuilderSelectOptions(container);
+      }
+
+      function updateFixturePreview(form) {
+        if (!form) return;
+        const data = new FormData(form);
+        const items = collectBuilderRows(form, "fixture_items");
+        const totalQuantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+        const targetRef = String(data.get("target_ref") || "").trim();
+        const targetData = flowTargetData(targetRef);
+        const targetLabel = optionLabel(flowTargetOptions(), targetRef, "No target node chosen yet");
+        const menuSurface = String(data.get("menu_surface") || "").trim() || "list_menu";
+        const customerName = String(data.get("customer_name") || "").trim() || "Unnamed customer";
+        const customerContact = String(data.get("customer_contact") || "").trim();
+        const fulfillment = String(data.get("fulfillment") || "pickup").trim() || "pickup";
+        const note = String(data.get("note") || "").trim();
+        const expectedAccepted = String(data.get("expected_accepted") || "true").trim();
+        const expectedFinalStatus = String(data.get("final_status") || "").trim() || "no final status expectation";
+        const pollEnabled = String(data.get("poll_enabled") || "true").trim() !== "false";
+        const pollAttempts = String(data.get("poll_attempts") || "4").trim() || "4";
+        const pollInterval = String(data.get("poll_interval_ms") || "250").trim() || "250";
+        const itemLines = items.map((item) => `${item.quantity} x ${item.id}`);
+        const target = form.querySelector(".preview-lines") || document.querySelector("#fixture-preview .preview-lines");
+        setPreviewLinesTarget(target, [
+          {
+            label: "Identity",
+            value: `${String(data.get("title") || "").trim() || "Untitled local fixture"} (${String(data.get("instance_id") || "").trim() || "no id yet"})`,
+          },
+          {
+            label: "Target lane",
+            value: `${targetLabel} via ${surfaceKeyLabel(menuSurface)}`,
+          },
+          {
+            label: "Target owner",
+            value: targetOwnerStory(targetData),
+          },
+          {
+            label: "Public/customer layer",
+            value: targetSurfaceStory(targetData, menuSurface),
+          },
+          {
+            label: "Registry path",
+            value: targetRegistryStory(targetData),
+          },
+          {
+            label: "Customer",
+            value: summarizeList([
+              customerName,
+              fulfillment,
+              customerContact ? `contact ${customerContact}` : "",
+              note ? `note: ${note}` : "",
+            ], "Customer details missing"),
+          },
+          {
+            label: "Order",
+            value: items.length
+              ? `${items.length} line${items.length === 1 ? "" : "s"}, ${totalQuantity} total item${totalQuantity === 1 ? "" : "s"}: ${summarizeList(itemLines)}`
+              : "No order items added yet",
+          },
+          {
+            label: "Expected result",
+            value: `accepted=${expectedAccepted}; final status ${expectedFinalStatus}`,
+          },
+          {
+            label: "Status polling",
+            value: pollEnabled
+              ? `Poll ${pollAttempts} time${pollAttempts === "1" ? "" : "s"} every ${pollInterval} ms`
+              : "No status polling; this is a fast order smoke test",
+          },
+        ]);
+      }
+
+      function updateFlowPreview(form) {
+        if (!form) return;
+        const data = new FormData(form);
+        const services = collectBuilderRows(form, "services");
+        const nodeRefs = collectBuilderRows(form, "node_refs");
+        const fixtureRuns = collectBuilderRows(form, "fixture_runs");
+        const checks = collectBuilderRows(form, "checks");
+        const notes = String(data.get("notes") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const allTargetRefs = [...nodeRefs, ...flowTargetRefsFromFixtureRuns(fixtureRuns)];
+        const uniqueTargetRefs = [...new Set(allTargetRefs.filter(Boolean))];
+        const flowTargets = uniqueTargetRefs.map((targetRef) => flowTargetData(targetRef)).filter(Boolean);
+        const serviceLabels = services.map((service) => optionLabel(flowServiceOptions(), service, service));
+        const nodeLabels = nodeRefs.map((nodeRef) => optionLabel(flowTargetOptions(), nodeRef, nodeRef));
+        const fixtureRunLabels = fixtureRuns.map((run) => {
+          const fixtureLabel = optionLabel(fixtureOptions(), run.fixture_id, run.fixture_id);
+          if (!run.profile_id) return `${fixtureLabel} on its default target`;
+          const targetLabel = optionLabel(flowTargetOptions(), run.profile_id, run.profile_id);
+          return `${fixtureLabel} -> ${targetLabel}`;
+        });
+        const checkLabels = checks.map((check) => {
+          const kindLabel = optionLabel(flowCheckKindOptions(), check.kind, check.kind);
+          if (check.kind === "fixture_succeeded") {
+            const fixtureLabel = optionLabel(fixtureOptions(), check.fixture_id, check.fixture_id || "no fixture");
+            const profileLabel = check.profile_id
+              ? optionLabel(flowTargetOptions(), check.profile_id, check.profile_id)
+              : "fixture default target";
+            return `${kindLabel}: ${fixtureLabel} -> ${profileLabel}`;
+          }
+          if (check.service) {
+            const serviceLabel = optionLabel(flowServiceOptions(), check.service, check.service);
+            return `${kindLabel}: ${serviceLabel}`;
+          }
+          return kindLabel;
+        });
+        const target = form.querySelector(".preview-lines") || document.querySelector("#flow-preview .preview-lines");
+        setPreviewLinesTarget(target, [
+          {
+            label: "Identity",
+            value: `${String(data.get("title") || "").trim() || "Untitled local flow"} (${String(data.get("instance_id") || "").trim() || "no id yet"})`,
+          },
+          {
+            label: "Infrastructure",
+            value: services.length
+              ? `${services.length} service${services.length === 1 ? "" : "s"}: ${summarizeList(serviceLabels)}`
+              : "No infrastructure selected yet",
+          },
+          {
+            label: "Node targets",
+            value: nodeRefs.length
+              ? `${nodeRefs.length} node target${nodeRefs.length === 1 ? "" : "s"}: ${summarizeList(nodeLabels)}`
+              : "No node targets selected yet",
+          },
+          {
+            label: "Local owners",
+            value: flowTargets.length
+              ? distinctSummary(flowTargets.map((target) => targetOwnerStory(target)))
+              : "No local owners selected yet",
+          },
+          {
+            label: "Public/customer layers",
+            value: flowTargets.length
+              ? distinctSummary(flowTargets.map((target) => targetSurfaceStory(target)))
+              : "No public/customer layers selected yet",
+          },
+          {
+            label: "Registry path",
+            value: flowTargets.length
+              ? distinctSummary(flowTargets.map((target) => targetRegistryStory(target)))
+              : "No registry path selected yet",
+          },
+          {
+            label: "Customer runs",
+            value: fixtureRuns.length
+              ? `${fixtureRuns.length} fixture run${fixtureRuns.length === 1 ? "" : "s"}: ${summarizeList(fixtureRunLabels)}`
+              : "No fixture runs attached yet",
+          },
+          {
+            label: "Checks",
+            value: checks.length
+              ? `${checks.length} explicit check${checks.length === 1 ? "" : "s"}: ${summarizeList(checkLabels)}`
+              : "No explicit checks yet; suggested defaults will be used unless you add your own",
+          },
+          {
+            label: "Meaning",
+            value: `This flow will ensure ${services.length || 0} service${services.length === 1 ? "" : "s"}, target ${nodeRefs.length || 0} node${nodeRefs.length === 1 ? "" : "s"}, and run ${fixtureRuns.length || 0} synthetic customer lane${fixtureRuns.length === 1 ? "" : "s"}.`,
+          },
+          {
+            label: "Notes",
+            value: notes.length ? summarizeList(notes, "") : "No local notes yet",
+          },
+        ]);
+      }
+
+      function updateNodeInstancePreview(form) {
+        if (!form) return;
+        const data = new FormData(form);
+        const title = String(data.get("title") || "").trim() || "Untitled node instance";
+        const nodeId = String(data.get("node_id") || "").trim() || "no node id yet";
+        const city = String(data.get("city") || "").trim();
+        const country = String(data.get("country") || "").trim();
+        const orderMode = String(data.get("order_mode") || "live").trim() || "live";
+        const categories = String(data.get("categories") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const registryTargets = String(data.get("registry_targets") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const visibilityExpectations = String(data.get("visibility_expectations") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const moduleIds = String(data.get("module_ids") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const publicSurfaceKey = String(data.get("public_surface_key") || "public_shop").trim() || "public_shop";
+        let menuSeedCount = "unknown";
+        try {
+          const menuSeed = JSON.parse(String(data.get("menu_seed") || "").trim() || '{"items":[]}');
+          menuSeedCount = Array.isArray(menuSeed.items) ? String(menuSeed.items.length) : "0";
+        } catch {
+          menuSeedCount = "invalid JSON";
+        }
+        const serviceName = String(form.dataset.serviceName || "").trim();
+        const servicePort = String(form.dataset.servicePort || "").trim();
+        const templateId = String(form.dataset.templateId || "").trim();
+        const operatorUrl = String(form.dataset.operatorUrl || "").trim();
+        const publicShopUrl = String(form.dataset.publicShopUrl || "").trim();
+        const target = form.querySelector(".preview-lines");
+        setPreviewLinesTarget(target, [
+          {
+            label: "Identity",
+            value: `${title} (${nodeId})${city || country ? ` · ${[city, country].filter(Boolean).join(", ")}` : ""}`,
+          },
+          {
+            label: "Runtime lane",
+            value: `${serviceName || "No service yet"}${servicePort ? ` on port ${servicePort}` : ""}${templateId ? ` from template ${templateId}` : ""}`,
+          },
+          {
+            label: "Open first",
+            value: operatorUrl
+              ? `Operator first${publicShopUrl ? ", then primary public surface" : ""}`
+              : (publicShopUrl ? "Primary public surface first" : "No live URLs attached yet"),
+          },
+          {
+            label: "Customer/public lane",
+            value: `${surfaceKeyLabel(publicSurfaceKey)} with order mode ${orderMode}${categories.length ? ` · ${summarizeList(categories)}` : ""}`,
+          },
+          {
+            label: "Registry path",
+            value: registryTargets.length
+              ? `Announces to ${summarizeList(registryTargets)}`
+              : "No registry targets configured yet",
+          },
+          {
+            label: "Expected visibility",
+            value: visibilityExpectations.length
+              ? `Should be visible through ${summarizeList(visibilityExpectations)}`
+              : "No explicit visibility expectations yet",
+          },
+          {
+            label: "Runtime shape",
+            value: `${moduleIds.length} module${moduleIds.length === 1 ? "" : "s"} · menu seed ${menuSeedCount} item${menuSeedCount === "1" ? "" : "s"}`,
+          },
+          {
+            label: "What this changes",
+            value: `This instance will expose ${surfaceKeyLabel(publicSurfaceKey)} as its main public lane, announce to ${registryTargets.length ? summarizeList(registryTargets) : "no registry lanes yet"}, and carry ${moduleIds.length || 0} runtime module${moduleIds.length === 1 ? "" : "s"}.`,
+          },
+        ]);
+      }
+
+      function updateNodeCreatePreview(form) {
+        if (!form) return;
+        const data = new FormData(form);
+        const templateId = String(data.get("template_id") || "").trim();
+        const template = nodeTemplateData(templateId);
+        const instanceId = String(data.get("instance_id") || "").trim() || "no instance id yet";
+        const title = String(data.get("title") || "").trim() || "Untitled node instance";
+        const description = String(data.get("description") || "").trim();
+        const notes = String(data.get("notes") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const runtimeServiceName = instanceId && instanceId !== "no instance id yet" ? `instance-${instanceId}` : "instance-<id>";
+        const target = form.querySelector(".preview-lines");
+        setPreviewLinesTarget(target, [
+          {
+            label: "Seed",
+            value: template ? `${template.title} (${template.id})` : "No template chosen yet",
+          },
+          {
+            label: "Identity",
+            value: description ? `${title} · ${description}` : title,
+          },
+          {
+            label: "Runtime lane",
+            value: `${runtimeServiceName} on next free node port`,
+          },
+          {
+            label: "Open first",
+            value: template?.operator_url
+              ? `Operator first${template?.public_shop_url ? ", then public lane" : ""}`
+              : (template?.public_shop_url ? "Public lane first" : "Template URLs will be derived after create"),
+          },
+          {
+            label: "What this changes",
+            value: template
+              ? `This will create a launchable local node lane from ${template.id} and later derive customer/public URLs from that template.`
+              : "Choose a template to see what local runtime lane will be created.",
+          },
+          {
+            label: "Notes",
+            value: notes.length ? summarizeList(notes) : "No local notes yet",
+          },
+        ]);
+      }
+
+      function buildFixturePayload(form) {
+        const data = new FormData(form);
+        const parseBoolean = (value, fallback = true) => {
+          const normalized = String(value ?? "").trim().toLowerCase();
+          if (normalized === "true") return true;
+          if (normalized === "false") return false;
+          return fallback;
+        };
+        const parseInteger = (value, fallback) => {
+          const parsed = Number.parseInt(String(value ?? "").trim(), 10);
+          return Number.isFinite(parsed) ? parsed : fallback;
+        };
+        const expected = {
+          accepted: parseBoolean(data.get("expected_accepted"), true),
+        };
+        const finalStatus = String(data.get("final_status") || "").trim();
+        if (finalStatus) expected.final_status = finalStatus;
+        const pollEnabled = parseBoolean(data.get("poll_enabled"), true);
+        return {
+          instance_id: data.get("instance_id"),
+          title: data.get("title"),
+          description: data.get("description"),
+          target_ref: data.get("target_ref"),
+          menu_surface: data.get("menu_surface"),
+          order_request: {
+            customer_name: String(data.get("customer_name") || "").trim(),
+            customer_contact: String(data.get("customer_contact") || "").trim(),
+            fulfillment: String(data.get("fulfillment") || "pickup").trim() || "pickup",
+            note: String(data.get("note") || "").trim(),
+            client_version: "p4p-lab-local-fixture",
+            items: collectBuilderRows(form, "fixture_items"),
+          },
+          poll_status: pollEnabled ? {
+            enabled: true,
+            attempts: parseInteger(data.get("poll_attempts"), 4),
+            interval_ms: parseInteger(data.get("poll_interval_ms"), 250),
+          } : null,
+          expected,
+        };
+      }
+
+      function serviceStatusByName(name) {
+        return statusData.services.find((service) => service.name === name) || null;
+      }
+
+      function statusPills(service) {
+        const runningClass = service && service.running ? "ok" : "bad";
+        const usableClass = service && service.usable ? "ok" : "warn";
+        return `
+          <div class="meta">
+            <span class="pill">${escapeHtml(service ? service.kind : "service")}</span>
+            <span class="pill ${runningClass}">${service && service.running ? "running" : "stopped"}</span>
+            <span class="pill ${usableClass}">${service && service.usable ? "ready" : "not ready"}</span>
+            ${service && service.port ? `<span class="pill">port ${service.port}</span>` : ""}
+          </div>
+        `;
+      }
+
+      function renderInfrastructureCard(serviceName) {
+        const serviceDef = labData.services[serviceName];
+        const service = serviceStatusByName(serviceName);
+        if (!serviceDef) return "";
+        const links = [
+          ...(service && service.url ? [{ label: "Root", url: service.url, description: "Open service root." }] : []),
+          ...(serviceDef.links || [])
+        ];
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(serviceDef.name)}</h3>
+                <p class="muted">${escapeHtml(serviceDef.description || "")}</p>
+              </div>
+              <span class="pill">${escapeHtml(serviceDef.kind)}</span>
+            </header>
+            ${statusPills(service)}
+            ${renderLinks(links)}
+            <div class="actions">
+              <button data-start-service="${escapeHtml(serviceDef.name)}">Start service</button>
+              <button class="secondary danger" data-stop-service="${escapeHtml(serviceDef.name)}">Stop service</button>
+            </div>
+          </article>
+        `;
+      }
+
+      function prettifyLabel(value) {
+        return value
+          .replaceAll("_", " ")
+          .replaceAll("-", " ")
+          .replace(/\b\w/g, (match) => match.toUpperCase());
+      }
+
+      function surfaceKeyLabel(value) {
+        return prettifyLabel(value || "public_shop");
+      }
+
+      function renderRegistryProfile(profile) {
+        const serviceDef = labData.services[profile.service_name];
+        const service = serviceStatusByName(profile.service_name);
+        const links = [
+          ...(service && service.url ? [{ label: "Root", url: service.url, description: "Open registry root." }] : []),
+          ...((serviceDef && serviceDef.links) || [])
+        ];
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(profile.title)}</h3>
+                <p class="muted">${escapeHtml(profile.description || "")}</p>
+              </div>
+              <span class="pill">${escapeHtml(profile.role)}</span>
+            </header>
+            ${statusPills(service)}
+            <div class="tags">
+              <span class="pill">${escapeHtml(profile.curation_mode)}</span>
+              <span class="pill">${escapeHtml(profile.availability_role)}</span>
+              <span class="pill">service ${escapeHtml(profile.service_name)}</span>
+              <span class="pill">${escapeHtml(profile.scope.network)}</span>
+              <span class="pill">${escapeHtml(profile.scope.geography)}</span>
+              <span class="pill">${escapeHtml(profile.scope.family)}</span>
+              ${profile.backup_for ? `<span class="pill">backup for ${escapeHtml(profile.backup_for)}</span>` : ""}
+              ${profile.upstreams.map((upstream) => `<span class="pill">upstream ${escapeHtml(upstream)}</span>`).join("")}
+            </div>
+            <p class="muted">Announce policy: ${escapeHtml(profile.announce_policy)}. Discover policy: ${escapeHtml(profile.discover_policy)}.</p>
+            ${profile.notes && profile.notes.length ? `<ul class="muted">${profile.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
+            ${renderLinks(links)}
+            <div class="actions">
+              <button data-start-service="${escapeHtml(profile.service_name)}">Start registry</button>
+              <button class="secondary danger" data-stop-service="${escapeHtml(profile.service_name)}">Stop registry</button>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderTemplate(profile) {
+        const service = serviceStatusByName(profile.service_name);
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(profile.title)}</h3>
+                <p class="muted">${escapeHtml(profile.description || "")}</p>
+              </div>
+              <span class="pill">${escapeHtml(profile.family)}</span>
+            </header>
+            ${statusPills(service)}
+            <div class="tags">
+              <span class="pill">service ${escapeHtml(profile.service_name)}</span>
+              ${(profile.tags || []).map((tag) => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}
+              ${(profile.registry_targets || []).map((target) => `<span class="pill">target ${escapeHtml(target)}</span>`).join("")}
+              ${(profile.visibility_expectations || []).map((target) => `<span class="pill">visible ${escapeHtml(target)}</span>`).join("")}
+            </div>
+            ${profile.operator_url ? renderLinks([{ label: "Operator", url: profile.operator_url, description: "Open local operator for this node profile." }]) : ""}
+            <div class="actions">
+              <button data-start-profile="${escapeHtml(profile.id)}">Start seeded service</button>
+              <button class="secondary danger" data-stop-profile="${escapeHtml(profile.id)}">Stop seeded service</button>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderInstance(instance) {
+        const service = instance.service_name ? serviceStatusByName(instance.service_name) : null;
+        const primarySurfaceKey = surfaceKeyLabel(instance.public_surface_key || "public_shop");
+        const links = [];
+        if (instance.public_shop_url) {
+          links.push({
+            label: `Open primary public surface (${primarySurfaceKey})`,
+            url: instance.public_shop_url,
+            description: "Primary public/customer lane currently attached to this instance."
+          });
+        }
+        if (instance.operator_url) {
+          links.push({
+            label: "Open operator",
+            url: instance.operator_url,
+            description: "Operator currently attached to this instance."
+          });
+        }
+        for (const [key, url] of Object.entries(instance.customer_urls || {})) {
+          if (!url || url === instance.public_shop_url) continue;
+          links.push({
+            label: prettifyLabel(key),
+            url,
+            description: "Stored customer-facing route from the template seed."
+          });
+        }
+        const menuSeed = instance.menu_seed || { items: [] };
+        const itemCount = Array.isArray(menuSeed.items) ? menuSeed.items.length : 0;
+        const isGenerated = instance.launch_mode === "generated_instance";
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(instance.title)}</h3>
+                <p class="muted">${escapeHtml(instance.description || "")}</p>
+              </div>
+              <span class="pill ${instance.launchable_now ? "ok" : "warn"}">${instance.launchable_now ? "launchable now" : "saved draft"}</span>
+            </header>
+            ${service ? statusPills(service) : ""}
+            <div class="tags">
+              <span class="pill">template ${escapeHtml(instance.template_id)}</span>
+              <span class="pill">${escapeHtml(instance.family)}</span>
+              <span class="pill">${escapeHtml(instance.launch_mode)}</span>
+              <span class="pill">node ${escapeHtml(instance.node_id || instance.id)}</span>
+              <span class="pill">surface ${escapeHtml(primarySurfaceKey)}</span>
+              ${instance.city ? `<span class="pill">${escapeHtml(instance.city)}</span>` : ""}
+              ${instance.country ? `<span class="pill">${escapeHtml(instance.country)}</span>` : ""}
+              ${instance.order_mode ? `<span class="pill">${escapeHtml(instance.order_mode)}</span>` : ""}
+              ${(instance.categories || []).map((category) => `<span class="pill">category ${escapeHtml(category)}</span>`).join("")}
+              ${(instance.registry_targets || []).map((target) => `<span class="pill">target ${escapeHtml(target)}</span>`).join("")}
+              ${(instance.module_ids || []).map((moduleId) => `<span class="pill">module ${escapeHtml(moduleId)}</span>`).join("")}
+              <span class="pill">${itemCount} menu item${itemCount === 1 ? "" : "s"}</span>
+            </div>
+            ${instance.notes ? `<p class="muted">${escapeHtml(instance.notes)}</p>` : ""}
+            <div class="preview-panel" style="margin-top:12px;">
+              <h3>Runtime story</h3>
+              ${renderStaticPreviewLines([
+                {
+                  label: "Runtime lane",
+                  value: `${instance.service_name || "No service yet"}${instance.port ? ` on port ${instance.port}` : ""} from template ${instance.template_id || "unknown"}`,
+                },
+                {
+                  label: "Open first",
+                  value: instance.operator_url
+                    ? `Operator first${instance.public_shop_url ? ", then primary public surface" : ""}`
+                    : (instance.public_shop_url ? "Primary public surface first" : "No live URLs attached yet"),
+                },
+                {
+                  label: "What this changes",
+                  value: `Main public lane ${primarySurfaceKey}; announces ${instance.registry_targets && instance.registry_targets.length ? summarizeList(instance.registry_targets) : "no registry lanes yet"}; ${itemCount} menu item${itemCount === 1 ? "" : "s"} in current seed.`,
+                },
+              ])}
+            </div>
+            ${renderLinks(links)}
+            ${isGenerated ? `
+              <details style="margin-top:12px;">
+                <summary>Edit instance-owned state</summary>
+                <form class="stack instance-edit-form" data-instance-id="${escapeHtml(instance.id)}" data-service-name="${escapeHtml(instance.service_name || "")}" data-service-port="${escapeHtml(String(instance.port || ""))}" data-template-id="${escapeHtml(instance.template_id || "")}" data-operator-url="${escapeHtml(instance.operator_url || "")}" data-public-shop-url="${escapeHtml(instance.public_shop_url || "")}" style="margin-top:12px;">
+                  <div class="wizard">
+                    <section class="wizard-step">
+                      <h3>Edit step 1 · Core identity</h3>
+                      <p class="wizard-help">Name the local restaurant lane first. This is the part you will recognise later in servers, topology, and customer surfaces.</p>
+                      <div class="form-grid">
+                        <div>
+                          <label>Title</label>
+                          <input name="title" value="${escapeHtml(instance.title || "")}" />
+                        </div>
+                        <div>
+                          <label>Description</label>
+                          <input name="description" value="${escapeHtml(instance.description || "")}" />
+                        </div>
+                        <div>
+                          <label>Node id</label>
+                          <input name="node_id" value="${escapeHtml(instance.node_id || instance.id)}" />
+                        </div>
+                        <div>
+                          <label>City</label>
+                          <input name="city" value="${escapeHtml(instance.city || "")}" />
+                        </div>
+                        <div>
+                          <label>Country</label>
+                          <input name="country" value="${escapeHtml(instance.country || "")}" />
+                        </div>
+                        <div>
+                          <label>Order mode</label>
+                          <input name="order_mode" value="${escapeHtml(instance.order_mode || "live")}" placeholder="live" />
+                        </div>
+                        <div class="full">
+                          <label>Categories</label>
+                          <textarea name="categories" placeholder="pizza&#10;kebab">${escapeHtml(formatListForTextarea(instance.categories || []))}</textarea>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="wizard-step">
+                      <h3>Edit step 2 · Topology and public lane</h3>
+                      <p class="wizard-help">Decide where this node announces, where it should be visible, and which public surface should count as the primary lane.</p>
+                      <div class="form-grid">
+                        <div>
+                          <label>Primary public surface key</label>
+                          <input name="public_surface_key" value="${escapeHtml(instance.public_surface_key || "public_shop")}" placeholder="public_shop" />
+                        </div>
+                        <div>
+                          <label>Registry targets</label>
+                          <textarea name="registry_targets" placeholder="main-open&#10;dk-p4p-curated">${escapeHtml(formatListForTextarea(instance.registry_targets || []))}</textarea>
+                        </div>
+                        <div>
+                          <label>Visibility expectations</label>
+                          <textarea name="visibility_expectations" placeholder="main-open&#10;dk-p4p-curated">${escapeHtml(formatListForTextarea(instance.visibility_expectations || []))}</textarea>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="wizard-step">
+                      <h3>Edit step 3 · Runtime shape</h3>
+                      <p class="wizard-help">Keep the module set and menu seed readable as the actual runtime shape of this local shop.</p>
+                      <div class="form-grid">
+                        <div>
+                          <label>Module ids</label>
+                          <textarea name="module_ids" placeholder="p4p.catalog.editor&#10;p4p.menu.list">${escapeHtml(formatListForTextarea(instance.module_ids || []))}</textarea>
+                        </div>
+                        <div class="full">
+                          <label>Menu seed JSON</label>
+                          <textarea name="menu_seed">${escapeHtml(formatMenuSeedForTextarea(menuSeed))}</textarea>
+                        </div>
+                        <div class="full">
+                          <label>Notes</label>
+                          <textarea name="notes">${escapeHtml(instance.notes || "")}</textarea>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="preview-panel">
+                      <h3>Node instance preview</h3>
+                      <div class="preview-lines"></div>
+                    </section>
+                  </div>
+                  <div class="actions">
+                    <button type="submit">Save instance</button>
+                  </div>
+                </form>
+              </details>
+            ` : ""}
+            <div class="actions">
+              ${instance.launchable_now ? `<button data-start-instance="${escapeHtml(instance.id)}">Start instance</button>` : ""}
+              ${instance.launchable_now ? `<button class="secondary danger" data-stop-instance="${escapeHtml(instance.id)}">Stop instance</button>` : ""}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderCustomerSurface(surface) {
+        const service = surface.service_name ? serviceStatusByName(surface.service_name) : null;
+        const customerUrls = surface.customer_urls || {};
+        const primarySurfaceKey = surfaceKeyLabel(surface.public_surface_key || "public_shop");
+        const links = [];
+        if (surface.public_shop_url) {
+          links.push({
+            label: `Open primary public surface (${primarySurfaceKey})`,
+            url: surface.public_shop_url,
+            description: "Open the real customer-facing lane currently chosen for this node."
+          });
+        }
+        for (const [key, url] of Object.entries(customerUrls)) {
+          if (!url || url === surface.public_shop_url) continue;
+          links.push({
+            label: prettifyLabel(key),
+            url,
+            description: key.includes("template")
+              ? "Template route for customer status checks after an order exists."
+              : "Public customer surface or raw endpoint for this node."
+          });
+        }
+        if (surface.operator_url) {
+          links.push({
+            label: "Open operator",
+            url: surface.operator_url,
+            description: "Secondary local control room for the same node."
+          });
+        }
+        const startAction = surface.launch_mode
+          ? `<button data-start-instance="${escapeHtml(surface.id)}">Start customer node</button>`
+          : `<button data-start-profile="${escapeHtml(surface.id)}">Start customer node</button>`;
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(surface.title)}</h3>
+                <p class="muted">${escapeHtml(surface.description || "")}</p>
+              </div>
+              <span class="pill">${escapeHtml(surface.family)}</span>
+            </header>
+            ${statusPills(service)}
+            <div class="tags">
+              <span class="pill">public lane</span>
+              <span class="pill">node ${escapeHtml(surface.node_id || surface.id)}</span>
+              <span class="pill">surface ${escapeHtml(primarySurfaceKey)}</span>
+              ${surface.city ? `<span class="pill">${escapeHtml(surface.city)}</span>` : ""}
+              ${surface.country ? `<span class="pill">${escapeHtml(surface.country)}</span>` : ""}
+              ${surface.order_mode ? `<span class="pill">${escapeHtml(surface.order_mode)}</span>` : ""}
+              ${(surface.categories || []).map((category) => `<span class="pill">category ${escapeHtml(category)}</span>`).join("")}
+              ${(surface.registry_targets || []).map((target) => `<span class="pill">announces ${escapeHtml(target)}</span>`).join("")}
+              ${(surface.visibility_expectations || []).map((target) => `<span class="pill">expect ${escapeHtml(target)}</span>`).join("")}
+            </div>
+            ${renderLinks(links)}
+            <p class="muted" style="margin-top:10px;">This node announces into ${(surface.registry_targets || []).join(", ") || "no registry targets"} and expects to be visible through ${(surface.visibility_expectations || []).join(", ") || "no visibility lane"}.</p>
+            <div class="actions">
+              ${startAction}
+              ${surface.public_shop_url ? `<a class="button secondary" href="${escapeHtml(surface.public_shop_url)}" target="_blank" rel="noreferrer">Open primary public surface</a>` : ""}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderFixture(fixture) {
+        const orderItems = ((fixture.order_request && fixture.order_request.items) || []).map((item) => `${item.quantity} x ${item.id}`);
+        const isGenerated = Boolean(fixture.generated);
+        const targetRef = fixture.target_ref || fixture.target_profile || "";
+        const targetData = flowTargetData(targetRef);
+        const poll = fixture.poll_status || {};
+        const expected = fixture.expected || {};
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(fixture.title)}</h3>
+                <p class="muted">${escapeHtml(fixture.description || "")}</p>
+              </div>
+              <span class="pill">${escapeHtml(targetRef)}</span>
+            </header>
+            <div class="meta">
+              ${isGenerated ? `<span class="pill ok">local fixture</span>` : `<span class="pill">seed fixture</span>`}
+              <span class="pill">${escapeHtml(fixture.menu_surface || "menu")}</span>
+              <span class="pill">${orderItems.length} line${orderItems.length === 1 ? "" : "s"}</span>
+            </div>
+            <div class="preview-panel" style="margin-top:12px;">
+              <h3>Fixture lane truth</h3>
+              ${renderStaticPreviewLines([
+                { label: "Target owner", value: targetOwnerStory(targetData) },
+                { label: "Public/customer layer", value: targetSurfaceStory(targetData, fixture.menu_surface || "list_menu") },
+                { label: "Registry path", value: targetRegistryStory(targetData) },
+              ])}
+            </div>
+            ${orderItems.length ? `<ul class="muted">${orderItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+            ${isGenerated ? `
+              <details style="margin-top:12px;">
+                <summary>Edit local fixture</summary>
+                <form class="stack fixture-instance-edit-form" data-fixture-id="${escapeHtml(fixture.id)}" style="margin-top:12px;">
+                  <div class="wizard">
+                    <section class="wizard-step">
+                      <h3>Edit step 1 · Core identity</h3>
+                      <p class="wizard-help">Keep the local fixture readable before changing the customer behavior.</p>
+                      <div class="form-grid">
+                        <div>
+                          <label>Title</label>
+                          <input name="title" value="${escapeHtml(fixture.title || "")}" />
+                        </div>
+                        <div>
+                          <label>Target node</label>
+                          <select name="target_ref" data-builder-input="fixture_target">
+                            ${renderSelectOptions(flowTargetOptions(), targetRef, "Select node target")}
+                          </select>
+                        </div>
+                        <div class="full">
+                          <label>Description</label>
+                          <input name="description" value="${escapeHtml(fixture.description || "")}" />
+                        </div>
+                        <div>
+                          <label>Menu surface key</label>
+                          <input name="menu_surface" value="${escapeHtml(fixture.menu_surface || "list_menu")}" />
+                        </div>
+                      </div>
+                    </section>
+                    <section class="wizard-step">
+                      <h3>Edit step 2 · Customer and order</h3>
+                      <p class="wizard-help">Adjust the customer lane and the exact order lines this fixture should send.</p>
+                      <div class="form-grid">
+                        <div>
+                          <label>Customer name</label>
+                          <input name="customer_name" value="${escapeHtml(fixture.order_request?.customer_name || "")}" />
+                        </div>
+                        <div>
+                          <label>Customer contact</label>
+                          <input name="customer_contact" value="${escapeHtml(fixture.order_request?.customer_contact || "")}" />
+                        </div>
+                        <div>
+                          <label>Fulfillment</label>
+                          <select name="fulfillment">
+                            <option value="pickup"${(fixture.order_request?.fulfillment || "pickup") === "pickup" ? " selected" : ""}>pickup</option>
+                            <option value="delivery"${fixture.order_request?.fulfillment === "delivery" ? " selected" : ""}>delivery</option>
+                          </select>
+                        </div>
+                        <div class="full">
+                          <label>Order note</label>
+                          <input name="note" value="${escapeHtml(fixture.order_request?.note || "")}" />
+                        </div>
+                        <div class="full">
+                          <label>Order items</label>
+                          <div class="builder-block">
+                            <div class="builder-rows" data-builder-kind="fixture_items">
+                              ${renderBuilderRows("fixture_items", fixture.order_request?.items || [])}
+                            </div>
+                            <div class="actions">
+                              <button type="button" class="secondary" data-add-builder-row="fixture_items">Add order item</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="wizard-step">
+                      <h3>Edit step 3 · Expected result</h3>
+                      <p class="wizard-help">Keep success criteria explicit, especially when you only want a smoke test and not a full status loop.</p>
+                      <div class="form-grid">
+                        <div>
+                          <label>Expected accepted</label>
+                          <select name="expected_accepted">
+                            <option value="true"${expected.accepted !== false ? " selected" : ""}>true</option>
+                            <option value="false"${expected.accepted === false ? " selected" : ""}>false</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label>Expected final status</label>
+                          <input name="final_status" value="${escapeHtml(expected.final_status || "")}" placeholder="received" />
+                        </div>
+                        <div>
+                          <label>Poll status</label>
+                          <select name="poll_enabled">
+                            <option value="true"${poll && poll.enabled !== false ? " selected" : ""}>true</option>
+                            <option value="false"${poll && poll.enabled === false ? " selected" : ""}>false</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label>Poll attempts</label>
+                          <input name="poll_attempts" type="number" min="1" max="20" value="${escapeHtml(String(poll.attempts || 4))}" />
+                        </div>
+                        <div>
+                          <label>Poll interval ms</label>
+                          <input name="poll_interval_ms" type="number" min="0" max="30000" value="${escapeHtml(String(poll.interval_ms || 250))}" />
+                        </div>
+                      </div>
+                    </section>
+                    <section class="preview-panel">
+                      <h3>Local fixture preview</h3>
+                      <div class="preview-lines"></div>
+                    </section>
+                  </div>
+                  <div class="actions">
+                    <button type="submit">Save local fixture</button>
+                  </div>
+                </form>
+              </details>
+            ` : ""}
+            <div class="actions">
+              <button data-run-fixture="${escapeHtml(fixture.id)}">Run fixture</button>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderFlow(flow) {
+        const isGenerated = Boolean(flow.generated);
+        const allTargetRefs = [...(flow.node_profiles || []), ...flowTargetRefsFromFixtureRuns(flow.fixture_runs || [])];
+        const uniqueTargetRefs = [...new Set(allTargetRefs.filter(Boolean))];
+        const flowTargets = uniqueTargetRefs.map((targetRef) => flowTargetData(targetRef)).filter(Boolean);
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(flow.title)}</h3>
+                <p class="muted">${escapeHtml(flow.description || "")}</p>
+              </div>
+              <span class="pill">${flow.fixture_runs.length} fixture${flow.fixture_runs.length === 1 ? "" : "s"}</span>
+            </header>
+            <div class="tags">
+              ${isGenerated ? `<span class="pill ok">local flow</span>` : `<span class="pill">seed flow</span>`}
+              ${flow.services.map((service) => `<span class="pill">${escapeHtml(service)}</span>`).join("")}
+              ${flow.node_profiles.map((profile) => `<span class="pill">${escapeHtml(profile)}</span>`).join("")}
+              <span class="pill">${(flow.checks || []).length} check${(flow.checks || []).length === 1 ? "" : "s"}</span>
+            </div>
+            <div class="preview-panel" style="margin-top:12px;">
+              <h3>Flow lane truth</h3>
+              ${renderStaticPreviewLines([
+                {
+                  label: "Local owners",
+                  value: flowTargets.length
+                    ? distinctSummary(flowTargets.map((target) => targetOwnerStory(target)))
+                    : "No local owners selected yet",
+                },
+                {
+                  label: "Public/customer layers",
+                  value: flowTargets.length
+                    ? distinctSummary(flowTargets.map((target) => targetSurfaceStory(target)))
+                    : "No public/customer layers selected yet",
+                },
+                {
+                  label: "Registry path",
+                  value: flowTargets.length
+                    ? distinctSummary(flowTargets.map((target) => targetRegistryStory(target)))
+                    : "No registry path selected yet",
+                },
+              ])}
+            </div>
+            ${flow.notes && flow.notes.length ? `<ul class="muted">${flow.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
+            ${renderLinks(flow.links)}
+            ${isGenerated ? `
+              <details style="margin-top:12px;">
+                <summary>Edit local flow</summary>
+                <form class="stack flow-instance-edit-form" data-scenario-id="${escapeHtml(flow.id)}" style="margin-top:12px;">
+                  <div class="wizard">
+                    <section class="wizard-step">
+                      <h3>Edit step 1 · Core identity</h3>
+                      <p class="wizard-help">Keep the saved flow readable before changing the infrastructure it depends on.</p>
+                      <div class="form-grid">
+                        <div>
+                          <label>Title</label>
+                          <input name="title" value="${escapeHtml(flow.title || "")}" />
+                        </div>
+                        <div class="full">
+                          <label>Description</label>
+                          <input name="description" value="${escapeHtml(flow.description || "")}" />
+                        </div>
+                      </div>
+                    </section>
+                    <section class="wizard-step">
+                      <h3>Edit step 2 · Infrastructure and node targets</h3>
+                      <p class="wizard-help">Adjust which services must be up and which restaurant lanes the flow should touch.</p>
+                      <div class="form-grid">
+                        <div class="full">
+                          <label>Services</label>
+                          <div class="builder-block">
+                            <div class="builder-rows" data-builder-kind="services">
+                              ${renderBuilderRows("services", flow.services || [])}
+                            </div>
+                            <div class="actions">
+                              <button type="button" class="secondary" data-add-builder-row="services">Add service</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="full">
+                          <label>Node refs</label>
+                          <div class="builder-block">
+                            <div class="builder-rows" data-builder-kind="node_refs">
+                              ${renderBuilderRows("node_refs", flow.node_profiles || [])}
+                            </div>
+                            <div class="actions">
+                              <button type="button" class="secondary" data-add-builder-row="node_refs">Add node target</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="wizard-step">
+                      <h3>Edit step 3 · Customer runs and checks</h3>
+                      <p class="wizard-help">Keep the synthetic customer work and the explicit success contract visible together.</p>
+                      <div class="form-grid">
+                        <div class="full">
+                          <label>Fixture runs</label>
+                          <div class="builder-block">
+                            <div class="builder-rows" data-builder-kind="fixture_runs">
+                              ${renderBuilderRows("fixture_runs", flow.fixture_runs || [])}
+                            </div>
+                            <div class="actions">
+                              <button type="button" class="secondary" data-add-builder-row="fixture_runs">Add fixture run</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="full">
+                          <label>Checks</label>
+                          <div class="builder-block">
+                            <div class="builder-rows" data-builder-kind="checks">
+                              ${renderBuilderRows("checks", flow.checks || [])}
+                            </div>
+                            <div class="actions">
+                              <button type="button" class="secondary" data-sync-flow-checks="true">Refresh suggested checks</button>
+                              <button type="button" class="secondary" data-add-builder-row="checks">Add manual check</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="wizard-step">
+                      <h3>Edit step 4 · Notes</h3>
+                      <p class="wizard-help">Keep the human reason for the flow close to the checks it now owns.</p>
+                      <div class="form-grid">
+                        <div class="full">
+                          <label>Notes</label>
+                          <textarea name="notes" placeholder="One note per line">${escapeHtml(formatListForTextarea(flow.notes || []))}</textarea>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="preview-panel">
+                      <h3>Local flow preview</h3>
+                      <div class="preview-lines"></div>
+                    </section>
+                  </div>
+                  <div class="actions">
+                    <button type="submit">Save local flow</button>
+                  </div>
+                </form>
+              </details>
+            ` : ""}
+            <div class="actions">
+              ${isGenerated ? `<button data-run-flow-instance="${escapeHtml(flow.id)}">Run local flow</button>` : `<button data-run-flow="${escapeHtml(flow.id)}">Run flow</button>`}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderLegacyScenario(scenario) {
+        return `
+          <article class="card">
             <header>
               <div>
                 <h3>${escapeHtml(scenario.title)}</h3>
-                <p class="muted">${escapeHtml(scenario.description)}</p>
+                <p class="muted">${escapeHtml(scenario.description || "")}</p>
               </div>
               <span class="pill">${scenario.services.length} service${scenario.services.length === 1 ? "" : "s"}</span>
             </header>
-            <div class="meta">
-              ${scenario.services.map((name) => `<span class="pill">${escapeHtml(name)}</span>`).join("")}
+            <div class="tags">
+              ${scenario.services.map((service) => `<span class="pill">${escapeHtml(service)}</span>`).join("")}
             </div>
             ${scenario.notes && scenario.notes.length ? `<ul class="muted">${scenario.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
             ${renderLinks(scenario.links)}
-            <details>
-              <summary>Commands</summary>
-              ${serviceDefs.map((service) => `
-                <p><strong>${escapeHtml(service.name)}</strong></p>
-                <pre class="command">${escapeHtml(service.command)}</pre>
-              `).join("")}
-            </details>
             <div class="actions">
-              <button data-start-scenario="${escapeHtml(scenario.id)}">Start scenario</button>
-              <button class="secondary danger" data-stop-scenario="${escapeHtml(scenario.id)}">Stop scenario</button>
+              <button data-start-legacy="${escapeHtml(scenario.id)}">Start legacy lane</button>
+              <button class="secondary danger" data-stop-legacy="${escapeHtml(scenario.id)}">Stop legacy lane</button>
             </div>
           </article>
         `;
@@ -301,9 +2191,7 @@
       function renderService(service) {
         const logs = (service.logs || []).slice(-28).join("\n") || "No logs yet.";
         const health = service.health ? JSON.stringify(service.health, null, 2) : "No health data.";
-        const runningClass = service.running ? "ok" : "bad";
-        const usableClass = service.usable ? "ok" : "warn";
-        const serviceLinks = [
+        const links = [
           ...(service.url ? [{ label: "Root", url: service.url, description: "Open service root." }] : []),
           ...(service.operator_url ? [{ label: "Operator", url: service.operator_url, description: "Open operator surface." }] : []),
           ...(service.links || [])
@@ -317,15 +2205,8 @@
               </div>
               <button class="secondary danger" data-stop-service="${escapeHtml(service.name)}">Stop</button>
             </header>
-            <div class="meta">
-              <span class="pill">${escapeHtml(service.kind)}</span>
-              <span class="pill">port ${service.port ?? "none"}</span>
-              <span class="pill ${runningClass}">${service.running ? "running" : "stopped"}</span>
-              <span class="pill ${usableClass}">${service.usable ? "ready" : "not ready"}</span>
-              <span class="pill">pid ${service.pid ?? "none"}</span>
-              ${service.health_status_code ? `<span class="pill">health ${service.health_status_code}</span>` : ""}
-            </div>
-            ${renderLinks(serviceLinks)}
+            ${statusPills(service)}
+            ${renderLinks(links)}
             <details>
               <summary>Command</summary>
               <pre class="command">${escapeHtml(service.command || "")}</pre>
@@ -341,38 +2222,181 @@
         `;
       }
 
-      async function startScenario(id) {
-        await api(`/api/scenarios/${encodeURIComponent(id)}/start`, { method: "POST" });
-        await refresh();
-      }
-
-      async function stopScenario(id) {
-        await api(`/api/scenarios/${encodeURIComponent(id)}/stop`, { method: "POST" });
-        await refresh();
-      }
-
-      async function stopService(name) {
-        await api(`/api/stop/${encodeURIComponent(name)}`, { method: "POST" });
-        await refresh();
+      function renderRun(run) {
+        const tone = run.success ? "ok" : "bad";
+        const details = { ...run };
+        const resolvedTargets = Array.isArray(run.resolved_targets) ? run.resolved_targets : [];
+        const ownerSummary = run.owner_story
+          ? run.owner_story
+          : (resolvedTargets.length ? distinctSummary(resolvedTargets.map((target) => target.owner_story)) : "");
+        const surfaceSummary = run.public_surface_key
+          ? surfaceKeyLabel(run.public_surface_key)
+          : (resolvedTargets.length
+              ? distinctSummary(
+                  resolvedTargets.map((target) => surfaceKeyLabel(target.public_surface_key || "public_shop")),
+                  ""
+                )
+              : "");
+        const registrySummary = Array.isArray(run.registry_targets) && run.registry_targets.length
+          ? `Announces ${run.registry_targets.join(", ")}`
+          : (resolvedTargets.length
+              ? distinctSummary(
+                  resolvedTargets.map((target) => targetRegistryStory(target)),
+                  ""
+                )
+              : "");
+        const runStory = run.kind === "customer_fixture"
+          ? `This fixture tested one synthetic customer lane against ${ownerSummary || "an unresolved target"}.`
+          : `This flow tested ${resolvedTargets.length || 0} local owner${resolvedTargets.length === 1 ? "" : "s"} with ${Array.isArray(run.checks) ? run.checks.length : 0} explicit check${Array.isArray(run.checks) && run.checks.length === 1 ? "" : "s"}.`;
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(run.title || run.scenario_id || run.fixture_id || run.run_id)}</h3>
+                <p class="muted">${escapeHtml(run.kind || "run")}</p>
+              </div>
+              <span class="pill ${tone}">${run.success ? "success" : "failed"}</span>
+            </header>
+            <div class="run-summary">
+              ${run.profile_id ? `<span class="muted">profile: ${escapeHtml(run.profile_id)}</span>` : ""}
+              ${ownerSummary ? `<span class="muted">owner: ${escapeHtml(ownerSummary)}</span>` : ""}
+              ${surfaceSummary ? `<span class="muted">layer: ${escapeHtml(surfaceSummary)}</span>` : ""}
+              ${registrySummary ? `<span class="muted">registry path: ${escapeHtml(registrySummary)}</span>` : ""}
+              ${run.order_id ? `<span class="muted">order: ${escapeHtml(run.order_id)}</span>` : ""}
+              ${run.error ? `<span class="muted">error: ${escapeHtml(run.error)}</span>` : ""}
+            </div>
+            <div class="preview-panel" style="margin-top:12px;">
+              <h3>Run story</h3>
+              ${renderStaticPreviewLines([
+                { label: "What this proved", value: runStory },
+                { label: "Owners touched", value: ownerSummary || "No owner story recorded" },
+                { label: "Public/customer layers", value: surfaceSummary || "No public/customer layer recorded" },
+                { label: "Registry lanes", value: registrySummary || "No registry path recorded" },
+              ])}
+            </div>
+            <details>
+              <summary>Run data</summary>
+              <pre class="run-json">${escapeHtml(JSON.stringify(details, null, 2))}</pre>
+            </details>
+          </article>
+        `;
       }
 
       async function refresh() {
         showError("");
-        scenarioData = await api("/api/scenarios");
-        const status = await api("/api/status");
-        document.getElementById("scenarios").innerHTML = scenarioData.scenarios.map(renderScenario).join("");
-        document.getElementById("services").innerHTML = status.services.length
-          ? status.services.map(renderService).join("")
+        [labData, statusData, runData] = await Promise.all([
+          api("/api/scenarios"),
+          api("/api/status"),
+          api("/api/runs")
+        ]);
+
+        const registryProfiles = labData.registry_profiles || [];
+        const infrastructureNames = Object.values(labData.services)
+          .filter((service) => service.kind === "registry")
+          .map((service) => service.name);
+
+        document.getElementById("infrastructure").innerHTML = registryProfiles.length
+          ? registryProfiles.map(renderRegistryProfile).join("")
+          : infrastructureNames.map(renderInfrastructureCard).join("");
+        const templateList = (labData.node_templates && labData.node_templates.length) ? labData.node_templates : labData.node_profiles;
+        document.getElementById("templates").innerHTML = templateList.map(renderTemplate).join("");
+        document.getElementById("instances").innerHTML = (labData.node_instances || []).length
+          ? labData.node_instances.map(renderInstance).join("")
+          : "<p class='muted'>No node instances stored yet.</p>";
+        const surfaceList = (labData.node_instances && labData.node_instances.length) ? labData.node_instances : labData.node_profiles;
+        document.getElementById("customer-surfaces").innerHTML = surfaceList.map(renderCustomerSurface).join("");
+        const fixtureList = [...(labData.customer_fixtures || []), ...(labData.customer_fixture_instances || [])];
+        document.getElementById("fixtures").innerHTML = fixtureList.map(renderFixture).join("");
+        const flowList = [...(labData.flow_scenarios || []), ...(labData.flow_scenario_instances || [])];
+        document.getElementById("flows").innerHTML = flowList.map(renderFlow).join("");
+        document.getElementById("legacy").innerHTML = labData.legacy_scenarios.map(renderLegacyScenario).join("");
+        document.getElementById("services").innerHTML = statusData.services.length
+          ? statusData.services.map(renderService).join("")
           : "<p class='muted'>No services started yet.</p>";
+        document.querySelector("#runs-summary").innerHTML = `
+          <h3>What the recent runs say</h3>
+          ${renderRunsSummary(runData.summary || {})}
+        `;
+        document.getElementById("runs").innerHTML = runData.runs.length
+          ? runData.runs.map(renderRun).join("")
+          : "<p class='muted'>No fixture or flow runs recorded yet.</p>";
+
+        const templateSelect = document.getElementById("instance-template");
+        const currentValue = templateSelect.value;
+        templateSelect.innerHTML = templateList
+          .map((template) => `<option value="${escapeHtml(template.id)}">${escapeHtml(template.title)} (${escapeHtml(template.id)})</option>`)
+          .join("");
+        if (currentValue && templateList.some((template) => template.id === currentValue)) {
+          templateSelect.value = currentValue;
+        }
+        seedFlowBuilderForm(document.getElementById("flow-form"));
+        seedFixtureBuilderForm(document.getElementById("fixture-form"));
+        refreshBuilderSelectOptions(document);
+        updateFlowPreview(document.getElementById("flow-form"));
+        updateFixturePreview(document.getElementById("fixture-form"));
+        updateNodeCreatePreview(document.getElementById("instance-form"));
+        for (const form of document.querySelectorAll(".flow-instance-edit-form")) {
+          if (!form.dataset.flowChecksMode) form.dataset.flowChecksMode = "manual";
+          updateFlowPreview(form);
+        }
+        for (const form of document.querySelectorAll(".fixture-instance-edit-form")) {
+          updateFixturePreview(form);
+        }
+        for (const form of document.querySelectorAll(".instance-edit-form")) {
+          updateNodeInstancePreview(form);
+        }
       }
 
       document.addEventListener("click", async (event) => {
         const target = event.target instanceof HTMLElement ? event.target : null;
         if (!target) return;
+        if (target.dataset.syncFlowChecks) {
+          const form = target.closest("form");
+          if (form) {
+            form.dataset.flowChecksMode = "auto";
+            syncFlowChecksFromPlan(form, true);
+            updateFlowPreview(form);
+          }
+          return;
+        }
+        if (target.dataset.addBuilderRow) {
+          const form = target.closest("form");
+          if (form) {
+            if (target.dataset.addBuilderRow === "checks") {
+              form.dataset.flowChecksMode = "manual";
+            }
+            addBuilderRow(form, target.dataset.addBuilderRow);
+            if (form.id === "flow-form" || form.classList.contains("flow-instance-edit-form")) updateFlowPreview(form);
+            if (form.id === "fixture-form" || form.classList.contains("fixture-instance-edit-form")) updateFixturePreview(form);
+          }
+          return;
+        }
+        if (target.dataset.removeBuilderRow) {
+          const form = target.closest("form");
+          const builderKind = target.closest("[data-builder-kind]")?.dataset.builderKind || "";
+          target.closest("[data-builder-row]")?.remove();
+          if (builderKind === "checks") {
+            form.dataset.flowChecksMode = "manual";
+          } else if ((builderKind === "services" || builderKind === "node_refs" || builderKind === "fixture_runs") && form?.dataset.flowChecksMode === "auto") {
+            syncFlowChecksFromPlan(form, true);
+          }
+          if (form?.id === "flow-form" || form?.classList.contains("flow-instance-edit-form")) updateFlowPreview(form);
+          if (form?.id === "fixture-form" || form?.classList.contains("fixture-instance-edit-form")) updateFixturePreview(form);
+          return;
+        }
         try {
-          if (target.dataset.startScenario) await startScenario(target.dataset.startScenario);
-          if (target.dataset.stopScenario) await stopScenario(target.dataset.stopScenario);
-          if (target.dataset.stopService) await stopService(target.dataset.stopService);
+          if (target.dataset.startService) await api(`/api/services/${encodeURIComponent(target.dataset.startService)}/start`, { method: "POST" });
+          if (target.dataset.stopService) await api(`/api/stop/${encodeURIComponent(target.dataset.stopService)}`, { method: "POST" });
+          if (target.dataset.startProfile) await api(`/api/node-profiles/${encodeURIComponent(target.dataset.startProfile)}/start`, { method: "POST" });
+          if (target.dataset.stopProfile) await api(`/api/node-profiles/${encodeURIComponent(target.dataset.stopProfile)}/stop`, { method: "POST" });
+          if (target.dataset.startInstance) await api(`/api/node-instances/${encodeURIComponent(target.dataset.startInstance)}/start`, { method: "POST" });
+          if (target.dataset.stopInstance) await api(`/api/node-instances/${encodeURIComponent(target.dataset.stopInstance)}/stop`, { method: "POST" });
+          if (target.dataset.runFixture) await api(`/api/customer-fixtures/${encodeURIComponent(target.dataset.runFixture)}/run`, { method: "POST" });
+          if (target.dataset.runFlow) await api(`/api/flow-scenarios/${encodeURIComponent(target.dataset.runFlow)}/run`, { method: "POST" });
+          if (target.dataset.runFlowInstance) await api(`/api/flow-scenario-instances/${encodeURIComponent(target.dataset.runFlowInstance)}/run`, { method: "POST" });
+          if (target.dataset.startLegacy) await api(`/api/scenarios/${encodeURIComponent(target.dataset.startLegacy)}/start`, { method: "POST" });
+          if (target.dataset.stopLegacy) await api(`/api/scenarios/${encodeURIComponent(target.dataset.stopLegacy)}/stop`, { method: "POST" });
+          await refresh();
         } catch (error) {
           showError(error instanceof Error ? error.message : "Action failed.");
         }
@@ -380,6 +2404,171 @@
 
       document.getElementById("refresh").addEventListener("click", () => {
         refresh().catch((error) => showError(error.message));
+      });
+
+      document.addEventListener("input", (event) => {
+        const element = event.target instanceof HTMLElement ? event.target : null;
+        const form = element ? element.closest("form") : null;
+        if (!form) return;
+        const builderKind = element?.closest("[data-builder-kind]")?.dataset.builderKind || "";
+        if (form.id === "flow-form" || form.classList.contains("flow-instance-edit-form")) {
+          if (builderKind === "checks") {
+            form.dataset.flowChecksMode = "manual";
+          } else if ((builderKind === "services" || builderKind === "node_refs" || builderKind === "fixture_runs") && form.dataset.flowChecksMode === "auto") {
+            syncFlowChecksFromPlan(form, true);
+          }
+        }
+        if (form.id === "fixture-form" || form.classList.contains("fixture-instance-edit-form")) updateFixturePreview(form);
+        if (form.id === "instance-form") updateNodeCreatePreview(form);
+        if (form.classList.contains("instance-edit-form")) updateNodeInstancePreview(form);
+        if (form.id === "flow-form" || form.classList.contains("flow-instance-edit-form")) updateFlowPreview(form);
+      });
+
+      document.addEventListener("change", (event) => {
+        const element = event.target instanceof HTMLElement ? event.target : null;
+        const form = element ? element.closest("form") : null;
+        if (!form) return;
+        const builderKind = element?.closest("[data-builder-kind]")?.dataset.builderKind || "";
+        if (form.id === "flow-form" || form.classList.contains("flow-instance-edit-form")) {
+          if (builderKind === "checks") {
+            form.dataset.flowChecksMode = "manual";
+          } else if ((builderKind === "services" || builderKind === "node_refs" || builderKind === "fixture_runs") && form.dataset.flowChecksMode === "auto") {
+            syncFlowChecksFromPlan(form, true);
+          }
+        }
+        if (form.id === "fixture-form" || form.classList.contains("fixture-instance-edit-form")) updateFixturePreview(form);
+        if (form.id === "instance-form") updateNodeCreatePreview(form);
+        if (form.classList.contains("instance-edit-form")) updateNodeInstancePreview(form);
+        if (form.id === "flow-form" || form.classList.contains("flow-instance-edit-form")) updateFlowPreview(form);
+      });
+
+      document.getElementById("instance-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        try {
+          const data = new FormData(form);
+          await api("/api/node-instances", {
+            method: "POST",
+            body: {
+              template_id: data.get("template_id"),
+              instance_id: data.get("instance_id"),
+              title: data.get("title"),
+              description: data.get("description"),
+              notes: data.get("notes")
+            }
+          });
+          form.reset();
+          await refresh();
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Create instance failed.");
+        }
+      });
+
+      document.getElementById("fixture-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        try {
+          await api("/api/customer-fixture-instances", {
+            method: "POST",
+            body: buildFixturePayload(form),
+          });
+          form.reset();
+          seedFixtureBuilderForm(form, true);
+          await refresh();
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Create fixture failed.");
+        }
+      });
+
+      document.getElementById("flow-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const parseLines = (value) => String(value || "")
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        try {
+          const data = new FormData(form);
+          await api("/api/flow-scenario-instances", {
+            method: "POST",
+            body: {
+              instance_id: data.get("instance_id"),
+              title: data.get("title"),
+              description: data.get("description"),
+              services: collectBuilderRows(form, "services"),
+              node_refs: collectBuilderRows(form, "node_refs"),
+              fixture_runs: collectBuilderRows(form, "fixture_runs"),
+              checks: collectBuilderRows(form, "checks"),
+              notes: parseLines(data.get("notes")),
+            }
+          });
+          form.reset();
+          form.dataset.flowChecksMode = "auto";
+          seedFlowBuilderForm(form, true);
+          await refresh();
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Create flow failed.");
+        }
+      });
+
+      document.addEventListener("submit", async (event) => {
+        const form = event.target instanceof HTMLFormElement ? event.target : null;
+        if (!form) return;
+        event.preventDefault();
+        const parseLines = (value) => String(value || "")
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        try {
+          const data = new FormData(form);
+          if (form.classList.contains("instance-edit-form")) {
+            const menuSeedRaw = String(data.get("menu_seed") || "").trim();
+            const menuSeed = menuSeedRaw ? JSON.parse(menuSeedRaw) : { items: [] };
+            await api(`/api/node-instances/${encodeURIComponent(form.dataset.instanceId)}`, {
+              method: "PATCH",
+              body: {
+                title: data.get("title"),
+                description: data.get("description"),
+                notes: data.get("notes"),
+                node_id: data.get("node_id"),
+                city: data.get("city"),
+                country: data.get("country"),
+                categories: parseLines(data.get("categories")),
+                order_mode: data.get("order_mode"),
+                public_surface_key: String(data.get("public_surface_key") || "public_shop").trim(),
+                registry_targets: parseLines(data.get("registry_targets")),
+                visibility_expectations: parseLines(data.get("visibility_expectations")),
+                module_ids: parseLines(data.get("module_ids")),
+                menu_seed: menuSeed
+              }
+            });
+          } else if (form.classList.contains("flow-instance-edit-form")) {
+            await api(`/api/flow-scenario-instances/${encodeURIComponent(form.dataset.scenarioId)}`, {
+              method: "PATCH",
+              body: {
+                title: data.get("title"),
+                description: data.get("description"),
+                services: collectBuilderRows(form, "services"),
+                node_refs: collectBuilderRows(form, "node_refs"),
+                fixture_runs: collectBuilderRows(form, "fixture_runs"),
+                checks: collectBuilderRows(form, "checks"),
+                notes: parseLines(data.get("notes")),
+              }
+            });
+          } else if (form.classList.contains("fixture-instance-edit-form")) {
+            const payload = buildFixturePayload(form);
+            delete payload.instance_id;
+            await api(`/api/customer-fixture-instances/${encodeURIComponent(form.dataset.fixtureId)}`, {
+              method: "PATCH",
+              body: payload,
+            });
+          } else {
+            return;
+          }
+          await refresh();
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Save failed.");
+        }
       });
 
       refresh().catch((error) => showError(error.message));

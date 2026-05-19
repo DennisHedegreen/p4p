@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Operator-owned kitchen screen for viewing and updating incoming pickup orders.",
+  "description": {
+    "da": "Operatørejet køkkenskærm til at se og opdatere indgående pickup-ordrer.",
+    "sv": "Operatörsägd köksskärm för att se och uppdatera inkommande pickup-beställningar.",
+    "tr": "Gelen pickup siparişlerini görüntülemek ve güncellemek için operatör sahipli mutfak ekranı.",
+    "ar": "شاشة مطبخ مملوكة للمشغّل لعرض وتحديث طلبات الاستلام الواردة.",
+    "ku": "Ekrana metbexê ya xwedîtiya operatorê ji bo dîtin û nûkirina fermanên pickup ên têketî.",
+    "en": "Operator-owned kitchen screen for viewing and updating incoming pickup orders."
+  },
   "visibility": "operator_only",
   "capabilities": [
     "view_order_queue",
@@ -47,10 +54,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Shows incoming orders to the restaurant operator and lets the operator move them through kitchen states.",
-    "data_access_summary": "Order items, note, customer contact, fulfillment type, and local order status. Operator-only; not exposed in public discovery.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Viser indgående ordrer for restaurantoperatøren og lader operatøren flytte dem gennem køkkentilstande.",
+      "sv": "Visar inkommande beställningar för restaurangoperatören och låter operatören flytta dem genom kökslägen.",
+      "tr": "Restoran operatörüne gelen siparişleri gösterir ve operatörün onları mutfak durumları arasında ilerletmesini sağlar.",
+      "ar": "يعرض الطلبات الواردة لمشغّل المطعم ويتيح له تحريكها عبر حالات المطبخ.",
+      "ku": "Fermanên têketî ji operatorê restaurantê re nîşan dide û dihêle wan di nav rewşên metbexê de biguhezîne.",
+      "en": "Shows incoming orders to the restaurant operator and lets the operator move them through kitchen states."
+    },
+    "data_access_summary": {
+      "da": "Ordrevarer, note, kundekontakt, fulfillment-type og lokal ordrestatus. Kun operator; ikke vist i offentlig discovery.",
+      "sv": "Beställningsvaror, notering, kundkontakt, fulfillment-typ och lokal orderstatus. Endast operatör; visas inte i offentlig discovery.",
+      "tr": "Sipariş kalemleri, not, müşteri iletişimi, fulfillment türü ve yerel sipariş durumu. Yalnızca operatör; kamusal discovery’de gösterilmez.",
+      "ar": "عناصر الطلب والملاحظة وبيانات تواصل العميل ونوع التسليم وحالة الطلب المحلية. للمشغّل فقط؛ لا تظهر في الاكتشاف العام.",
+      "ku": "Tiştên fermanê, têbinî, têkiliya mişterî, cureya fulfillment û rewşa herêmî ya fermanê. Tenê ji bo operatorê ye; di discovery-ya giştî de nayê nîşandan.",
+      "en": "Order items, note, customer contact, fulfillment type, and local order status. Operator-only; not exposed in public discovery."
+    },
+    "trust_status": {
+      "da": "reference-manifest, usigneret provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifest, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manifesta referansê, providerê bê îmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "available in the pilot-node operator dashboard when enabled"
+    "operator_status": {
+      "da": "tilgængelig i pilot-node-operator-dashboardet når den er slået til",
+      "sv": "tillgänglig i pilot-node-operatörspanelen när den är aktiverad",
+      "tr": "etkinleştirildiğinde pilot-node operatör panelinde kullanılabilir",
+      "ar": "متاحة في لوحة مشغّل الـ pilot-node عندما تكون مفعّلة",
+      "ku": "dema çalak be di dashboarda operatorê ya pilot-node de heye",
+      "en": "available in the pilot-node operator dashboard when enabled"
+    }
   }
 }

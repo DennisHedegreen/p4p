@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "test",
-  "description": "Routes accepted orders to a secondary printer target or local spool when the main print path fails.",
+  "description": {
+    "da": "Ruter accepterede ordrer til et sekundært printermål eller lokal spool når hoved-printstien fejler.",
+    "sv": "Routar accepterade beställningar till ett sekundärt skrivarmål eller lokal spool när huvudutskriftsvägen fallerar.",
+    "tr": "Ana yazdırma yolu başarısız olduğunda kabul edilen siparişleri ikincil bir yazıcı hedefine ya da yerel spool’a yönlendirir.",
+    "ar": "يوجّه الطلبات المقبولة إلى هدف طابعة ثانوي أو spool محلي عندما يفشل مسار الطباعة الرئيسي.",
+    "ku": "Dema ku rêça sereke ya çapê têk diçe fermanên pejirandî ber bi armanca çapkerê duyemîn an spoola herêmî ve dihêle.",
+    "en": "Routes accepted orders to a secondary printer target or local spool when the main print path fails."
+  },
   "visibility": "operator_only",
   "capabilities": ["reroute_print_job", "report_status"],
   "input_events": [
@@ -59,10 +66,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Routes accepted orders to a second printer path or local spool when the first print target fails.",
-    "data_access_summary": "Order items, note, customer contact, fulfillment type, and configured backup printer target.",
-    "trust_status": "reference self-test lane",
+    "function": {
+      "da": "Ruter accepterede ordrer til en anden printersti eller lokal spool når det første printmål fejler.",
+      "sv": "Routar accepterade beställningar till en andra skrivarväg eller lokal spool när det första utskriftsmålet fallerar.",
+      "tr": "İlk yazdırma hedefi başarısız olduğunda kabul edilen siparişleri ikinci bir yazıcı yoluna ya da yerel spool’a yönlendirir.",
+      "ar": "يوجّه الطلبات المقبولة إلى مسار طباعة ثانٍ أو spool محلي عندما يفشل هدف الطباعة الأول.",
+      "ku": "Dema ku armanca yekem a çapê têk diçe fermanên pejirandî bo rêça çapê ya duyemîn an spoola herêmî dirêxîne.",
+      "en": "Routes accepted orders to a second printer path or local spool when the first print target fails."
+    },
+    "data_access_summary": {
+      "da": "Ordrevarer, note, kundekontakt, fulfillment-type og konfigureret backup-printermål.",
+      "sv": "Beställningsvaror, notering, kundkontakt, fulfillment-typ och konfigurerat backupskrivarmål.",
+      "tr": "Sipariş kalemleri, not, müşteri iletişimi, teslim türü ve yapılandırılmış yedek yazıcı hedefi.",
+      "ar": "عناصر الطلب والملاحظة وبيانات تواصل العميل ونوع التسليم وهدف الطابعة الاحتياطية المهيأ.",
+      "ku": "Tiştên fermanê, têbinî, têkiliya mişterî, cureya fulfillment û armanca çapkerê yedek ya mîhengkirî.",
+      "en": "Order items, note, customer contact, fulfillment type, and configured backup printer target."
+    },
+    "trust_status": {
+      "da": "reference self-test-lane",
+      "sv": "referens självtest-lane",
+      "tr": "referans öz-test hattı",
+      "ar": "مسار اختبار ذاتي مرجعي",
+      "ku": "lane-ya self-test a referansê",
+      "en": "reference self-test lane"
+    },
     "readiness": "test",
-    "operator_status": "builtin operator self-test lane when enabled and configured"
+    "operator_status": {
+      "da": "indbygget operator-self-test-lane når den er aktiveret og konfigureret",
+      "sv": "inbyggd operatörs-självtest-lane när den är aktiverad och konfigurerad",
+      "tr": "etkinleştirildiğinde ve yapılandırıldığında yerleşik operatör öz-test hattı",
+      "ar": "مسار اختبار ذاتي مدمج للمشغّل عندما يكون مفعّلاً ومهيأً",
+      "ku": "dema ku were çalakirin û mîhengkirin lane-ya self-test a operatorê ya avakirî ye",
+      "en": "builtin operator self-test lane when enabled and configured"
+    }
   }
 }

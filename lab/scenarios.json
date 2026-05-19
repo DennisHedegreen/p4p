@@ -1,10 +1,10 @@
 {
-  "version": "0.1",
+  "version": "0.2-lab-v2",
   "services": {
     "primary-registry": {
       "name": "primary-registry",
       "kind": "registry",
-      "description": "Primary local registry on port 8000. Demo nodes announce here first.",
+      "description": "Primary local registry on port 8000.",
       "cwd": "{registry_root}",
       "command": [
         "{registry_python}",
@@ -18,7 +18,7 @@
       ],
       "env": {
         "P4P_REGISTRY_URL": "http://127.0.0.1:8000",
-        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8000\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8002\"}]"
+        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8000\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8001\"},{\"tier\":2,\"url\":\"http://127.0.0.1:8002\"}]"
       },
       "port": 8000,
       "health_url": "http://127.0.0.1:8000/registry-info",
@@ -29,16 +29,50 @@
           "description": "Shows primary registry identity and backup configuration."
         },
         {
-          "label": "Discover pizza nodes",
+          "label": "Primary discover",
           "url": "http://127.0.0.1:8000/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
-          "description": "Checks whether announced local nodes are discoverable through the primary registry."
+          "description": "Checks discoverability through the primary registry."
+        }
+      ]
+    },
+    "secondary-registry": {
+      "name": "secondary-registry",
+      "kind": "registry",
+      "description": "Secondary local registry on port 8001.",
+      "cwd": "{registry_root}",
+      "command": [
+        "{registry_python}",
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8001"
+      ],
+      "env": {
+        "P4P_REGISTRY_URL": "http://127.0.0.1:8001",
+        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8001\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8000\"},{\"tier\":2,\"url\":\"http://127.0.0.1:8002\"}]"
+      },
+      "port": 8001,
+      "health_url": "http://127.0.0.1:8001/registry-info",
+      "links": [
+        {
+          "label": "Registry info",
+          "url": "http://127.0.0.1:8001/registry-info",
+          "description": "Shows secondary registry identity and backup configuration."
+        },
+        {
+          "label": "Secondary discover",
+          "url": "http://127.0.0.1:8001/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
+          "description": "Checks discoverability through the secondary registry."
         }
       ]
     },
     "backup-registry": {
       "name": "backup-registry",
       "kind": "registry",
-      "description": "Backup local registry on port 8002. Used for failover tests.",
+      "description": "Backup local registry on port 8002.",
       "cwd": "{registry_root}",
       "command": [
         "{registry_python}",
@@ -52,7 +86,7 @@
       ],
       "env": {
         "P4P_REGISTRY_URL": "http://127.0.0.1:8002",
-        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8002\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8000\"}]"
+        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8002\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8000\"},{\"tier\":2,\"url\":\"http://127.0.0.1:8001\"}]"
       },
       "port": 8002,
       "health_url": "http://127.0.0.1:8002/registry-info",
@@ -63,9 +97,43 @@
           "description": "Shows backup registry identity and backup configuration."
         },
         {
-          "label": "Discover pizza nodes",
+          "label": "Backup discover",
           "url": "http://127.0.0.1:8002/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
-          "description": "Checks whether announced local nodes are discoverable through the backup registry."
+          "description": "Checks discoverability through the backup registry."
+        }
+      ]
+    },
+    "curated-backup-registry": {
+      "name": "curated-backup-registry",
+      "kind": "registry",
+      "description": "Backup local curated Pizza4People DK registry on port 8003.",
+      "cwd": "{registry_root}",
+      "command": [
+        "{registry_python}",
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8003"
+      ],
+      "env": {
+        "P4P_REGISTRY_URL": "http://127.0.0.1:8003",
+        "P4P_BACKUP_REGISTRIES": "[{\"tier\":0,\"url\":\"http://127.0.0.1:8003\"},{\"tier\":1,\"url\":\"http://127.0.0.1:8001\"},{\"tier\":2,\"url\":\"http://127.0.0.1:8000\"},{\"tier\":3,\"url\":\"http://127.0.0.1:8002\"}]"
+      },
+      "port": 8003,
+      "health_url": "http://127.0.0.1:8003/registry-info",
+      "links": [
+        {
+          "label": "Registry info",
+          "url": "http://127.0.0.1:8003/registry-info",
+          "description": "Shows curated backup registry identity and backup configuration."
+        },
+        {
+          "label": "Curated backup discover",
+          "url": "http://127.0.0.1:8003/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
+          "description": "Checks discoverability through the curated backup registry."
         }
       ]
     },
@@ -90,14 +158,14 @@
         {
           "label": "Open client",
           "url": "http://127.0.0.1:8765/",
-          "description": "Browser client for registry discovery and direct order tests."
+          "description": "Browser client for the classic local proof."
         }
       ]
     },
     "demo-node-1": {
       "name": "demo-node-1",
       "kind": "node",
-      "description": "First demo restaurant node on port 8101.",
+      "description": "Legacy proof demo node on port 8101.",
       "cwd": "{demo_node_root}",
       "command": [
         "{demo_node_python}",
@@ -140,14 +208,14 @@
         {
           "label": "Menu JSON",
           "url": "http://127.0.0.1:8101/p4p/menu",
-          "description": "Direct menu endpoint for this demo node."
+          "description": "Direct menu endpoint for this legacy demo node."
         }
       ]
     },
-    "pilot-photo-map": {
-      "name": "pilot-photo-map",
+    "pilot-pizza-shop": {
+      "name": "pilot-pizza-shop",
       "kind": "pilot-node",
-      "description": "Pilot node with catalog editor, photo-map menu, list menu, customer status, and cash payment adapter.",
+      "description": "Pilot pizza shop node with list menu, customer status, cash payment, and catalog control.",
       "cwd": "{pilot_node_root}",
       "command": [
         "{pilot_node_venv}/bin/uvicorn",
@@ -158,9 +226,184 @@
         "8595"
       ],
       "env": {
+        "P4P_PILOT_NODE_DB_PATH": "/tmp/p4p-lab-pizza-shop.sqlite3",
+        "P4P_OPERATOR_TOKEN": "change-this",
+        "P4P_REGISTRY_URLS": "http://127.0.0.1:8000,http://127.0.0.1:8002,http://127.0.0.1:8001,http://127.0.0.1:8003",
+        "P4P_NODE_BASE_URL": "http://127.0.0.1:8595",
+        "P4P_NODE_ID": "dk-brondby-pizza-001",
+        "P4P_NODE_NAME": "Local Pizza Shop",
+        "P4P_NODE_CITY": "Brondby",
+        "P4P_NODE_COUNTRY": "DK",
+        "P4P_NODE_OPEN": "true",
+        "P4P_NODE_ORDER_MODE": "live",
+        "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,p4p.payment.cash,p4p.kitchen.screen",
+        "P4P_NODE_CATEGORIES": "pizza",
+        "P4P_MENU_CURRENCY": "DKK",
+        "P4P_MENU_ITEM_1_ID": "margherita",
+        "P4P_MENU_ITEM_1_NAME": "Margherita",
+        "P4P_MENU_ITEM_1_DESCRIPTION": "Tomat, mozzarella, basilikum",
+        "P4P_MENU_ITEM_1_PRICE": "7500",
+        "P4P_MENU_ITEM_1_CATEGORY": "pizza",
+        "P4P_MENU_ITEM_2_ID": "pepperoni",
+        "P4P_MENU_ITEM_2_NAME": "Pepperoni",
+        "P4P_MENU_ITEM_2_DESCRIPTION": "Tomat, mozzarella, pepperoni",
+        "P4P_MENU_ITEM_2_PRICE": "8200",
+        "P4P_MENU_ITEM_2_CATEGORY": "pizza"
+      },
+      "port": 8595,
+      "health_url": "http://127.0.0.1:8595/",
+      "links": [
+        {
+          "label": "Pilot index",
+          "url": "http://127.0.0.1:8595/",
+          "description": "Endpoint map for the running pizza shop node."
+        },
+        {
+          "label": "List menu",
+          "url": "http://127.0.0.1:8595/p4p/menu/list",
+          "description": "Customer-facing list menu."
+        },
+        {
+          "label": "Operator GUI",
+          "url": "http://127.0.0.1:8595/operator",
+          "description": "Operator dashboard. Token: change-this."
+        }
+      ]
+    },
+    "pilot-kebab-shop": {
+      "name": "pilot-kebab-shop",
+      "kind": "pilot-node",
+      "description": "Pilot kebab shop node with list menu, customer status, cash payment, and catalog control.",
+      "cwd": "{pilot_node_root}",
+      "command": [
+        "{pilot_node_venv}/bin/uvicorn",
+        "pilot_node:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8596"
+      ],
+      "env": {
+        "P4P_PILOT_NODE_DB_PATH": "/tmp/p4p-lab-kebab-shop.sqlite3",
+        "P4P_OPERATOR_TOKEN": "change-this",
+        "P4P_REGISTRY_URLS": "http://127.0.0.1:8000,http://127.0.0.1:8002,http://127.0.0.1:8001,http://127.0.0.1:8003",
+        "P4P_NODE_BASE_URL": "http://127.0.0.1:8596",
+        "P4P_NODE_ID": "dk-brondby-kebab-001",
+        "P4P_NODE_NAME": "Local Kebab Shop",
+        "P4P_NODE_CITY": "Brondby",
+        "P4P_NODE_COUNTRY": "DK",
+        "P4P_NODE_OPEN": "true",
+        "P4P_NODE_ORDER_MODE": "live",
+        "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,p4p.payment.cash",
+        "P4P_NODE_CATEGORIES": "kebab",
+        "P4P_MENU_CURRENCY": "DKK",
+        "P4P_MENU_ITEM_1_ID": "durum-kebab",
+        "P4P_MENU_ITEM_1_NAME": "Durum kebab",
+        "P4P_MENU_ITEM_1_DESCRIPTION": "Kebab, salat, dressing",
+        "P4P_MENU_ITEM_1_PRICE": "7900",
+        "P4P_MENU_ITEM_1_CATEGORY": "kebab",
+        "P4P_MENU_ITEM_2_ID": "falafel-wrap",
+        "P4P_MENU_ITEM_2_NAME": "Falafel wrap",
+        "P4P_MENU_ITEM_2_DESCRIPTION": "Falafel, salat, dressing",
+        "P4P_MENU_ITEM_2_PRICE": "7600",
+        "P4P_MENU_ITEM_2_CATEGORY": "kebab"
+      },
+      "port": 8596,
+      "health_url": "http://127.0.0.1:8596/",
+      "links": [
+        {
+          "label": "Pilot index",
+          "url": "http://127.0.0.1:8596/",
+          "description": "Endpoint map for the running kebab shop node."
+        },
+        {
+          "label": "List menu",
+          "url": "http://127.0.0.1:8596/p4p/menu/list",
+          "description": "Customer-facing list menu."
+        },
+        {
+          "label": "Operator GUI",
+          "url": "http://127.0.0.1:8596/operator",
+          "description": "Operator dashboard. Token: change-this."
+        }
+      ]
+    },
+    "pilot-menu-only": {
+      "name": "pilot-menu-only",
+      "kind": "pilot-node",
+      "description": "Pilot menu-only node for dry-run validation without accepting real orders.",
+      "cwd": "{pilot_node_root}",
+      "command": [
+        "{pilot_node_venv}/bin/uvicorn",
+        "pilot_node:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8597"
+      ],
+      "env": {
+        "P4P_PILOT_NODE_DB_PATH": "/tmp/p4p-lab-menu-only.sqlite3",
+        "P4P_OPERATOR_TOKEN": "change-this",
+        "P4P_REGISTRY_URLS": "http://127.0.0.1:8000,http://127.0.0.1:8002",
+        "P4P_NODE_BASE_URL": "http://127.0.0.1:8597",
+        "P4P_NODE_ID": "dk-brondby-menu-only-001",
+        "P4P_NODE_NAME": "Local Menu Only Node",
+        "P4P_NODE_CITY": "Brondby",
+        "P4P_NODE_COUNTRY": "DK",
+        "P4P_NODE_OPEN": "true",
+        "P4P_NODE_ORDER_MODE": "menu_only",
+        "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,p4p.payment.cash",
+        "P4P_NODE_CATEGORIES": "shop",
+        "P4P_MENU_CURRENCY": "DKK",
+        "P4P_MENU_ITEM_1_ID": "starter-plate",
+        "P4P_MENU_ITEM_1_NAME": "Starter plate",
+        "P4P_MENU_ITEM_1_DESCRIPTION": "Small dry-run plate",
+        "P4P_MENU_ITEM_1_PRICE": "4500",
+        "P4P_MENU_ITEM_1_CATEGORY": "shop",
+        "P4P_MENU_ITEM_2_ID": "test-drink",
+        "P4P_MENU_ITEM_2_NAME": "Test drink",
+        "P4P_MENU_ITEM_2_DESCRIPTION": "Cold drink for menu-only checks",
+        "P4P_MENU_ITEM_2_PRICE": "2500",
+        "P4P_MENU_ITEM_2_CATEGORY": "shop"
+      },
+      "port": 8597,
+      "health_url": "http://127.0.0.1:8597/",
+      "links": [
+        {
+          "label": "Pilot index",
+          "url": "http://127.0.0.1:8597/",
+          "description": "Endpoint map for the running menu-only node."
+        },
+        {
+          "label": "List menu",
+          "url": "http://127.0.0.1:8597/p4p/menu/list",
+          "description": "Customer-facing list menu."
+        },
+        {
+          "label": "Operator GUI",
+          "url": "http://127.0.0.1:8597/operator",
+          "description": "Operator dashboard. Token: change-this."
+        }
+      ]
+    },
+    "pilot-photo-map": {
+      "name": "pilot-photo-map",
+      "kind": "pilot-node",
+      "description": "Legacy showcase node with photo-map menu, list menu, customer status, and cash payment adapter.",
+      "cwd": "{pilot_node_root}",
+      "command": [
+        "{pilot_node_venv}/bin/uvicorn",
+        "pilot_node:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8598"
+      ],
+      "env": {
         "P4P_PILOT_NODE_DB_PATH": "/tmp/p4p-lab-pilot-photo-map-images.sqlite3",
         "P4P_OPERATOR_TOKEN": "change-this",
-        "P4P_NODE_BASE_URL": "http://127.0.0.1:8595",
+        "P4P_REGISTRY_URLS": "http://127.0.0.1:8000,http://127.0.0.1:8002,http://127.0.0.1:8001,http://127.0.0.1:8003",
+        "P4P_NODE_BASE_URL": "http://127.0.0.1:8598",
         "P4P_NODE_OPEN": "true",
         "P4P_NODE_ORDER_MODE": "live",
         "P4P_NODE_MODULES": "p4p.catalog.editor,p4p.menu.photo-map,p4p.menu.list,p4p.customer.status,p4p.payment.cash",
@@ -179,66 +422,508 @@
         "P4P_MENU_ITEM_2_CATEGORY": "kebab",
         "P4P_MENU_ITEM_2_IMAGE_URL": "/p4p/assets/food-image-fixtures/dishes/dish-durum-kebab.png"
       },
-      "port": 8595,
-      "health_url": "http://127.0.0.1:8595/",
+      "port": 8598,
+      "health_url": "http://127.0.0.1:8598/",
       "links": [
         {
           "label": "Pilot index",
-          "url": "http://127.0.0.1:8595/",
-          "description": "Endpoint map for the running pilot node."
+          "url": "http://127.0.0.1:8598/",
+          "description": "Endpoint map for the running photo-map node."
         },
         {
           "label": "Photo-map menu",
-          "url": "http://127.0.0.1:8595/p4p/menu/photo-map",
+          "url": "http://127.0.0.1:8598/p4p/menu/photo-map",
           "description": "Clickable paper-menu style customer surface."
         },
         {
-          "label": "List menu",
-          "url": "http://127.0.0.1:8595/p4p/menu/list",
-          "description": "Classic list-menu customer surface for comparison."
-        },
-        {
           "label": "Operator GUI",
-          "url": "http://127.0.0.1:8595/operator",
+          "url": "http://127.0.0.1:8598/operator",
           "description": "Operator dashboard. Token: change-this."
-        },
-        {
-          "label": "Module status JSON",
-          "url": "http://127.0.0.1:8595/operator/modules",
-          "description": "Requires X-P4P-Operator-Token: change-this when fetched outside the GUI."
         }
       ]
     }
   },
-  "scenarios": [
+  "registry_profiles": {
+    "main-open": {
+      "id": "main-open",
+      "title": "Main open registry",
+      "description": "Main uncurated local registry for raw P4P discoverability.",
+      "service_name": "primary-registry",
+      "role": "main-open",
+      "curation_mode": "open",
+      "availability_role": "primary",
+      "scope": {
+        "network": "local-open",
+        "geography": "DK",
+        "family": "shop"
+      },
+      "upstreams": [],
+      "announce_policy": "direct",
+      "discover_policy": "raw",
+      "notes": [
+        "This is the broad local discover surface for anything that announces into the main lane.",
+        "No curation claim is made at the registry binary level in this lab pass."
+      ]
+    },
+    "main-open-backup": {
+      "id": "main-open-backup",
+      "title": "Main open backup",
+      "description": "Availability backup for the main open registry.",
+      "service_name": "backup-registry",
+      "role": "main-open",
+      "curation_mode": "open",
+      "availability_role": "backup",
+      "backup_for": "main-open",
+      "scope": {
+        "network": "local-open",
+        "geography": "DK",
+        "family": "shop"
+      },
+      "upstreams": [
+        "main-open"
+      ],
+      "announce_policy": "direct",
+      "discover_policy": "raw",
+      "notes": [
+        "This lane is about availability, not a different meaning."
+      ]
+    },
+    "dk-p4p-curated": {
+      "id": "dk-p4p-curated",
+      "title": "DK Pizza4People curated",
+      "description": "Local curated Pizza4People DK sub-registry lane.",
+      "service_name": "secondary-registry",
+      "role": "sub-curated",
+      "curation_mode": "curated",
+      "availability_role": "primary",
+      "scope": {
+        "network": "pizza4people-dk",
+        "geography": "DK",
+        "family": "pizza4people"
+      },
+      "upstreams": [
+        "main-open"
+      ],
+      "announce_policy": "allowlist_or_direct",
+      "discover_policy": "filtered",
+      "notes": [
+        "This models a smaller branded public world than the main open registry.",
+        "The lab UI treats this as a curated lane even though the registry runtime still speaks the same protocol."
+      ]
+    },
+    "dk-p4p-curated-backup": {
+      "id": "dk-p4p-curated-backup",
+      "title": "DK Pizza4People curated backup",
+      "description": "Availability backup for the curated Pizza4People DK lane.",
+      "service_name": "curated-backup-registry",
+      "role": "sub-curated",
+      "curation_mode": "curated",
+      "availability_role": "backup",
+      "backup_for": "dk-p4p-curated",
+      "scope": {
+        "network": "pizza4people-dk",
+        "geography": "DK",
+        "family": "pizza4people"
+      },
+      "upstreams": [
+        "dk-p4p-curated",
+        "main-open"
+      ],
+      "announce_policy": "allowlist_or_direct",
+      "discover_policy": "filtered",
+      "notes": [
+        "This lane is the backup of the curated meaning-layer, not of the open registry."
+      ]
+    }
+  },
+  "node_profiles": {
+    "pizza-shop": {
+      "id": "pizza-shop",
+      "title": "Pizza shop",
+      "description": "Main local pizza pilot profile with list menu and live orders.",
+      "service_name": "pilot-pizza-shop",
+      "family": "pizza",
+      "tags": [
+        "pilot",
+        "live",
+        "list-menu"
+      ],
+      "operator_url": "http://127.0.0.1:8595/operator",
+      "registry_targets": [
+        "main-open",
+        "dk-p4p-curated"
+      ],
+      "visibility_expectations": [
+        "main-open",
+        "dk-p4p-curated"
+      ],
+      "customer_urls": {
+        "public_shop": "http://127.0.0.1:8595/p4p/menu/list",
+        "menu_json": "http://127.0.0.1:8595/p4p/menu",
+        "list_menu": "http://127.0.0.1:8595/p4p/menu/list",
+        "order_api": "http://127.0.0.1:8595/p4p/order",
+        "status_page_template": "http://127.0.0.1:8595/p4p/orders/{order_id}",
+        "status_api_template": "http://127.0.0.1:8595/p4p/orders/{order_id}/status"
+      }
+    },
+    "kebab-shop": {
+      "id": "kebab-shop",
+      "title": "Kebab shop",
+      "description": "Main local kebab pilot profile with list menu and live orders.",
+      "service_name": "pilot-kebab-shop",
+      "family": "kebab",
+      "tags": [
+        "pilot",
+        "live",
+        "list-menu"
+      ],
+      "operator_url": "http://127.0.0.1:8596/operator",
+      "registry_targets": [
+        "main-open",
+        "dk-p4p-curated"
+      ],
+      "visibility_expectations": [
+        "main-open",
+        "dk-p4p-curated"
+      ],
+      "customer_urls": {
+        "public_shop": "http://127.0.0.1:8596/p4p/menu/list",
+        "menu_json": "http://127.0.0.1:8596/p4p/menu",
+        "list_menu": "http://127.0.0.1:8596/p4p/menu/list",
+        "order_api": "http://127.0.0.1:8596/p4p/order",
+        "status_page_template": "http://127.0.0.1:8596/p4p/orders/{order_id}",
+        "status_api_template": "http://127.0.0.1:8596/p4p/orders/{order_id}/status"
+      }
+    },
+    "menu-only": {
+      "id": "menu-only",
+      "title": "Menu only",
+      "description": "Dry-run node profile that keeps customer reading open while orders stay disabled.",
+      "service_name": "pilot-menu-only",
+      "family": "shop",
+      "tags": [
+        "pilot",
+        "menu-only",
+        "dry-run"
+      ],
+      "operator_url": "http://127.0.0.1:8597/operator",
+      "registry_targets": [
+        "main-open"
+      ],
+      "visibility_expectations": [
+        "main-open"
+      ],
+      "customer_urls": {
+        "public_shop": "http://127.0.0.1:8597/p4p/menu/list",
+        "menu_json": "http://127.0.0.1:8597/p4p/menu",
+        "list_menu": "http://127.0.0.1:8597/p4p/menu/list",
+        "order_api": "http://127.0.0.1:8597/p4p/order",
+        "status_page_template": "http://127.0.0.1:8597/p4p/orders/{order_id}",
+        "status_api_template": "http://127.0.0.1:8597/p4p/orders/{order_id}/status"
+      }
+    }
+  },
+  "customer_fixtures": {
+    "pickup-basic": {
+      "id": "pickup-basic",
+      "title": "Pickup basic",
+      "description": "Single pickup order for the pizza shop.",
+      "target_profile": "pizza-shop",
+      "menu_surface": "list_menu",
+      "order_request": {
+        "customer_name": "Test Customer One",
+        "customer_contact": "+4511111111",
+        "fulfillment": "pickup",
+        "items": [
+          {
+            "id": "margherita",
+            "quantity": 1
+          }
+        ],
+        "note": "Lab fixture basic pickup order.",
+        "client_version": "p4p-lab-fixture-0.1"
+      },
+      "poll_status": {
+        "enabled": true,
+        "attempts": 4,
+        "interval_ms": 10
+      },
+      "expected": {
+        "accepted": true,
+        "final_status": "accepted"
+      }
+    },
+    "kebab-rush": {
+      "id": "kebab-rush",
+      "title": "Kebab rush",
+      "description": "Two-item kebab order for local rush testing.",
+      "target_profile": "kebab-shop",
+      "menu_surface": "list_menu",
+      "order_request": {
+        "customer_name": "Rush Customer",
+        "customer_contact": "+4522222222",
+        "fulfillment": "pickup",
+        "items": [
+          {
+            "id": "durum-kebab",
+            "quantity": 2
+          },
+          {
+            "id": "falafel-wrap",
+            "quantity": 1
+          }
+        ],
+        "note": "Lab fixture rush order.",
+        "client_version": "p4p-lab-fixture-0.1"
+      },
+      "poll_status": {
+        "enabled": true,
+        "attempts": 4,
+        "interval_ms": 10
+      },
+      "expected": {
+        "accepted": true,
+        "final_status": "accepted"
+      }
+    },
+    "status-poller": {
+      "id": "status-poller",
+      "title": "Status poller",
+      "description": "Creates one pizza order and confirms the public status endpoint answers.",
+      "target_profile": "pizza-shop",
+      "menu_surface": "list_menu",
+      "order_request": {
+        "customer_name": "Status Poller",
+        "customer_contact": "+4533333333",
+        "fulfillment": "pickup",
+        "items": [
+          {
+            "id": "pepperoni",
+            "quantity": 1
+          }
+        ],
+        "note": "Lab fixture status polling order.",
+        "client_version": "p4p-lab-fixture-0.1"
+      },
+      "poll_status": {
+        "enabled": true,
+        "attempts": 5,
+        "interval_ms": 10
+      },
+      "expected": {
+        "accepted": true,
+        "final_status": "accepted"
+      }
+    }
+  },
+  "flow_scenarios": [
+    {
+      "id": "single-pizza-order",
+      "title": "Single pizza order",
+      "description": "Start the local registry stack, launch the pizza shop, and place one synthetic pickup order.",
+      "services": [
+        "primary-registry",
+        "secondary-registry",
+        "backup-registry"
+      ],
+      "node_profiles": [
+        "pizza-shop"
+      ],
+      "fixture_runs": [
+        {
+          "fixture_id": "pickup-basic",
+          "profile_id": "pizza-shop"
+        }
+      ],
+      "checks": [
+        {
+          "kind": "service_usable",
+          "service": "primary-registry"
+        },
+        {
+          "kind": "service_usable",
+          "service": "pilot-pizza-shop"
+        },
+        {
+          "kind": "fixture_succeeded",
+          "fixture_id": "pickup-basic",
+          "profile_id": "pizza-shop"
+        }
+      ],
+      "links": [
+        {
+          "label": "Open pizza operator",
+          "url": "http://127.0.0.1:8595/operator",
+          "description": "Operator for the pizza profile."
+        }
+      ],
+      "notes": [
+        "Runs one end-to-end order against the pizza pilot node."
+      ]
+    },
+    {
+      "id": "single-kebab-order",
+      "title": "Single kebab order",
+      "description": "Start the local registry stack, launch the kebab shop, and place one synthetic rush order.",
+      "services": [
+        "primary-registry",
+        "secondary-registry",
+        "backup-registry"
+      ],
+      "node_profiles": [
+        "kebab-shop"
+      ],
+      "fixture_runs": [
+        {
+          "fixture_id": "kebab-rush",
+          "profile_id": "kebab-shop"
+        }
+      ],
+      "checks": [
+        {
+          "kind": "service_usable",
+          "service": "pilot-kebab-shop"
+        },
+        {
+          "kind": "fixture_succeeded",
+          "fixture_id": "kebab-rush",
+          "profile_id": "kebab-shop"
+        }
+      ],
+      "links": [
+        {
+          "label": "Open kebab operator",
+          "url": "http://127.0.0.1:8596/operator",
+          "description": "Operator for the kebab profile."
+        }
+      ],
+      "notes": [
+        "Exercises a multi-item kebab order through the public order endpoint."
+      ]
+    },
+    {
+      "id": "dual-shop-local",
+      "title": "Dual shop local",
+      "description": "Launch both pilot shops locally and run one fixture against each.",
+      "services": [
+        "primary-registry",
+        "secondary-registry",
+        "backup-registry"
+      ],
+      "node_profiles": [
+        "pizza-shop",
+        "kebab-shop"
+      ],
+      "fixture_runs": [
+        {
+          "fixture_id": "pickup-basic",
+          "profile_id": "pizza-shop"
+        },
+        {
+          "fixture_id": "kebab-rush",
+          "profile_id": "kebab-shop"
+        }
+      ],
+      "checks": [
+        {
+          "kind": "fixture_succeeded",
+          "fixture_id": "pickup-basic",
+          "profile_id": "pizza-shop"
+        },
+        {
+          "kind": "fixture_succeeded",
+          "fixture_id": "kebab-rush",
+          "profile_id": "kebab-shop"
+        }
+      ],
+      "links": [
+        {
+          "label": "Open pizza menu",
+          "url": "http://127.0.0.1:8595/p4p/menu/list",
+          "description": "Customer menu for pizza profile."
+        },
+        {
+          "label": "Open kebab menu",
+          "url": "http://127.0.0.1:8596/p4p/menu/list",
+          "description": "Customer menu for kebab profile."
+        }
+      ],
+      "notes": [
+        "This is the main local multi-shop smoke test."
+      ]
+    },
+    {
+      "id": "fail-primary-keep-backup",
+      "title": "Fail primary keep backup",
+      "description": "Start all registries, then stop the primary registry and confirm the backup stays alive.",
+      "services": [
+        "primary-registry",
+        "secondary-registry",
+        "backup-registry"
+      ],
+      "node_profiles": [
+        "pizza-shop"
+      ],
+      "fixture_runs": [],
+      "checks": [
+        {
+          "kind": "service_usable",
+          "service": "backup-registry"
+        },
+        {
+          "kind": "stop_service",
+          "service": "primary-registry"
+        },
+        {
+          "kind": "service_stopped",
+          "service": "primary-registry"
+        },
+        {
+          "kind": "service_usable",
+          "service": "backup-registry"
+        }
+      ],
+      "links": [
+        {
+          "label": "Backup discover",
+          "url": "http://127.0.0.1:8002/discover?lat=55.6517&lng=12.4126&radius=50&category=pizza&country=DK",
+          "description": "Backup registry discover route."
+        }
+      ],
+      "notes": [
+        "Local failover check for the registry stack."
+      ]
+    }
+  ],
+  "legacy_scenarios": [
     {
       "id": "pilot-photo-map-menu",
       "title": "Pilot Photo-Map Menu",
-      "description": "Starts one pilot node with catalog editor, photo-map menu, list menu, customer status, and pay-at-pickup payment adapter.",
+      "description": "Legacy showcase lane: starts the photo-map pilot node and opens the paper-menu style customer surface.",
       "services": [
         "pilot-photo-map"
       ],
       "links": [
         {
           "label": "Open photo-map menu",
-          "url": "http://127.0.0.1:8595/p4p/menu/photo-map",
+          "url": "http://127.0.0.1:8598/p4p/menu/photo-map",
           "description": "Customer-facing paper-menu style module."
         },
         {
           "label": "Open operator GUI",
-          "url": "http://127.0.0.1:8595/operator",
+          "url": "http://127.0.0.1:8598/operator",
           "description": "Use token change-this."
         }
       ],
       "notes": [
-        "This scenario is for the new customer menu modules.",
-        "The GUI reads this scenario from lab/scenarios.json; edit that file to add another command."
+        "This lane stays as a showcase and compatibility path.",
+        "The GUI still reads this scenario from lab/scenarios.json."
       ]
     },
     {
       "id": "registry-client-demo-node",
       "title": "Registry + Client + Demo Node",
-      "description": "Starts the classic local proof stack: primary registry, backup registry, static client, and one demo node.",
+      "description": "Classic proof lane: primary registry, backup registry, static client, and one legacy demo node.",
       "services": [
         "primary-registry",
         "backup-registry",
@@ -249,7 +934,7 @@
         {
           "label": "Open client",
           "url": "http://127.0.0.1:8765/",
-          "description": "Use this for discovery and direct order flow."
+          "description": "Use this for the old discovery and direct order proof."
         },
         {
           "label": "Primary discover",
@@ -263,8 +948,8 @@
         }
       ],
       "notes": [
-        "Use this scenario for failover and classic v0.1 protocol proof tests.",
-        "Stop the primary registry and refresh the client to test backup behavior."
+        "Use this lane for classic v0.1 proof tests only.",
+        "It is no longer the long-term main workflow for the lab."
       ]
     }
   ]

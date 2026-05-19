@@ -506,18 +506,22 @@ def public_payment_methods(runtime: PilotRuntime) -> list[str]:
     return ["pay_at_pickup"]
 
 
-def public_order(runtime: PilotRuntime, payload: OrderRequest) -> OrderAccepted | OrderRejected:
+def public_order(runtime: PilotRuntime, payload: OrderRequest, *, locale: str | None = None) -> OrderAccepted | OrderRejected:
+    effective_locale = normalize_locale(locale or persisted_operator_locale(runtime))
     node = node_state(runtime)
     if not node.open:
-        return OrderRejected(reason="closed", message="Restaurant is closed.")
+        return OrderRejected(reason="closed", message=customer_text(effective_locale, "customer.runtime.closed"))
     if node.order_mode not in {"test", "live"}:
-        return OrderRejected(reason="orders_disabled", message="Restaurant is not accepting orders right now.")
+        return OrderRejected(
+            reason="orders_disabled",
+            message=customer_text(effective_locale, "customer.runtime.orders_disabled"),
+        )
     order = runtime.store.create_order(payload)
     order = process_accepted_order(runtime, order)
     return OrderAccepted(
         order_id=order.order_id,
         estimated_ready=order.estimated_ready or (utc_now() + timedelta(minutes=20)),
-        message=order.status_message or "Order received.",
+        message=customer_status_message_text(effective_locale, order.status_message or "Order received."),
     )
 
 
@@ -535,6 +539,120 @@ def menu_photo_map_module_enabled(runtime: PilotRuntime) -> bool:
 
 def catalog_import_ocr_module_enabled(runtime: PilotRuntime) -> bool:
     return CATALOG_IMPORT_OCR_MODULE_ID in effective_flow_module_ids(runtime)
+
+
+PUBLIC_STATUS_CUSTOMER_NOTICE = (
+    "Keep your order id private. This prototype status lookup does not expose "
+    "customer contact data or operator-only order notes."
+)
+
+CUSTOMER_RUNTIME_MESSAGE_KEYS = {
+    "Restaurant is closed.": "customer.runtime.closed",
+    "Restaurant is not accepting orders right now.": "customer.runtime.orders_disabled",
+    "Order received.": "customer.runtime.order_received",
+    "Accepted in kitchen.": "customer.runtime.operator.accepted_kitchen",
+    "Ready for pickup.": "customer.runtime.operator.ready_for_pickup",
+    "Ready now.": "customer.runtime.operator.ready_now",
+    "Completed.": "customer.runtime.operator.completed",
+    "Rejected by kitchen.": "customer.runtime.operator.rejected_kitchen",
+    "Cancelled by kitchen.": "customer.runtime.operator.cancelled_kitchen",
+    "Cancelled.": "customer.runtime.operator.cancelled",
+    "Order accepted by node runtime.": "customer.runtime.accepted.runtime",
+    "Order accepted. Stock check needs human attention.": "customer.runtime.accepted.stock_human",
+    "Order accepted. Stock validated.": "customer.runtime.accepted.stock_validated",
+    "Order accepted. Payment mode needs human attention.": "customer.runtime.accepted.payment_human",
+    "Order accepted. Payment set to pay at pickup.": "customer.runtime.accepted.pay_at_pickup",
+    "Order accepted. External payment needs human attention.": "customer.runtime.accepted.external_payment_human",
+    "Order accepted. External payment confirmed.": "customer.runtime.accepted.external_payment_confirmed",
+    "Order accepted. Print confirmed.": "customer.runtime.accepted.print_confirmed",
+    "Order accepted. Printer issue detected. Human attention required.": "customer.runtime.accepted.printer_issue_human",
+    "Order accepted. Printer issue detected. Operator alerted by email. Human attention required.": "customer.runtime.accepted.printer_issue_alerted",
+    "Order accepted. Printer issue detected. Email alert failed. Human attention required.": "customer.runtime.accepted.printer_issue_alert_failed",
+    "Order accepted. Operator screen confirmed.": "customer.runtime.accepted.screen_confirmed",
+    "Order accepted. Screen surface issue detected. Human attention required.": "customer.runtime.accepted.screen_issue_human",
+    "Order accepted. Screen surface issue detected. Operator alerted by email. Human attention required.": "customer.runtime.accepted.screen_issue_alerted",
+    "Order accepted. Screen surface issue detected. Email alert failed. Human attention required.": "customer.runtime.accepted.screen_issue_alert_failed",
+}
+
+
+def public_locale_source(runtime: PilotRuntime, request: Request | None = None) -> tuple[str, str]:
+    node_default = persisted_operator_locale(runtime)
+    if request is not None:
+        query_locale = requested_locale(request.query_params.get("lang"))
+        if query_locale is not None:
+            return query_locale, "query"
+    return node_default, "node_default"
+
+
+def customer_text(locale: str | None, key: str, **kwargs: Any) -> str:
+    text = shell_text(locale, key).strip()
+    if not text:
+        return key
+    if kwargs:
+        safe_kwargs = {name: str(value) for name, value in kwargs.items()}
+        try:
+            return text.format(**safe_kwargs)
+        except Exception:
+            return text
+    return text
+
+
+def customer_value_text(locale: str | None, value: str | None, *, title_case_fallback: bool = False) -> str:
+    normalized = str(value or "").strip().lower()
+    translated = shell_text(locale, f"customer.value.{normalized}").strip()
+    if translated:
+        return translated
+    fallback = normalized.replace("_", " ").replace("-", " ")
+    return fallback.title() if title_case_fallback else fallback
+
+
+def customer_status_message_text(locale: str | None, message: str | None) -> str:
+    if not message:
+        return customer_text(locale, "customer.status.no_status_message")
+    message_key = CUSTOMER_RUNTIME_MESSAGE_KEYS.get(message)
+    if message_key:
+        return customer_text(locale, message_key)
+    return message
+
+
+def customer_status_notice_text(locale: str | None, notice: str | None) -> str:
+    if not notice:
+        return ""
+    if notice == PUBLIC_STATUS_CUSTOMER_NOTICE:
+        return customer_text(locale, "customer.status.notice")
+    return notice
+
+
+def public_path_with_locale(path: str, locale: str | None) -> str:
+    return f"{path}?lang={normalize_locale(locale)}"
+
+
+def public_menu_entry_url(runtime: PilotRuntime, locale: str | None) -> str:
+    if menu_list_module_enabled(runtime):
+        return public_path_with_locale("/p4p/menu/list", locale)
+    if menu_photo_map_module_enabled(runtime):
+        return public_path_with_locale("/p4p/menu/photo-map", locale)
+    return "/p4p/menu"
+
+
+def public_locale_switcher_html(runtime: PilotRuntime, locale: str, current_path: str) -> str:
+    locale_payload = operator_locale_response_payload(runtime, locale, source="public_html")
+    links: list[str] = []
+    for choice in locale_payload["choices"]:
+        choice_id = str(choice["id"])
+        current_attr = ' aria-current="page"' if choice_id == locale else ""
+        links.append(
+            f'<a href="{html.escape(public_path_with_locale(current_path, choice_id), quote=True)}"'
+            f' lang="{html.escape(choice_id, quote=True)}"'
+            f' dir="{html.escape(str(choice["dir"]), quote=True)}"{current_attr}>'
+            f'{html.escape(str(choice["native_label"]))}</a>'
+        )
+    return (
+        f'<nav class="locale-switcher" aria-label="{html.escape(customer_text(locale, "customer.common.language"))}">'
+        f'<span>{html.escape(customer_text(locale, "customer.common.language"))}</span>'
+        f'<div class="locale-links">{"".join(links)}</div>'
+        f"</nav>"
+    )
 
 
 def public_order_status(runtime: PilotRuntime, order_id: str) -> PublicOrderStatus:
@@ -580,22 +698,25 @@ def public_order_status(runtime: PilotRuntime, order_id: str) -> PublicOrderStat
     return status_payload
 
 
-def public_order_status_page(runtime: PilotRuntime, order_id: str) -> str:
+def public_order_status_page(runtime: PilotRuntime, order_id: str, *, locale: str | None = None) -> str:
     status_payload = public_order_status(runtime, order_id)
-    status_label = status_payload.status.replace("_", " ").title()
-    message = status_payload.status_message or "No status message yet."
+    effective_locale = normalize_locale(locale or persisted_operator_locale(runtime))
+    status_label = customer_value_text(effective_locale, status_payload.status, title_case_fallback=True)
+    message = customer_status_message_text(effective_locale, status_payload.status_message)
     estimated_ready = (
         status_payload.estimated_ready.isoformat()
         if status_payload.estimated_ready is not None
-        else "Not set"
+        else customer_text(effective_locale, "customer.status.not_set")
     )
     escaped_order_id = html.escape(status_payload.order_id, quote=True)
+    locale_switcher = public_locale_switcher_html(runtime, effective_locale, f"/p4p/orders/{escaped_order_id}")
+    menu_link = public_menu_entry_url(runtime, effective_locale)
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{html.escape(effective_locale, quote=True)}" dir="{html.escape(locale_direction(effective_locale), quote=True)}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>P4P Order Status</title>
+    <title>{html.escape(customer_text(effective_locale, "customer.status.page_title"))}</title>
     <style>
       body {{
         margin: 0;
@@ -616,6 +737,48 @@ def public_order_status_page(runtime: PilotRuntime, order_id: str) -> str:
       }}
       h1, p {{
         margin: 0;
+      }}
+      header {{
+        margin-bottom: 16px;
+      }}
+      .lede {{
+        margin-top: 10px;
+        color: #51615d;
+      }}
+      .page-tools {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        align-items: start;
+        margin-top: 14px;
+      }}
+      .page-links, .locale-links {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }}
+      .page-links a, .locale-links a {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid #cfd8d5;
+        border-radius: 999px;
+        text-decoration: none;
+        background: #fff;
+      }}
+      .locale-switcher {{
+        display: grid;
+        gap: 6px;
+      }}
+      .locale-switcher span {{
+        font-size: 0.9rem;
+        color: #51615d;
+      }}
+      .locale-links a[aria-current="page"] {{
+        border-color: #00796b;
+        background: #ecf8f5;
       }}
       .status {{
         margin: 14px 0;
@@ -664,44 +827,57 @@ def public_order_status_page(runtime: PilotRuntime, order_id: str) -> str:
   </head>
   <body>
     <main>
+      <header>
+        <h1>{html.escape(customer_text(effective_locale, "customer.status.title"))}</h1>
+        <p class="lede">{html.escape(customer_text(effective_locale, "customer.status.lede"))}</p>
+        <div class="page-tools">
+          <div class="page-links">
+            <a href="{html.escape(menu_link, quote=True)}">{html.escape(customer_text(effective_locale, "customer.common.back_to_menu"))}</a>
+            <a href="/p4p/orders/{escaped_order_id}/status">{html.escape(customer_text(effective_locale, "customer.common.status_json"))}</a>
+          </div>
+          {locale_switcher}
+        </div>
+      </header>
       <section>
-        <h1>Order status</h1>
         <p class="status">{html.escape(status_label)}</p>
         <dl>
-          <dt>Order</dt>
+          <dt>{html.escape(customer_text(effective_locale, "customer.status.order_label"))}</dt>
           <dd>{escaped_order_id}</dd>
-          <dt>Message</dt>
+          <dt>{html.escape(customer_text(effective_locale, "customer.status.message_label"))}</dt>
           <dd>{html.escape(message)}</dd>
-          <dt>Estimated ready</dt>
+          <dt>{html.escape(customer_text(effective_locale, "customer.status.estimated_ready_label"))}</dt>
           <dd>{html.escape(estimated_ready)}</dd>
-          <dt>Fulfillment</dt>
-          <dd>{html.escape(status_payload.fulfillment)}</dd>
-          <dt>Payment</dt>
-          <dd>{html.escape(status_payload.payment_method)}</dd>
-          <dt>Updated</dt>
+          <dt>{html.escape(customer_text(effective_locale, "customer.status.fulfillment_label"))}</dt>
+          <dd>{html.escape(customer_value_text(effective_locale, status_payload.fulfillment))}</dd>
+          <dt>{html.escape(customer_text(effective_locale, "customer.status.payment_label"))}</dt>
+          <dd>{html.escape(customer_value_text(effective_locale, status_payload.payment_method))}</dd>
+          <dt>{html.escape(customer_text(effective_locale, "customer.status.updated_label"))}</dt>
           <dd>{html.escape(status_payload.updated_at.isoformat())}</dd>
         </dl>
         <div class="actions">
           <form method="get" action="/p4p/orders/{escaped_order_id}">
-            <button type="submit">Refresh status</button>
+            <input type="hidden" name="lang" value="{html.escape(effective_locale, quote=True)}">
+            <button type="submit">{html.escape(customer_text(effective_locale, "customer.status.refresh"))}</button>
           </form>
-          <a href="/p4p/orders/{escaped_order_id}/status">JSON status</a>
+          <a href="/p4p/orders/{escaped_order_id}/status">{html.escape(customer_text(effective_locale, "customer.common.status_json"))}</a>
         </div>
-        <p class="notice">{html.escape(status_payload.customer_notice)}</p>
+        <p class="notice">{html.escape(customer_status_notice_text(effective_locale, status_payload.customer_notice))}</p>
       </section>
     </main>
   </body>
 </html>"""
 
 
-def public_menu_list_page(runtime: PilotRuntime) -> str:
+def public_menu_list_page(runtime: PilotRuntime, *, locale: str | None = None) -> str:
     if not menu_list_module_enabled(runtime):
         raise HTTPException(status_code=404, detail="Menu list module is not enabled")
 
+    effective_locale = normalize_locale(locale or persisted_operator_locale(runtime))
     menu = public_menu(runtime)
     node = node_state(runtime)
     accepts_orders = node_accepts_orders(runtime, node)
     status_links_enabled = customer_status_module_enabled(runtime)
+    locale_switcher = public_locale_switcher_html(runtime, effective_locale, "/p4p/menu/list")
     checked_at = utc_now()
     action_id = f"menu-list:{checked_at.isoformat()}:view"
     runtime.store.record_order_event(
@@ -733,7 +909,7 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
         grouped.setdefault(item.category, []).append(item)
 
     if not menu.items:
-        menu_html = '<p class="empty">No active menu items right now.</p>'
+        menu_html = f'<p class="empty">{html.escape(customer_text(effective_locale, "customer.empty.no_active_items"))}</p>'
     else:
         sections: list[str] = []
         for category, items in grouped.items():
@@ -776,16 +952,32 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
     order_disabled = not accepts_orders or not menu.items
     disabled_attr = " disabled" if order_disabled else ""
     status_notice = (
-        "Ordering is enabled for this node."
+        customer_text(effective_locale, "customer.checkout.ordering_enabled")
         if accepts_orders
-        else f"This node is currently {html.escape(node.order_mode)}; menu viewing is available but ordering is disabled."
+        else customer_text(
+            effective_locale,
+            "customer.checkout.ordering_disabled",
+            mode=customer_value_text(effective_locale, node.order_mode),
+        )
+    )
+    js_copy = json.dumps(
+        {
+            "noItems": customer_text(effective_locale, "customer.checkout.no_items"),
+            "selectedItems": customer_text(effective_locale, "customer.checkout.selected_items"),
+            "chooseItem": customer_text(effective_locale, "customer.checkout.choose_item"),
+            "sending": customer_text(effective_locale, "customer.checkout.sending"),
+            "accepted": customer_text(effective_locale, "customer.checkout.accepted"),
+            "checkStatus": customer_text(effective_locale, "customer.checkout.check_status"),
+            "failed": customer_text(effective_locale, "customer.checkout.failed"),
+        },
+        ensure_ascii=False,
     )
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{html.escape(effective_locale, quote=True)}" dir="{html.escape(locale_direction(effective_locale), quote=True)}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>P4P Menu</title>
+    <title>{html.escape(customer_text(effective_locale, "customer.list.page_title"))}</title>
     <style>
       :root {{
         color-scheme: light;
@@ -816,6 +1008,43 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
         margin-top: 12px;
         max-width: 720px;
         color: #51615d;
+      }}
+      .page-tools {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        align-items: start;
+        margin-top: 14px;
+      }}
+      .page-links, .locale-links {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }}
+      .page-links a, .locale-links a {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid #cfd8d5;
+        border-radius: 999px;
+        text-decoration: none;
+        background: #fff;
+        color: #00594f;
+        font-weight: 650;
+      }}
+      .locale-switcher {{
+        display: grid;
+        gap: 6px;
+      }}
+      .locale-switcher span {{
+        font-size: 0.9rem;
+        color: #51615d;
+      }}
+      .locale-links a[aria-current="page"] {{
+        border-color: #00796b;
+        background: #ecf8f5;
       }}
       .layout {{
         display: grid;
@@ -981,32 +1210,43 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
   <body>
     <main>
       <header>
-        <h1>Menu</h1>
-        <p class="lede">Classic list view from the restaurant-owned catalog. Prices and item ids come from the node; this surface only builds an order request.</p>
+        <h1>{html.escape(customer_text(effective_locale, "customer.list.title"))}</h1>
+        <p class="lede">{html.escape(customer_text(effective_locale, "customer.list.lede"))}</p>
+        <div class="page-tools">
+          <div class="page-links">
+            <a href="/p4p/menu">{html.escape(customer_text(effective_locale, "customer.common.menu_json"))}</a>
+            {(
+                f'<a href="{html.escape(public_path_with_locale("/p4p/menu/photo-map", effective_locale), quote=True)}">{html.escape(customer_text(effective_locale, "customer.common.photo_map_view"))}</a>'
+                if menu_photo_map_module_enabled(runtime)
+                else ""
+            )}
+          </div>
+          {locale_switcher}
+        </div>
       </header>
       <div class="layout">
         <div>{menu_html}</div>
         <form class="checkout" id="order-form">
-          <h2>Order</h2>
+          <h2>{html.escape(customer_text(effective_locale, "customer.checkout.title"))}</h2>
           <p class="notice">{status_notice}</p>
           <label>
-            Name
+            {html.escape(customer_text(effective_locale, "customer.checkout.name"))}
             <input name="customer_name" autocomplete="name" required{disabled_attr}>
           </label>
           <label>
-            Phone or contact
+            {html.escape(customer_text(effective_locale, "customer.checkout.contact"))}
             <input name="customer_contact" autocomplete="tel" required{disabled_attr}>
           </label>
           <label>
-            Note
+            {html.escape(customer_text(effective_locale, "customer.checkout.note"))}
             <textarea name="note"{disabled_attr}></textarea>
           </label>
           <div class="summary" aria-live="polite">
-            <p>Total</p>
+            <p>{html.escape(customer_text(effective_locale, "customer.checkout.total"))}</p>
             <p class="total" id="total">{html.escape(format_money_minor(0, menu.currency))}</p>
-            <p id="selected-count">No items selected</p>
+            <p id="selected-count">{html.escape(customer_text(effective_locale, "customer.checkout.no_items"))}</p>
           </div>
-          <button id="submit-order" type="submit"{disabled_attr}>Send order</button>
+          <button id="submit-order" type="submit"{disabled_attr}>{html.escape(customer_text(effective_locale, "customer.checkout.send"))}</button>
           <p class="result" id="result" role="status"></p>
         </form>
       </div>
@@ -1023,6 +1263,7 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
       const total = document.getElementById("total");
       const selectedCount = document.getElementById("selected-count");
       const result = document.getElementById("result");
+      const copy = {js_copy};
 
       function quantity(card) {{
         return Number(card.querySelector("output").textContent || "0");
@@ -1049,7 +1290,7 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
         const amount = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
         const count = items.reduce((sum, item) => sum + item.quantity, 0);
         total.textContent = formatMoneyMinor(amount, currency);
-        selectedCount.textContent = count === 0 ? "No items selected" : `${{count}} item${{count === 1 ? "" : "s"}} selected`;
+        selectedCount.textContent = count === 0 ? copy.noItems : copy.selectedItems.replace("{{count}}", String(count));
         submit.disabled = !canOrder || count === 0;
       }}
 
@@ -1067,11 +1308,11 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
         event.preventDefault();
         const items = selectedItems().map((item) => ({{ id: item.id, quantity: item.quantity }}));
         if (!items.length) {{
-          result.textContent = "Choose at least one item first.";
+          result.textContent = copy.chooseItem;
           return;
         }}
         submit.disabled = true;
-        result.textContent = "Sending order.";
+        result.textContent = copy.sending;
         const data = new FormData(form);
         const payload = {{
           customer_name: String(data.get("customer_name") || "").trim(),
@@ -1082,7 +1323,7 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
           client_version: "p4p-menu-list-0.1"
         }};
         try {{
-          const response = await fetch("/p4p/order", {{
+          const response = await fetch("/p4p/order?lang={html.escape(effective_locale, quote=True)}", {{
             method: "POST",
             headers: {{ "Content-Type": "application/json" }},
             body: JSON.stringify(payload)
@@ -1091,10 +1332,10 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
           if (!response.ok || body.accepted === false) {{
             throw new Error(body.message || body.detail || body.reason || "Order was rejected.");
           }}
-          const statusLink = statusLinksEnabled ? ` <a href="/p4p/orders/${{encodeURIComponent(body.order_id)}}">Check status</a>` : "";
-          result.innerHTML = `Order accepted: <strong>${{body.order_id}}</strong>.${{statusLink}}`;
+          const statusLink = statusLinksEnabled ? ` <a href="/p4p/orders/${{encodeURIComponent(body.order_id)}}?lang={html.escape(effective_locale, quote=True)}">${{copy.checkStatus}}</a>` : "";
+          result.innerHTML = `${{copy.accepted}} <strong>${{body.order_id}}</strong>.${{statusLink}}`;
         }} catch (error) {{
-          result.textContent = error instanceof Error ? error.message : "Order failed.";
+          result.textContent = error instanceof Error ? error.message : copy.failed;
         }} finally {{
           updateSummary();
         }}
@@ -1106,14 +1347,16 @@ def public_menu_list_page(runtime: PilotRuntime) -> str:
 </html>"""
 
 
-def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
+def public_menu_photo_map_page(runtime: PilotRuntime, *, locale: str | None = None) -> str:
     if not menu_photo_map_module_enabled(runtime):
         raise HTTPException(status_code=404, detail="Photo map menu module is not enabled")
 
+    effective_locale = normalize_locale(locale or persisted_operator_locale(runtime))
     menu = public_menu(runtime)
     node = node_state(runtime)
     accepts_orders = node_accepts_orders(runtime, node)
     status_links_enabled = customer_status_module_enabled(runtime)
+    locale_switcher = public_locale_switcher_html(runtime, effective_locale, "/p4p/menu/photo-map")
     checked_at = utc_now()
     action_id = f"menu-photo-map:{checked_at.isoformat()}:view"
     runtime.store.record_order_event(
@@ -1144,7 +1387,7 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
     )
 
     if not menu.items:
-        map_html = '<p class="empty">No active menu items right now.</p>'
+        map_html = f'<p class="empty">{html.escape(customer_text(effective_locale, "customer.empty.no_active_items"))}</p>'
     else:
         regions: list[str] = []
         for index, item in enumerate(menu.items, start=1):
@@ -1181,8 +1424,8 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
           <section class="photo-map" aria-label="Clickable paper menu map" data-photo-map-mode="catalog-derived-regions">
             <div class="paper">
               <div class="paper-head">
-                <p>Paper menu map</p>
-                <span>{len(menu.items)} active regions</span>
+                <p>{html.escape(customer_text(effective_locale, "customer.map.paper_menu"))}</p>
+                <span>{html.escape(customer_text(effective_locale, "customer.map.active_regions", count=len(menu.items)))}</span>
               </div>
               <div class="regions">
                 {''.join(regions)}
@@ -1193,16 +1436,33 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
     order_disabled = not accepts_orders or not menu.items
     disabled_attr = " disabled" if order_disabled else ""
     status_notice = (
-        "Tap a menu area to add it to the order."
+        customer_text(effective_locale, "customer.map.tap_notice")
         if accepts_orders
-        else f"This node is currently {html.escape(node.order_mode)}; menu viewing is available but ordering is disabled."
+        else customer_text(
+            effective_locale,
+            "customer.checkout.ordering_disabled",
+            mode=customer_value_text(effective_locale, node.order_mode),
+        )
+    )
+    js_copy = json.dumps(
+        {
+            "noAreas": customer_text(effective_locale, "customer.checkout.no_areas"),
+            "selectedAreas": customer_text(effective_locale, "customer.checkout.selected_areas"),
+            "remove": customer_text(effective_locale, "customer.map.remove"),
+            "chooseArea": customer_text(effective_locale, "customer.checkout.choose_area"),
+            "sending": customer_text(effective_locale, "customer.checkout.sending"),
+            "accepted": customer_text(effective_locale, "customer.checkout.accepted"),
+            "checkStatus": customer_text(effective_locale, "customer.checkout.check_status"),
+            "failed": customer_text(effective_locale, "customer.checkout.failed"),
+        },
+        ensure_ascii=False,
     )
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{html.escape(effective_locale, quote=True)}" dir="{html.escape(locale_direction(effective_locale), quote=True)}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>P4P Photo Map Menu</title>
+    <title>{html.escape(customer_text(effective_locale, "customer.map.page_title"))}</title>
     <style>
       :root {{
         color-scheme: light;
@@ -1233,6 +1493,43 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
         margin-top: 12px;
         max-width: 760px;
         color: #51615d;
+      }}
+      .page-tools {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        align-items: start;
+        margin-top: 14px;
+      }}
+      .page-links, .locale-links {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }}
+      .page-links a, .locale-links a {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid #cfd8d5;
+        border-radius: 999px;
+        text-decoration: none;
+        background: #fff;
+        color: #00594f;
+        font-weight: 650;
+      }}
+      .locale-switcher {{
+        display: grid;
+        gap: 6px;
+      }}
+      .locale-switcher span {{
+        font-size: 0.9rem;
+        color: #51615d;
+      }}
+      .locale-links a[aria-current="page"] {{
+        border-color: #00796b;
+        background: #ecf8f5;
       }}
       .layout {{
         display: grid;
@@ -1446,33 +1743,44 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
   <body>
     <main>
       <header>
-        <h1>Photo Map Menu</h1>
-        <p class="lede">Clickable paper-menu style view from the restaurant-owned catalog. This reference module maps active catalog items to visual regions; it does not own the catalog, prices, inventory, or payment.</p>
+        <h1>{html.escape(customer_text(effective_locale, "customer.map.title"))}</h1>
+        <p class="lede">{html.escape(customer_text(effective_locale, "customer.map.lede"))}</p>
+        <div class="page-tools">
+          <div class="page-links">
+            <a href="/p4p/menu">{html.escape(customer_text(effective_locale, "customer.common.menu_json"))}</a>
+            {(
+                f'<a href="{html.escape(public_path_with_locale("/p4p/menu/list", effective_locale), quote=True)}">{html.escape(customer_text(effective_locale, "customer.common.list_view"))}</a>'
+                if menu_list_module_enabled(runtime)
+                else ""
+            )}
+          </div>
+          {locale_switcher}
+        </div>
       </header>
       <div class="layout">
         <div>{map_html}</div>
         <form class="checkout" id="order-form">
-          <h2>Order</h2>
+          <h2>{html.escape(customer_text(effective_locale, "customer.checkout.title"))}</h2>
           <p class="notice">{status_notice}</p>
           <label>
-            Name
+            {html.escape(customer_text(effective_locale, "customer.checkout.name"))}
             <input name="customer_name" autocomplete="name" required{disabled_attr}>
           </label>
           <label>
-            Phone or contact
+            {html.escape(customer_text(effective_locale, "customer.checkout.contact"))}
             <input name="customer_contact" autocomplete="tel" required{disabled_attr}>
           </label>
           <label>
-            Note
+            {html.escape(customer_text(effective_locale, "customer.checkout.note"))}
             <textarea name="note"{disabled_attr}></textarea>
           </label>
           <div class="summary" aria-live="polite">
-            <p>Total</p>
+            <p>{html.escape(customer_text(effective_locale, "customer.checkout.total"))}</p>
             <p class="total" id="total">{html.escape(format_money_minor(0, menu.currency))}</p>
-            <p id="selected-count">No areas selected</p>
+            <p id="selected-count">{html.escape(customer_text(effective_locale, "customer.checkout.no_areas"))}</p>
             <div class="selected-list" id="selected-list"></div>
           </div>
-          <button id="submit-order" type="submit"{disabled_attr}>Send order</button>
+          <button id="submit-order" type="submit"{disabled_attr}>{html.escape(customer_text(effective_locale, "customer.checkout.send"))}</button>
           <p class="result" id="result" role="status"></p>
         </form>
       </div>
@@ -1490,6 +1798,7 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
       const selectedCount = document.getElementById("selected-count");
       const selectedList = document.getElementById("selected-list");
       const result = document.getElementById("result");
+      const copy = {js_copy};
 
       function quantity(button) {{
         return Number(button.querySelector(".region-qty").textContent || "0");
@@ -1523,11 +1832,11 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
         const amount = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
         const count = items.reduce((sum, item) => sum + item.quantity, 0);
         total.textContent = formatMoneyMinor(amount, currency);
-        selectedCount.textContent = count === 0 ? "No areas selected" : `${{count}} item${{count === 1 ? "" : "s"}} selected`;
+        selectedCount.textContent = count === 0 ? copy.noAreas : copy.selectedAreas.replace("{{count}}", String(count));
         selectedList.innerHTML = items.map((item) => `
           <div class="selected-row">
             <span>${{item.quantity}} x ${{item.name}}</span>
-            <button type="button" data-remove-item="${{item.id}}">Remove</button>
+            <button type="button" data-remove-item="${{item.id}}">${{copy.remove}}</button>
           </div>
         `).join("");
         submit.disabled = !canOrder || count === 0;
@@ -1554,11 +1863,11 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
         event.preventDefault();
         const items = selectedItems().map((item) => ({{ id: item.id, quantity: item.quantity }}));
         if (!items.length) {{
-          result.textContent = "Choose at least one menu area first.";
+          result.textContent = copy.chooseArea;
           return;
         }}
         submit.disabled = true;
-        result.textContent = "Sending order.";
+        result.textContent = copy.sending;
         const data = new FormData(form);
         const payload = {{
           customer_name: String(data.get("customer_name") || "").trim(),
@@ -1569,7 +1878,7 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
           client_version: "p4p-menu-photo-map-0.1"
         }};
         try {{
-          const response = await fetch("/p4p/order", {{
+          const response = await fetch("/p4p/order?lang={html.escape(effective_locale, quote=True)}", {{
             method: "POST",
             headers: {{ "Content-Type": "application/json" }},
             body: JSON.stringify(payload)
@@ -1578,10 +1887,10 @@ def public_menu_photo_map_page(runtime: PilotRuntime) -> str:
           if (!response.ok || body.accepted === false) {{
             throw new Error(body.message || body.detail || body.reason || "Order was rejected.");
           }}
-          const statusLink = statusLinksEnabled ? ` <a href="/p4p/orders/${{encodeURIComponent(body.order_id)}}">Check status</a>` : "";
-          result.innerHTML = `Order accepted: <strong>${{body.order_id}}</strong>.${{statusLink}}`;
+          const statusLink = statusLinksEnabled ? ` <a href="/p4p/orders/${{encodeURIComponent(body.order_id)}}?lang={html.escape(effective_locale, quote=True)}">${{copy.checkStatus}}</a>` : "";
+          result.innerHTML = `${{copy.accepted}} <strong>${{body.order_id}}</strong>.${{statusLink}}`;
         }} catch (error) {{
-          result.textContent = error instanceof Error ? error.message : "Order failed.";
+          result.textContent = error instanceof Error ? error.message : copy.failed;
         }} finally {{
           updateSummary();
         }}
@@ -3419,20 +3728,24 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         return operator_asset(asset_path)
 
     @app.get("/p4p/menu/list", response_class=HTMLResponse)
-    def public_menu_list_page_route() -> str:
-        return public_menu_list_page(runtime)
+    def public_menu_list_page_route(request: Request) -> str:
+        locale, _ = public_locale_source(runtime, request)
+        return public_menu_list_page(runtime, locale=locale)
 
     @app.get("/p4p/menu/photo-map", response_class=HTMLResponse)
-    def public_menu_photo_map_page_route() -> str:
-        return public_menu_photo_map_page(runtime)
+    def public_menu_photo_map_page_route(request: Request) -> str:
+        locale, _ = public_locale_source(runtime, request)
+        return public_menu_photo_map_page(runtime, locale=locale)
 
     @app.post("/p4p/order", response_model=OrderAccepted | OrderRejected)
-    def public_order_route(payload: OrderRequest) -> OrderAccepted | OrderRejected:
-        return public_order(runtime, payload)
+    def public_order_route(request: Request, payload: OrderRequest) -> OrderAccepted | OrderRejected:
+        locale, _ = public_locale_source(runtime, request)
+        return public_order(runtime, payload, locale=locale)
 
     @app.get("/p4p/orders/{order_id}", response_class=HTMLResponse)
-    def public_order_status_page_route(order_id: str) -> str:
-        return public_order_status_page(runtime, order_id)
+    def public_order_status_page_route(request: Request, order_id: str) -> str:
+        locale, _ = public_locale_source(runtime, request)
+        return public_order_status_page(runtime, order_id, locale=locale)
 
     @app.get("/p4p/orders/{order_id}/status", response_model=PublicOrderStatus)
     def public_order_status_route(order_id: str) -> PublicOrderStatus:

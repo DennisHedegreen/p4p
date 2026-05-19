@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "planned",
-  "description": "External-developer adapter slot for exposing a MobilePay-style pay-at-pickup payment option without moving payment processing into P4P.",
+  "description": {
+    "da": "Ekstern udvikler-adapterplads til at eksponere en MobilePay-lignende betal-ved-afhentning-løsning uden at flytte betalingsprocessering ind i P4P.",
+    "sv": "Extern utvecklar-adapterplats för att exponera ett MobilePay-liknande betala-vid-upphämtning-alternativ utan att flytta betalbehandlingen in i P4P.",
+    "tr": "Ödeme işlemesini P4P’nin içine taşımadan MobilePay benzeri teslimde ödeme seçeneği açmak için harici geliştirici adaptör yuvası.",
+    "ar": "منفذ محوّل لمطوّر خارجي لعرض خيار دفع عند الاستلام على طريقة MobilePay من دون نقل معالجة الدفع إلى داخل P4P.",
+    "ku": "Cihê adaptera pêşdebirê derveyî ji bo eşkerekirina vebijêrkek dravdana dema wergirtinê ya li şêweya MobilePay bêyî ku pêvajoya dravdanê bibe hundirê P4P.",
+    "en": "External-developer adapter slot for exposing a MobilePay-style pay-at-pickup payment option without moving payment processing into P4P."
+  },
   "visibility": "public",
   "capabilities": ["report_payment_mode", "mark_mobilepay_at_pickup"],
   "input_events": ["PAYMENT_REQUIRED", "PAYMENT_FAILED"],
@@ -28,10 +35,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Declares an external-developer MobilePay-style pay-at-pickup adapter slot for a node.",
-    "data_access_summary": "Order total, fulfillment type, and configured operator payment destination. No card or account credentials.",
-    "trust_status": "external-developer invitation, not reference runtime",
+    "function": {
+      "da": "Deklarerer en ekstern udvikler-adapterplads til MobilePay-lignende betal-ved-afhentning for en node.",
+      "sv": "Deklarerar en extern utvecklaradapterplats för MobilePay-liknande betala-vid-upphämtning för en node.",
+      "tr": "Bir node için MobilePay benzeri teslimde ödeme adaptör yuvasını harici geliştiriciye ilan eder.",
+      "ar": "يعلن منفذ محوّل دفع عند الاستلام على طريقة MobilePay لمطوّر خارجي من أجل node.",
+      "ku": "Ji bo nodeyek cihê adaptera dravdana dema wergirtinê ya li şêweya MobilePay ya pêşdebirê derveyî ragihîne.",
+      "en": "Declares an external-developer MobilePay-style pay-at-pickup adapter slot for a node."
+    },
+    "data_access_summary": {
+      "da": "Ordretotal, fulfillment-type og konfigureret operator-betalingsdestination. Ingen kort- eller kontooplysninger.",
+      "sv": "Ordertotal, fulfillment-typ och konfigurerad operatörsbetalningsdestination. Inga kort- eller konto-uppgifter.",
+      "tr": "Sipariş toplamı, teslim türü ve yapılandırılmış operatör ödeme hedefi. Kart ya da hesap kimlik bilgisi yok.",
+      "ar": "إجمالي الطلب ونوع التسليم ووجهة دفع المشغّل المهيأة. لا توجد بيانات بطاقة أو حساب.",
+      "ku": "Tevahiya fermanê, cureya fulfillment û armanca dravdana operatorê ya mîhengkirî. Tu daneya kart an hesabê tune.",
+      "en": "Order total, fulfillment type, and configured operator payment destination. No card or account credentials."
+    },
+    "trust_status": {
+      "da": "invitation til ekstern udvikler, ikke reference-runtime",
+      "sv": "extern utvecklarinbjudan, inte referensruntime",
+      "tr": "harici geliştirici daveti, referans runtime değil",
+      "ar": "دعوة لمطوّر خارجي، وليست runtime مرجعية",
+      "ku": "bangewaziya pêşdebirê derveyî ye, ne runtime-a referansê",
+      "en": "external-developer invitation, not reference runtime"
+    },
     "readiness": "planned",
-    "operator_status": "not enabled; external-developer invitation only after cash-first pilot feedback"
+    "operator_status": {
+      "da": "ikke aktiveret; kun invitation til ekstern udvikler efter cash-first-pilotfeedback",
+      "sv": "inte aktiverad; extern utvecklarinbjudan först efter cash-first-pilotfeedback",
+      "tr": "etkin değil; yalnızca cash-first pilot geri bildirimi sonrası harici geliştirici daveti",
+      "ar": "غير مفعّل؛ دعوة لمطوّر خارجي فقط بعد تغذية pilot cash-first",
+      "ku": "ne çalak e; tenê bangewaziya pêşdebirê derveyî piştî feedback-a pilotê cash-first",
+      "en": "not enabled; external-developer invitation only after cash-first pilot feedback"
+    }
   }
 }

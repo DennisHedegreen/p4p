@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "test",
-  "description": "Shows accepted and ready orders on a simple local board facing the pickup counter.",
+  "description": {
+    "da": "Viser accepterede og klare ordrer på et enkelt lokalt board vendt mod afhentningsdisken.",
+    "sv": "Visar accepterade och klara beställningar på en enkel lokal tavla mot upphämtningsdisken.",
+    "tr": "Kabul edilen ve hazır siparişleri teslim alma tezgâhına bakan basit bir yerel panoda gösterir.",
+    "ar": "يعرض الطلبات المقبولة والجاهزة على لوحة محلية بسيطة مواجهة لمنضدة الاستلام.",
+    "ku": "Fermanên pejirandî û amade li ser panela herêmî ya sade ya li hember pêşxaneya wergirtinê nîşan dide.",
+    "en": "Shows accepted and ready orders on a simple local board facing the pickup counter."
+  },
   "visibility": "operator_only",
   "capabilities": ["render_pickup_board", "report_status"],
   "input_events": [
@@ -44,10 +51,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Shows accepted or ready direct orders on a simple local pickup board near the counter.",
-    "data_access_summary": "Order summary, public order status, estimated ready time, payment mode, and configured pickup-board target.",
-    "trust_status": "reference operator surface",
+    "function": {
+      "da": "Viser accepterede eller klare direkte ordrer på et enkelt lokalt afhentnings-board ved disken.",
+      "sv": "Visar accepterade eller klara direkta beställningar på en enkel lokal upphämtningstavla vid disken.",
+      "tr": "Kabul edilen ya da hazır doğrudan siparişleri tezgâh yakınındaki basit bir yerel teslim alma panosunda gösterir.",
+      "ar": "يعرض الطلبات المباشرة المقبولة أو الجاهزة على لوحة استلام محلية بسيطة قرب المنضدة.",
+      "ku": "Fermanên rasterast ên pejirandî an amade li ser panela herêmî ya sade ya wergirtinê li nêzî pêşxanê nîşan dide.",
+      "en": "Shows accepted or ready direct orders on a simple local pickup board near the counter."
+    },
+    "data_access_summary": {
+      "da": "Ordresammendrag, offentlig ordrestatus, estimeret klar-tid, betalingsmåde og konfigureret pickup-board-mål.",
+      "sv": "Ordersammanfattning, offentlig orderstatus, uppskattad klar-tid, betalningssätt och konfigurerat upphämtningstavlemål.",
+      "tr": "Sipariş özeti, kamusal sipariş durumu, tahmini hazır zamanı, ödeme modu ve yapılandırılmış teslim alma panosu hedefi.",
+      "ar": "ملخص الطلب وحالة الطلب العامة والوقت التقديري للجاهزية ونمط الدفع وهدف لوحة الاستلام المهيأ.",
+      "ku": "Kurteya fermanê, rewşa giştî ya fermanê, dema texmînkirî ya amadebûnê, moda dravdanê û armanca panela wergirtinê ya mîhengkirî.",
+      "en": "Order summary, public order status, estimated ready time, payment mode, and configured pickup-board target."
+    },
+    "trust_status": {
+      "da": "reference-operator-flade",
+      "sv": "referens-operatörsyta",
+      "tr": "referans operatör yüzeyi",
+      "ar": "واجهة مشغّل مرجعية",
+      "ku": "rûyê operatorê yê referansê",
+      "en": "reference operator surface"
+    },
     "readiness": "test",
-    "operator_status": "builtin local counter surface when enabled and configured"
+    "operator_status": {
+      "da": "indbygget lokal diskflade når den er aktiveret og konfigureret",
+      "sv": "inbyggd lokal diskyta när den är aktiverad och konfigurerad",
+      "tr": "etkinleştirildiğinde ve yapılandırıldığında yerleşik yerel tezgâh yüzeyi",
+      "ar": "واجهة منضدة محلية مدمجة عندما تكون مفعّلة ومهيأة",
+      "ku": "dema ku were çalakirin û mîhengkirin rûyê pêşxaneya herêmî ya avakirî ye",
+      "en": "builtin local counter surface when enabled and configured"
+    }
   }
 }

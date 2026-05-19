@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>P4P Lab Topology</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071119;
+        --panel: #0d1a24;
+        --line: #294458;
+        --text: #e6f0f6;
+        --muted: #8ea6b7;
+        --good: #89e2b0;
+        --warn: #ffd166;
+        --bad: #ff7f7f;
+        --accent: #6dd3ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #08131c, #071119 35%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1680px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+      h1, h2, h3 { margin: 0; }
+      h1 { font-size: 2rem; }
+      p { margin: 0; }
+      .muted { color: var(--muted); }
+      .error {
+        color: var(--bad);
+        margin-bottom: 16px;
+      }
+      .top-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: rgba(13, 26, 36, 0.95);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+      }
+      .card header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: start;
+        margin-bottom: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 18px;
+      }
+      .subgrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+      }
+      .subcard {
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .pill-row, .action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .pill {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 3px 9px;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .pill.ok {
+        color: var(--good);
+        border-color: rgba(137, 226, 176, 0.4);
+      }
+      .pill.warn {
+        color: var(--warn);
+        border-color: rgba(255, 209, 102, 0.35);
+      }
+      .pill.bad {
+        color: var(--bad);
+        border-color: rgba(255, 127, 127, 0.35);
+      }
+      button, a.button {
+        appearance: none;
+        border: 1px solid rgba(109, 211, 255, 0.32);
+        background: rgba(109, 211, 255, 0.08);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        text-decoration: none;
+        font: inherit;
+      }
+      button.secondary, a.button.secondary {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--line);
+      }
+      button.danger {
+        border-color: rgba(255, 127, 127, 0.32);
+        background: rgba(255, 127, 127, 0.08);
+      }
+      .link-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .link-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .link-row a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      ul {
+        padding-left: 18px;
+        margin: 10px 0 0;
+      }
+      .note-list li { margin-bottom: 6px; }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      input, textarea {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #08131b;
+        color: var(--text);
+        padding: 10px 12px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 84px;
+        resize: vertical;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+      }
+      .form-grid .full {
+        grid-column: 1 / -1;
+      }
+      .wizard {
+        display: grid;
+        gap: 14px;
+      }
+      .wizard-step {
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .wizard-step h3 {
+        margin-bottom: 6px;
+      }
+      .wizard-help {
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .preview-panel {
+        border: 1px solid rgba(109, 211, 255, 0.2);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(109, 211, 255, 0.04);
+      }
+      .preview-panel h3 {
+        margin-bottom: 8px;
+      }
+      .preview-lines {
+        display: grid;
+        gap: 8px;
+      }
+      .preview-line {
+        display: grid;
+        gap: 2px;
+      }
+      .preview-line strong {
+        color: var(--text);
+        font-size: 0.92rem;
+      }
+      @media (max-width: 1024px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 720px) {
+        main { padding: 18px; }
+        header { flex-direction: column; }
+        .action-row button, .top-links a.button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>P4P Lab Topology</h1>
+          <p class="muted">Open versus curated registry lanes, primary versus backup availability, and the node templates and instances attached to each registry path.</p>
+        </div>
+        <div class="top-links">
+          <a class="button secondary" href="/">Back to Lab</a>
+          <a class="button secondary" href="/nodes">Open Nodes room</a>
+          <a class="button secondary" href="/runs">Open Runs room</a>
+          <a class="button secondary" href="/control">Open Control Rooms</a>
+          <a class="button secondary" href="/servers">Open Servers page</a>
+          <button class="secondary" id="refresh">Refresh</button>
+        </div>
+      </header>
+
+      <p class="error" id="error" hidden></p>
+      <section class="card" style="margin-bottom:16px;">
+        <header>
+          <div>
+            <h2>Create local registry lane</h2>
+            <p class="muted">Spawn a new local lane from a shipped registry template. This stays inside lab state and gets its own generated service name and port.</p>
+          </div>
+        </header>
+        <form id="registry-lane-create-form" class="stack">
+          <div class="wizard">
+            <section class="wizard-step">
+              <h3>Step 1 · Choose the lane seed</h3>
+              <p class="wizard-help">Start from one shipped registry template and give the new lane a local id and title you can actually remember later.</p>
+              <div class="form-grid">
+                <div>
+                  <label for="lane-template">Template</label>
+                  <select id="lane-template" name="template_id"></select>
+                </div>
+                <div>
+                  <label for="lane-instance-id">Lane id</label>
+                  <input id="lane-instance-id" name="instance_id" placeholder="dk-curated-local-001" />
+                </div>
+                <div class="full">
+                  <label for="lane-title">Title</label>
+                  <input id="lane-title" name="title" placeholder="DK curated local lane" />
+                </div>
+              </div>
+            </section>
+            <section class="wizard-step">
+              <h3>Step 2 · Describe why this lane exists</h3>
+              <p class="wizard-help">Use description and notes to say what this lane means locally, not just what role it copies from the template.</p>
+              <div class="form-grid">
+                <div class="full">
+                  <label for="lane-description">Description</label>
+                  <textarea id="lane-description" name="description" placeholder="Local generated lane for a narrower test world."></textarea>
+                </div>
+                <div class="full">
+                  <label for="lane-notes">Notes</label>
+                  <textarea id="lane-notes" name="notes" placeholder="One note per line"></textarea>
+                </div>
+              </div>
+            </section>
+            <section class="preview-panel">
+              <h3>Registry lane preview</h3>
+              <div class="preview-lines"></div>
+            </section>
+          </div>
+          <div class="action-row">
+            <button type="submit">Create launchable lane</button>
+          </div>
+        </form>
+      </section>
+      <section class="stack" id="topology"></section>
+    </main>
+
+    <script>
+      async function api(url, options = {}) {
+        const response = await fetch(url, {
+          method: options.method || "GET",
+          headers: { "Content-Type": "application/json" },
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function showError(message) {
+        const target = document.getElementById("error");
+        target.hidden = !message;
+        target.textContent = message || "";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function renderLinks(links) {
+        if (!links || links.length === 0) return "<p class='muted'>No links yet.</p>";
+        return `
+          <div class="link-list">
+            ${links.map((link) => `
+              <div class="link-row">
+                <a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label || link.url)}</a>
+                <span class="muted">${escapeHtml(link.description || "")}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function formatListForTextarea(items) {
+        return (items || []).join("\n");
+      }
+
+      function setPreviewLinesTarget(target, lines) {
+        if (!target) return;
+        target.innerHTML = lines.map((line) => `
+          <div class="preview-line">
+            <strong>${escapeHtml(line.label)}</strong>
+            <span>${escapeHtml(line.value)}</span>
+          </div>
+        `).join("");
+      }
+
+      function renderStaticPreviewLines(lines) {
+        return `
+          <div class="preview-lines">
+            ${lines.map((line) => `
+              <div class="preview-line">
+                <strong>${escapeHtml(line.label)}</strong>
+                <span>${escapeHtml(line.value)}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function registryStatusPills(profile) {
+        const runningClass = profile.running ? "ok" : "bad";
+        const usableClass = profile.usable ? "ok" : "warn";
+        return `
+          <div class="pill-row">
+            <span class="pill">${escapeHtml(profile.role)}</span>
+            <span class="pill">${escapeHtml(profile.curation_mode)}</span>
+            <span class="pill">${escapeHtml(profile.availability_role)}</span>
+            <span class="pill ${runningClass}">${profile.running ? "running" : "stopped"}</span>
+            <span class="pill ${usableClass}">${profile.usable ? "ready" : "not ready"}</span>
+            ${profile.service && profile.service.port ? `<span class="pill">port ${escapeHtml(profile.service.port)}</span>` : ""}
+            <span class="pill">${escapeHtml(profile.scope.network)}</span>
+            <span class="pill">${escapeHtml(profile.scope.geography)}</span>
+            <span class="pill">${escapeHtml(profile.scope.family)}</span>
+          </div>
+        `;
+      }
+
+      function renderNodeAttachList(items, kindLabel) {
+        if (!items || items.length === 0) return `<p class="muted">No ${escapeHtml(kindLabel)} attached.</p>`;
+        return `
+          <div class="subgrid">
+            ${items.map((item) => `
+              <div class="subcard">
+                <h3>${escapeHtml(item.title || item.id)}</h3>
+                <p class="muted">${escapeHtml(item.description || item.id)}</p>
+                <div class="pill-row">
+                  <span class="pill">${escapeHtml(item.id)}</span>
+                  ${item.family ? `<span class="pill">${escapeHtml(item.family)}</span>` : ""}
+                  ${item.node_id ? `<span class="pill">node ${escapeHtml(item.node_id)}</span>` : ""}
+                  ${item.public_surface_key ? `<span class="pill">surface ${escapeHtml(item.public_surface_key)}</span>` : ""}
+                  ${item.city ? `<span class="pill">${escapeHtml(item.city)}</span>` : ""}
+                  ${item.country ? `<span class="pill">${escapeHtml(item.country)}</span>` : ""}
+                  ${item.order_mode ? `<span class="pill">${escapeHtml(item.order_mode)}</span>` : ""}
+                  ${(item.categories || []).map((category) => `<span class="pill">category ${escapeHtml(category)}</span>`).join("")}
+                  ${item.registry_targeted ? `<span class="pill ok">announce here</span>` : ""}
+                  ${item.visibility_expected ? `<span class="pill warn">visible here</span>` : ""}
+                  ${item.port ? `<span class="pill">port ${escapeHtml(item.port)}</span>` : ""}
+                </div>
+                <p class="muted">${
+                  item.registry_targeted && item.visibility_expected
+                    ? "This node announces into this registry lane and is also expected to be discoverable here."
+                    : item.registry_targeted
+                      ? "This node announces into this registry lane."
+                      : item.visibility_expected
+                        ? "This node is expected to be discoverable here through topology or curation, even if it does not announce directly here."
+                        : "No explicit announce or visibility relation is recorded for this lane."
+                }</p>
+                ${renderLinks([
+                  ...(item.operator_url ? [{ label: `${item.id} operator`, url: item.operator_url, description: "Open the operator lane." }] : []),
+                  ...(item.public_shop_url ? [{ label: `${item.id} public shop`, url: item.public_shop_url, description: `Open the customer-facing lane currently chosen as ${item.public_surface_key || "public_shop"}.` }] : [])
+                ])}
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function renderRegistry(profile) {
+        const isGeneratedLane = Boolean(profile.generated || profile.launch_mode === "generated_lane");
+        const startAction = isGeneratedLane ? "start-lane" : "start-service";
+        const stopAction = isGeneratedLane ? "stop-lane" : "stop-service";
+        const actionValue = isGeneratedLane ? profile.id : profile.service_name;
+        const editFormClass = isGeneratedLane ? "registry-lane-edit-form" : "registry-edit-form";
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h2>${escapeHtml(profile.title)}</h2>
+                <p class="muted">${escapeHtml(profile.description || "")}</p>
+              </div>
+              <div class="action-row">
+                <button data-action="${startAction}" data-value="${escapeHtml(actionValue)}">Start registry</button>
+                <button class="danger" data-action="${stopAction}" data-value="${escapeHtml(actionValue)}">Stop registry</button>
+              </div>
+            </header>
+            ${registryStatusPills(profile)}
+            ${profile.override_active ? `<p class="muted" style="margin-top:10px;">${isGeneratedLane ? "Generated local lane active" : "Local topology override active"}${profile.override_updated_at ? ` · updated ${escapeHtml(profile.override_updated_at)}` : ""}. This edits lab-side meaning metadata, not the registry runtime itself.</p>` : `<p class="muted" style="margin-top:10px;">No local override yet. This lane is still reading straight from the shipped seed config.</p>`}
+            <div class="grid" style="margin-top:14px;">
+              <div class="stack">
+                <div class="subcard">
+                  <h3>Registry lane</h3>
+                  <p class="muted">${escapeHtml(profile.service_name)}</p>
+                  ${isGeneratedLane ? `<div class="pill-row"><span class="pill ok">generated lane</span>${profile.template_id ? `<span class="pill">template ${escapeHtml(profile.template_id)}</span>` : ""}</div>` : ""}
+                  <div class="preview-panel" style="margin-top:12px;">
+                    <h3>Lane runtime story</h3>
+                    ${renderStaticPreviewLines([
+                      {
+                        label: "Runtime lane",
+                        value: `${profile.service_name || "No service yet"}${profile.service && profile.service.port ? ` on port ${profile.service.port}` : ""}`,
+                      },
+                      {
+                        label: "Open first",
+                        value: profile.layer_links && profile.layer_links.length ? `${profile.layer_links[0].label}` : "No live links attached yet",
+                      },
+                      {
+                        label: "What this changes",
+                        value: `This lane reads as ${profile.curation_mode} / ${profile.availability_role} for ${profile.scope.family} in ${profile.scope.geography}.`,
+                      },
+                    ])}
+                  </div>
+                  ${renderLinks(profile.layer_links)}
+                </div>
+                <div class="subcard">
+                  <h3>Attached node templates</h3>
+                  ${renderNodeAttachList(profile.attached_node_templates, "node templates")}
+                </div>
+                <div class="subcard">
+                  <h3>Attached node instances</h3>
+                  ${renderNodeAttachList(profile.attached_node_instances, "node instances")}
+                </div>
+              </div>
+              <div class="stack">
+                <div class="subcard">
+                  <h3>Policies</h3>
+                  <div class="pill-row">
+                    <span class="pill">announce ${escapeHtml(profile.announce_policy)}</span>
+                    <span class="pill">discover ${escapeHtml(profile.discover_policy)}</span>
+                    ${profile.backup_for ? `<span class="pill">backup for ${escapeHtml(profile.backup_for)}</span>` : ""}
+                  </div>
+                </div>
+                <div class="subcard">
+                  <h3>Upstreams</h3>
+                  ${profile.upstream_profiles && profile.upstream_profiles.length ? `
+                    <ul>
+                      ${profile.upstream_profiles.map((upstream) => `<li>${escapeHtml(upstream.id)} · ${escapeHtml(upstream.title)}</li>`).join("")}
+                    </ul>
+                  ` : `<p class="muted">No upstream registry lanes.</p>`}
+                </div>
+                <div class="subcard">
+                  <h3>Notes</h3>
+                  ${profile.notes && profile.notes.length ? `
+                    <ul class="note-list">
+                      ${profile.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}
+                    </ul>
+                  ` : `<p class="muted">No notes.</p>`}
+                </div>
+                <div class="subcard">
+                  <h3>${isGeneratedLane ? "Edit generated lane" : "Edit local lane metadata"}</h3>
+                  <p class="muted">${isGeneratedLane ? "This edits the generated lane stored in local lab state." : "This changes the lab's local topology truth for this lane. It does not rewrite the registry process itself."}</p>
+                  <form class="stack ${editFormClass}" data-profile-id="${escapeHtml(profile.id)}" data-service-name="${escapeHtml(profile.service_name || "")}" data-service-port="${escapeHtml(String(profile.service?.port || ""))}" data-first-link-label="${escapeHtml((profile.layer_links && profile.layer_links[0] && profile.layer_links[0].label) || "")}" style="margin-top:12px;">
+                    <div class="wizard">
+                      <section class="wizard-step">
+                        <h3>Edit step 1 · Name the lane</h3>
+                        <p class="wizard-help">Keep the title and description readable first. This is the part you will recognise in topology later.</p>
+                        <div class="form-grid">
+                          <div>
+                            <label>Title</label>
+                            <input name="title" value="${escapeHtml(profile.title || "")}" />
+                          </div>
+                          <div class="full">
+                            <label>Description</label>
+                            <textarea name="description">${escapeHtml(profile.description || "")}</textarea>
+                          </div>
+                        </div>
+                      </section>
+                      <section class="wizard-step">
+                        <h3>Edit step 2 · Set topology meaning</h3>
+                        <p class="wizard-help">Define how this lane should be read locally: where it looks upstream, how it announces, and how discovery should behave.</p>
+                        <div class="form-grid">
+                          <div>
+                            <label>Announce policy</label>
+                            <input name="announce_policy" value="${escapeHtml(profile.announce_policy || "")}" />
+                          </div>
+                          <div>
+                            <label>Discover policy</label>
+                            <input name="discover_policy" value="${escapeHtml(profile.discover_policy || "")}" />
+                          </div>
+                          <div class="full">
+                            <label>Upstreams</label>
+                            <textarea name="upstreams" placeholder="main-open">${escapeHtml(formatListForTextarea(profile.upstreams || []))}</textarea>
+                          </div>
+                        </div>
+                      </section>
+                      <section class="wizard-step">
+                        <h3>Edit step 3 · Keep notes</h3>
+                        <p class="wizard-help">Use notes for the local reading of this lane: why it exists, what it narrows, and what should stay visible here.</p>
+                        <div class="form-grid">
+                          <div class="full">
+                            <label>Notes</label>
+                            <textarea name="notes" placeholder="Local curation note">${escapeHtml(formatListForTextarea(profile.notes || []))}</textarea>
+                          </div>
+                        </div>
+                      </section>
+                      <section class="preview-panel">
+                        <h3>${isGeneratedLane ? "Generated lane preview" : "Lane metadata preview"}</h3>
+                        <div class="preview-lines"></div>
+                      </section>
+                    </div>
+                    <div class="action-row">
+                      <button type="submit">${isGeneratedLane ? "Save registry lane" : "Save local lane override"}</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      function updateRegistryLanePreview(form) {
+        if (!form) return;
+        const data = new FormData(form);
+        const title = String(data.get("title") || "").trim() || "Untitled lane";
+        const description = String(data.get("description") || "").trim();
+        const announcePolicy = String(data.get("announce_policy") || "").trim() || "no announce policy";
+        const discoverPolicy = String(data.get("discover_policy") || "").trim() || "no discover policy";
+        const upstreams = String(data.get("upstreams") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const notes = String(data.get("notes") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const serviceName = String(form.dataset.serviceName || "").trim();
+        const servicePort = String(form.dataset.servicePort || "").trim();
+        const firstLinkLabel = String(form.dataset.firstLinkLabel || "").trim();
+        const target = form.querySelector(".preview-lines");
+        setPreviewLinesTarget(target, [
+          {
+            label: "Identity",
+            value: description ? `${title} · ${description}` : title,
+          },
+          {
+            label: "Runtime lane",
+            value: `${serviceName || "No service yet"}${servicePort ? ` on port ${servicePort}` : ""}`,
+          },
+          {
+            label: "Open first",
+            value: firstLinkLabel || "No live link attached yet",
+          },
+          {
+            label: "Policies",
+            value: `announce ${announcePolicy}; discover ${discoverPolicy}`,
+          },
+          {
+            label: "Upstreams",
+            value: upstreams.length ? upstreams.join(", ") : "No upstream lanes configured",
+          },
+          {
+            label: "Notes",
+            value: notes.length ? notes.slice(0, 3).join(" | ") : "No local notes yet",
+          },
+          {
+            label: "What this changes",
+            value: "This keeps the runtime on its current lane but changes the local reading of how announce and discover should behave.",
+          },
+        ]);
+      }
+
+      function updateRegistryCreatePreview(form) {
+        if (!form) return;
+        const data = new FormData(form);
+        const templateId = String(data.get("template_id") || "").trim() || "no template yet";
+        const instanceId = String(data.get("instance_id") || "").trim() || "no lane id yet";
+        const title = String(data.get("title") || "").trim() || "Untitled local lane";
+        const description = String(data.get("description") || "").trim();
+        const notes = String(data.get("notes") || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const target = form.querySelector(".preview-lines");
+        setPreviewLinesTarget(target, [
+          {
+            label: "Seed",
+            value: `Template ${templateId} -> local lane ${instanceId}`,
+          },
+          {
+            label: "Runtime lane",
+            value: `registry-lane-${instanceId === "no lane id yet" ? "<id>" : instanceId} on next free registry port`,
+          },
+          {
+            label: "Identity",
+            value: description ? `${title} · ${description}` : title,
+          },
+          {
+            label: "Open first",
+            value: "Registry info first, then discover lane",
+          },
+          {
+            label: "Meaning",
+            value: notes.length ? notes.slice(0, 3).join(" | ") : "No local meaning notes yet",
+          },
+          {
+            label: "What this changes",
+            value: templateId !== "no template yet"
+              ? `This will create a launchable local lane from ${templateId} with its own runtime service and port.`
+              : "Choose a template to see which local lane runtime will be created.",
+          },
+        ]);
+      }
+
+      async function runAction(action, value) {
+        showError("");
+        try {
+          if (action === "start-service") {
+            await api(`/api/services/${encodeURIComponent(value)}/start`, { method: "POST" });
+          } else if (action === "stop-service") {
+            await api(`/api/stop/${encodeURIComponent(value)}`, { method: "POST" });
+          } else if (action === "start-lane") {
+            await api(`/api/registry-lane-instances/${encodeURIComponent(value)}/start`, { method: "POST" });
+          } else if (action === "stop-lane") {
+            await api(`/api/registry-lane-instances/${encodeURIComponent(value)}/stop`, { method: "POST" });
+          }
+          await refresh();
+        } catch (error) {
+          showError(error.message);
+        }
+      }
+
+      async function refresh() {
+        showError("");
+        try {
+          const data = await api("/api/topology");
+          const templateSelect = document.getElementById("lane-template");
+          templateSelect.innerHTML = (data.registry_templates || []).map((template) => `
+            <option value="${escapeHtml(template.id)}">${escapeHtml(template.title)}</option>
+          `).join("");
+          document.getElementById("topology").innerHTML = data.registry_profiles.map(renderRegistry).join("");
+          updateRegistryCreatePreview(document.getElementById("registry-lane-create-form"));
+          for (const form of document.querySelectorAll(".registry-edit-form, .registry-lane-edit-form")) {
+            updateRegistryLanePreview(form);
+          }
+        } catch (error) {
+          showError(error.message);
+        }
+      }
+
+      document.addEventListener("click", async (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target) return;
+        event.preventDefault();
+        await runAction(target.dataset.action, target.dataset.value || target.dataset.service);
+      });
+
+      document.getElementById("refresh").addEventListener("click", refresh);
+      document.addEventListener("input", (event) => {
+        const form = event.target instanceof HTMLElement ? event.target.closest("form") : null;
+        if (!form) return;
+        if (form.id === "registry-lane-create-form") updateRegistryCreatePreview(form);
+        if (form.classList.contains("registry-edit-form") || form.classList.contains("registry-lane-edit-form")) updateRegistryLanePreview(form);
+      });
+      document.addEventListener("change", (event) => {
+        const form = event.target instanceof HTMLElement ? event.target.closest("form") : null;
+        if (!form) return;
+        if (form.id === "registry-lane-create-form") updateRegistryCreatePreview(form);
+        if (form.classList.contains("registry-edit-form") || form.classList.contains("registry-lane-edit-form")) updateRegistryLanePreview(form);
+      });
+      document.addEventListener("submit", async (event) => {
+        const form = event.target instanceof HTMLFormElement ? event.target : null;
+        if (!form) return;
+        event.preventDefault();
+        const parseLines = (value) => String(value || "")
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        try {
+          const data = new FormData(form);
+          if (form.id === "registry-lane-create-form") {
+            await api("/api/registry-lane-instances", {
+              method: "POST",
+              body: {
+                template_id: data.get("template_id"),
+                instance_id: data.get("instance_id"),
+                title: data.get("title"),
+                description: data.get("description"),
+                notes: parseLines(data.get("notes")),
+              }
+            });
+            form.reset();
+          } else if (form.classList.contains("registry-edit-form")) {
+            await api(`/api/registry-profiles/${encodeURIComponent(form.dataset.profileId)}`, {
+              method: "PATCH",
+              body: {
+                title: data.get("title"),
+                description: data.get("description"),
+                upstreams: parseLines(data.get("upstreams")),
+                announce_policy: data.get("announce_policy"),
+                discover_policy: data.get("discover_policy"),
+                notes: parseLines(data.get("notes")),
+              }
+            });
+          } else if (form.classList.contains("registry-lane-edit-form")) {
+            await api(`/api/registry-lane-instances/${encodeURIComponent(form.dataset.profileId)}`, {
+              method: "PATCH",
+              body: {
+                title: data.get("title"),
+                description: data.get("description"),
+                upstreams: parseLines(data.get("upstreams")),
+                announce_policy: data.get("announce_policy"),
+                discover_policy: data.get("discover_policy"),
+                notes: parseLines(data.get("notes")),
+              }
+            });
+          } else {
+            return;
+          }
+          await refresh();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+      refresh();
+      setInterval(refresh, 4000);
+    </script>
+  </body>
+</html>

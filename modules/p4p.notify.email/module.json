@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "planned",
-  "description": "Sends order notifications to an operator-controlled email address.",
+  "description": {
+    "da": "Sender ordre-notifikationer til en operatorstyret email-adresse.",
+    "sv": "Skickar ordernotiser till en operatörskontrollerad e-postadress.",
+    "tr": "Sipariş bildirimlerini operatör tarafından kontrol edilen bir e-posta adresine gönderir.",
+    "ar": "يرسل إشعارات الطلب إلى عنوان بريد إلكتروني يتحكم به المشغّل.",
+    "ku": "Ragihandinên fermanan dişîne navnîşana e-nameyê ya ku operator kontrol dike.",
+    "en": "Sends order notifications to an operator-controlled email address."
+  },
   "visibility": "operator_only",
   "capabilities": ["send_operator_notification", "report_status"],
   "input_events": [
@@ -35,10 +42,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Sends order notifications to an operator-controlled email address.",
-    "data_access_summary": "Order summary and configured operator destination.",
-    "trust_status": "placeholder manifest",
+    "function": {
+      "da": "Sender ordre-notifikationer til en operatorstyret email-adresse.",
+      "sv": "Skickar ordernotiser till en operatörskontrollerad e-postadress.",
+      "tr": "Sipariş bildirimlerini operatör tarafından kontrol edilen bir e-posta adresine gönderir.",
+      "ar": "يرسل إشعارات الطلب إلى عنوان بريد إلكتروني يتحكم به المشغّل.",
+      "ku": "Ragihandinên fermanan dişîne navnîşana e-nameyê ya ku operator kontrol dike.",
+      "en": "Sends order notifications to an operator-controlled email address."
+    },
+    "data_access_summary": {
+      "da": "Ordresammendrag og konfigureret operator-destination.",
+      "sv": "Ordersammanfattning och konfigurerad operatörsdestination.",
+      "tr": "Sipariş özeti ve yapılandırılmış operatör hedefi.",
+      "ar": "ملخص الطلب ووجهة المشغّل المهيأة.",
+      "ku": "Kurteya fermanê û armanca operatorê ya mîhengkirî.",
+      "en": "Order summary and configured operator destination."
+    },
+    "trust_status": {
+      "da": "placeholder-manifest",
+      "sv": "platshållarmanifest",
+      "tr": "yer tutucu manifest",
+      "ar": "manifest مؤقت",
+      "ku": "manifesta cîgirtinê",
+      "en": "placeholder manifest"
+    },
     "readiness": "planned",
-    "operator_status": "not enabled"
+    "operator_status": {
+      "da": "ikke aktiveret",
+      "sv": "inte aktiverad",
+      "tr": "etkin değil",
+      "ar": "غير مفعّل",
+      "ku": "ne çalak e",
+      "en": "not enabled"
+    }
   }
 }

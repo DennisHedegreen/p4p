@@ -103,24 +103,24 @@ def public_menu():
     return _public_menu(RUNTIME)
 
 
-def public_menu_list_page() -> str:
-    return _public_menu_list_page(RUNTIME)
+def public_menu_list_page(*, locale: str | None = None) -> str:
+    return _public_menu_list_page(RUNTIME, locale=locale)
 
 
-def public_menu_photo_map_page() -> str:
-    return _public_menu_photo_map_page(RUNTIME)
+def public_menu_photo_map_page(*, locale: str | None = None) -> str:
+    return _public_menu_photo_map_page(RUNTIME, locale=locale)
 
 
-def public_order(payload: OrderRequest):
-    return _public_order(RUNTIME, payload)
+def public_order(payload: OrderRequest, *, locale: str | None = None):
+    return _public_order(RUNTIME, payload, locale=locale)
 
 
 def public_order_status(order_id: str) -> PublicOrderStatus:
     return _public_order_status(RUNTIME, order_id)
 
 
-def public_order_status_page(order_id: str) -> str:
-    return _public_order_status_page(RUNTIME, order_id)
+def public_order_status_page(order_id: str, *, locale: str | None = None) -> str:
+    return _public_order_status_page(RUNTIME, order_id, locale=locale)
 
 
 def public_info():

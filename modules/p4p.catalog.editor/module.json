@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Operator-owned catalog editor for item ids, names, prices, categories, and active availability.",
+  "description": {
+    "da": "Operatørejet katalog-editor til vare-id’er, navne, priser, kategorier og aktiv tilgængelighed.",
+    "sv": "Operatörsägd katalogredigerare för varu-id:n, namn, priser, kategorier och aktiv tillgänglighet.",
+    "tr": "Ürün id’leri, adlar, fiyatlar, kategoriler ve aktif uygunluk için operatör sahipli katalog düzenleyici.",
+    "ar": "محرّر كاتالوغ مملوك للمشغّل لمعرّفات العناصر والأسماء والأسعار والفئات والتوفّر النشط.",
+    "ku": "Editorê katalogê yê xwedîtiya operatorê ji bo nasnavên tiştan, nav, biha, kategorî û peydabûna çalak.",
+    "en": "Operator-owned catalog editor for item ids, names, prices, categories, and active availability."
+  },
   "visibility": "operator_only",
   "capabilities": [
     "view_catalog",
@@ -46,10 +53,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Lets a restaurant operator maintain the structured item catalog used by all menu and order surfaces.",
-    "data_access_summary": "Item ids, names, descriptions, prices, categories, and active/inactive availability. Operator-only; not a customer presentation module.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Lader en restaurantoperatør vedligeholde det strukturerede varekatalog som alle menu- og ordreflader læser fra.",
+      "sv": "Låter en restaurangoperatör underhålla den strukturerade varukatalog som alla meny- och orderytor läser från.",
+      "tr": "Bir restoran operatörünün tüm menü ve sipariş yüzeylerinin okuduğu yapılandırılmış ürün kataloğunu yönetmesini sağlar.",
+      "ar": "يتيح لمشغّل المطعم صيانة كاتالوغ العناصر المنظّم الذي تقرأ منه جميع واجهات القائمة والطلب.",
+      "ku": "Dihêle operatorê restaurantê kataloga tiştan a sazûmanî ya ku hemû rûyên menû û fermanê ji wê dixwînin biparêze.",
+      "en": "Lets a restaurant operator maintain the structured item catalog used by all menu and order surfaces."
+    },
+    "data_access_summary": {
+      "da": "Vare-id’er, navne, beskrivelser, priser, kategorier og aktiv/inaktiv tilgængelighed. Kun operator; ikke et kundevendt præsentationsmodul.",
+      "sv": "Varu-id:n, namn, beskrivningar, priser, kategorier och aktiv/inaktiv tillgänglighet. Endast operatör; inte en kundvänd presentationsmodul.",
+      "tr": "Ürün id’leri, adlar, açıklamalar, fiyatlar, kategoriler ve aktif/pasif uygunluk. Yalnızca operatör; müşteri sunum modülü değildir.",
+      "ar": "معرّفات العناصر والأسماء والأوصاف والأسعار والفئات والتوفّر النشط/غير النشط. للمشغّل فقط؛ ليست وحدة عرض موجّهة للعميل.",
+      "ku": "Nasnavên tiştan, nav, danasîn, biha, kategorî û peydabûna çalak/neçalak. Tenê ji bo operatorê ye; ne modulê pêşkêşkirina mişterî ye.",
+      "en": "Item ids, names, descriptions, prices, categories, and active/inactive availability. Operator-only; not a customer presentation module."
+    },
+    "trust_status": {
+      "da": "reference-manifest, usigneret provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifest, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manifesta referansê, providerê bê îmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "available in the pilot-node operator dashboard when enabled"
+    "operator_status": {
+      "da": "tilgængelig i pilot-node-operator-dashboardet når den er slået til",
+      "sv": "tillgänglig i pilot-node-operatörspanelen när den är aktiverad",
+      "tr": "etkinleştirildiğinde pilot-node operatör panelinde kullanılabilir",
+      "ar": "متاحة في لوحة مشغّل الـ pilot-node عندما تكون مفعّلة",
+      "ku": "dema çalak be di dashboarda operatorê ya pilot-node de heye",
+      "en": "available in the pilot-node operator dashboard when enabled"
+    }
   }
 }

@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Customer-facing read-only status lookup for a submitted order.",
+  "description": {
+    "da": "Kundevendt read-only statusopslag for en indsendt ordre.",
+    "sv": "Kundvänd skrivskyddad statusuppslagning för en inskickad beställning.",
+    "tr": "Gönderilmiş bir sipariş için müşteri dönük salt okunur durum sorgusu.",
+    "ar": "استعلام حالة للعميل، للقراءة فقط، لطلب تم إرساله.",
+    "ku": "Lêgerîna rewşê ya tenê-xwendin ji bo mişterî ji bo fermana şandî.",
+    "en": "Customer-facing read-only status lookup for a submitted order."
+  },
   "visibility": "public",
   "capabilities": [
     "view_order_status",
@@ -45,10 +52,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Lets a customer check whether an order is accepted, ready, completed, cancelled, or rejected.",
-    "data_access_summary": "Order id, public order status, estimated ready time, fulfillment type, and payment method. No customer contact data, customer name, operator notes, or full event log.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Lader en kunde se om en ordre er accepteret, klar, fuldført, annulleret eller afvist.",
+      "sv": "Låter en kund se om en beställning är accepterad, klar, slutförd, avbruten eller avvisad.",
+      "tr": "Bir müşterinin siparişin kabul edilmiş, hazır, tamamlanmış, iptal edilmiş ya da reddedilmiş olup olmadığını kontrol etmesini sağlar.",
+      "ar": "يتيح للعميل التحقق مما إذا كان الطلب مقبولاً أو جاهزاً أو مكتملاً أو ملغى أو مرفوضاً.",
+      "ku": "Dihêle mişterî bibîne ka ferman hat pejirandin, amade ye, hat qedandin, hat betal kirin an hat redkirin.",
+      "en": "Lets a customer check whether an order is accepted, ready, completed, cancelled, or rejected."
+    },
+    "data_access_summary": {
+      "da": "Ordre-id, offentlig ordrestatus, estimeret klar-tid, fulfillment-type og betalingsmetode. Ingen kundekontaktdata, kundenavn, operatornoter eller fuld event-log.",
+      "sv": "Beställnings-id, offentlig orderstatus, uppskattad klartid, fulfillment-typ och betalningsmetod. Ingen kundkontaktdata, kundnamn, operatörsnoter eller full händelselogg.",
+      "tr": "Sipariş id’si, kamuya açık sipariş durumu, tahmini hazır olma zamanı, fulfillment türü ve ödeme yöntemi. Müşteri iletişim verisi, müşteri adı, operatör notları ya da tam olay günlüğü yoktur.",
+      "ar": "معرّف الطلب وحالة الطلب العامة ووقت الجاهزية المتوقع ونوع التسليم وطريقة الدفع. لا توجد بيانات تواصل العميل أو اسم العميل أو ملاحظات المشغّل أو سجل الأحداث الكامل.",
+      "ku": "Nasnavê fermanê, rewşa fermanê ya giştî, dema amadebûnê ya texmînî, cureya fulfillment û rêbaza dravdanê. Daneyên têkiliya mişterî, navê mişterî, notên operatorê an loga tevahî ya bûyeran tune ne.",
+      "en": "Order id, public order status, estimated ready time, fulfillment type, and payment method. No customer contact data, customer name, operator notes, or full event log."
+    },
+    "trust_status": {
+      "da": "reference-manifest, usigneret provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifest, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manifesta referansê, providerê bê îmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "available in the pilot-node public order-status route when enabled"
+    "operator_status": {
+      "da": "tilgængelig i pilot-node-ruten for offentlig ordrestatus når den er slået til",
+      "sv": "tillgänglig i pilot-node-rutten för offentlig orderstatus när den är aktiverad",
+      "tr": "etkinleştirildiğinde pilot-node kamu sipariş durumu rotasında kullanılabilir",
+      "ar": "متاحة في مسار حالة الطلب العامة في الـ pilot-node عندما تكون مفعّلة",
+      "ku": "dema çalak be di rêça rewşa fermanê ya giştî ya pilot-node de heye",
+      "en": "available in the pilot-node public order-status route when enabled"
+    }
   }
 }

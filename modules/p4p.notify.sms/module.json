@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "planned",
-  "description": "Sends order or failure notifications to an operator-controlled SMS destination.",
+  "description": {
+    "da": "Sender ordre- eller fejlnotifikationer til en operatorstyret SMS-destination.",
+    "sv": "Skickar order- eller felnotiser till en operatörskontrollerad SMS-destination.",
+    "tr": "Sipariş ya da arıza bildirimlerini operatör tarafından kontrol edilen bir SMS hedefine gönderir.",
+    "ar": "يرسل إشعارات الطلب أو العطل إلى وجهة SMS يتحكم بها المشغّل.",
+    "ku": "Ragihandinên ferman an çewtiyê dişîne armanca SMS-ê ya ku operator kontrol dike.",
+    "en": "Sends order or failure notifications to an operator-controlled SMS destination."
+  },
   "visibility": "operator_only",
   "capabilities": ["send_operator_notification", "report_status"],
   "input_events": [
@@ -35,10 +42,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Sends order notifications to an operator-controlled SMS destination.",
-    "data_access_summary": "Order summary and configured operator destination.",
-    "trust_status": "placeholder manifest",
+    "function": {
+      "da": "Sender ordre-notifikationer til en operatorstyret SMS-destination.",
+      "sv": "Skickar ordernotiser till en operatörskontrollerad SMS-destination.",
+      "tr": "Sipariş bildirimlerini operatör tarafından kontrol edilen bir SMS hedefine gönderir.",
+      "ar": "يرسل إشعارات الطلب إلى وجهة SMS يتحكم بها المشغّل.",
+      "ku": "Ragihandinên fermanan dişîne armanca SMS-ê ya ku operator kontrol dike.",
+      "en": "Sends order notifications to an operator-controlled SMS destination."
+    },
+    "data_access_summary": {
+      "da": "Ordresammendrag og konfigureret operator-destination.",
+      "sv": "Ordersammanfattning och konfigurerad operatörsdestination.",
+      "tr": "Sipariş özeti ve yapılandırılmış operatör hedefi.",
+      "ar": "ملخص الطلب ووجهة المشغّل المهيأة.",
+      "ku": "Kurteya fermanê û armanca operatorê ya mîhengkirî.",
+      "en": "Order summary and configured operator destination."
+    },
+    "trust_status": {
+      "da": "placeholder-manifest",
+      "sv": "platshållarmanifest",
+      "tr": "yer tutucu manifest",
+      "ar": "manifest مؤقت",
+      "ku": "manifesta cîgirtinê",
+      "en": "placeholder manifest"
+    },
     "readiness": "planned",
-    "operator_status": "not enabled; candidate phone fallback lane for a five-place hardware trial"
+    "operator_status": {
+      "da": "ikke aktiveret; kandidat til telefon-fallback-lane i et fem-steders hardwareforsøg",
+      "sv": "inte aktiverad; kandidat för telefon-fallback-lane i ett hårdvaruförsök på fem platser",
+      "tr": "etkin değil; beş lokasyonlu bir donanım denemesi için aday telefon fallback hattı",
+      "ar": "غير مفعّل؛ مسار هاتف احتياطي مرشّح لتجربة عتاد من خمس مواقع",
+      "ku": "ne çalak e; ji bo ceribandina hardware ya pênc-cihan lane-ya fallback a telefonê ya namzed e",
+      "en": "not enabled; candidate phone fallback lane for a five-place hardware trial"
+    }
   }
 }

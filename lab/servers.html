@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>P4P Lab Servers</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071119;
+        --panel: #0d1a24;
+        --line: #294458;
+        --text: #e6f0f6;
+        --muted: #8ea6b7;
+        --good: #89e2b0;
+        --warn: #ffd166;
+        --bad: #ff7f7f;
+        --accent: #6dd3ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #08131c, #071119 35%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1680px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+      h1, h2, h3 {
+        margin: 0;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+      p {
+        margin: 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .error {
+        color: var(--bad);
+        margin-bottom: 16px;
+      }
+      .top-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: rgba(13, 26, 36, 0.95);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+      }
+      .card header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: start;
+        margin-bottom: 12px;
+      }
+      .pill-row, .meta-row, .action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .pill {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 3px 9px;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .pill.ok {
+        color: var(--good);
+        border-color: rgba(137, 226, 176, 0.4);
+      }
+      .pill.warn {
+        color: var(--warn);
+        border-color: rgba(255, 209, 102, 0.35);
+      }
+      .pill.bad {
+        color: var(--bad);
+        border-color: rgba(255, 127, 127, 0.35);
+      }
+      .pill.info {
+        color: var(--accent);
+        border-color: rgba(109, 211, 255, 0.3);
+      }
+      button, a.button {
+        appearance: none;
+        border: 1px solid rgba(109, 211, 255, 0.32);
+        background: rgba(109, 211, 255, 0.08);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        text-decoration: none;
+        font: inherit;
+      }
+      button.secondary, a.button.secondary {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--line);
+      }
+      button.danger {
+        border-color: rgba(255, 127, 127, 0.32);
+        background: rgba(255, 127, 127, 0.08);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 18px;
+      }
+      .link-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+      .summary-card {
+        background: rgba(13, 26, 36, 0.95);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+      }
+      .summary-card h2 {
+        margin-bottom: 6px;
+      }
+      .ops-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+      .ops-card {
+        background: rgba(13, 26, 36, 0.95);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+      }
+      .ops-card h2 {
+        margin-bottom: 6px;
+      }
+      .link-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .link-row a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      details {
+        margin-top: 12px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--accent);
+      }
+      pre {
+        margin: 8px 0 0;
+        background: #08131b;
+        border-radius: 12px;
+        padding: 12px;
+        overflow: auto;
+        font: 0.85rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      ul {
+        padding-left: 18px;
+        margin: 10px 0 0;
+      }
+      .preview-lines {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .preview-line {
+        display: grid;
+        gap: 2px;
+      }
+      .preview-line strong {
+        font-size: 0.92rem;
+      }
+      @media (max-width: 1024px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 720px) {
+        main {
+          padding: 18px;
+        }
+        header {
+          flex-direction: column;
+        }
+        .action-row button,
+        .top-links a.button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>P4P Lab Servers</h1>
+          <p class="muted">Port-by-port local process truth with attached registry lanes, templates, instances, operator links, and public customer surfaces.</p>
+        </div>
+        <div class="top-links">
+          <a class="button secondary" href="/">Back to Lab</a>
+          <a class="button secondary" href="/nodes">Open Nodes room</a>
+          <a class="button secondary" href="/runs">Open Runs room</a>
+          <a class="button secondary" href="/control">Open Control Rooms</a>
+          <a class="button secondary" href="/topology">Open Topology page</a>
+          <button class="secondary" id="refresh">Refresh</button>
+        </div>
+      </header>
+
+      <p class="error" id="error" hidden></p>
+
+      <section class="summary-grid" id="server-summary"></section>
+      <section class="ops-grid" id="server-groups"></section>
+      <section class="stack" id="servers"></section>
+    </main>
+
+    <script>
+      async function api(url, options = {}) {
+        const response = await fetch(url, {
+          method: options.method || "GET",
+          headers: { "Content-Type": "application/json" },
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function showError(message) {
+        const target = document.getElementById("error");
+        target.hidden = !message;
+        target.textContent = message || "";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function renderLinks(links) {
+        if (!links || links.length === 0) return "<p class='muted'>No links yet.</p>";
+        return `
+          <div class="link-list">
+            ${links.map((link) => `
+              <div class="link-row">
+                <a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label || link.url)}</a>
+                <span class="muted">${escapeHtml(link.description || "")}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function summarizeList(items, fallback = "Nothing attached yet") {
+        const values = (items || []).filter(Boolean);
+        if (!values.length) return fallback;
+        if (values.length <= 3) return values.join(", ");
+        return `${values.slice(0, 3).join(", ")} +${values.length - 3} more`;
+      }
+
+      function statusPills(server) {
+        const runningClass = server.running ? "ok" : "bad";
+        const usableClass = server.usable ? "ok" : "warn";
+        return `
+          <div class="pill-row">
+            <span class="pill">${escapeHtml(server.kind)}</span>
+            <span class="pill ${runningClass}">${server.running ? "running" : "stopped"}</span>
+            <span class="pill ${usableClass}">${server.usable ? "ready" : "not ready"}</span>
+            ${server.status && server.status.external ? `<span class="pill info">adopted external</span>` : ""}
+            ${server.port ? `<span class="pill">port ${escapeHtml(server.port)}</span>` : ""}
+            ${server.status && server.status.pid ? `<span class="pill">pid ${escapeHtml(server.status.pid)}</span>` : ""}
+          </div>
+        `;
+      }
+
+      function renderAttachedList(items, label) {
+        if (!items || items.length === 0) {
+          return `<p class="muted">No ${escapeHtml(label)} attached.</p>`;
+        }
+        return `
+          <ul class="muted">
+            ${items.map((item) => `<li>${escapeHtml(item.title || item.id || item.name || label)}</li>`).join("")}
+          </ul>
+        `;
+      }
+
+      function serverPrimaryLink(server) {
+        const links = server.layer_links || [];
+        return links[0] || null;
+      }
+
+      function serverMeaning(server) {
+        const registryCount = (server.attached_registry_profiles || []).length;
+        const templateCount = (server.attached_node_templates || []).length;
+        const instanceCount = (server.attached_node_instances || []).length;
+        if (server.kind === "registry") {
+          return registryCount
+            ? `Registry process for ${registryCount} lane${registryCount === 1 ? "" : "s"}`
+            : "Registry process with no projected lane yet";
+        }
+        if (server.kind === "pilot-node" || server.kind === "demo-node") {
+          if (instanceCount) return `Node runtime carrying ${instanceCount} generated shop lane${instanceCount === 1 ? "" : "s"}`;
+          if (templateCount) return `Seeded node runtime carrying ${templateCount} template lane${templateCount === 1 ? "" : "s"}`;
+        }
+        return `Local ${server.kind || "service"} process in the P4P test stack`;
+      }
+
+      function renderServerSummary(servers) {
+        const runningCount = servers.filter((server) => server.running).length;
+        const readyCount = servers.filter((server) => server.usable).length;
+        const ports = servers.filter((server) => server.port).map((server) => `:${server.port}`);
+        return `
+          <article class="summary-card">
+            <h2>What is alive right now</h2>
+            <p class="muted">${runningCount} running service${runningCount === 1 ? "" : "s"} · ${readyCount} ready lane${readyCount === 1 ? "" : "s"}</p>
+          </article>
+          <article class="summary-card">
+            <h2>Port map</h2>
+            <p class="muted">${summarizeList(ports, "No ports projected yet")}</p>
+          </article>
+          <article class="summary-card">
+            <h2>Main reading</h2>
+            <p class="muted">Use this page to answer: what is running, which port owns it, and which layer should I open first?</p>
+          </article>
+        `;
+      }
+
+      function renderServerGroups(groups) {
+        if (!groups || groups.length === 0) {
+          return "";
+        }
+        return groups.map((group) => `
+          <article class="ops-card">
+            <h2>${escapeHtml(group.title)}</h2>
+            <p class="muted">${escapeHtml(group.description || "")}</p>
+            <div class="pill-row">
+              <span class="pill">${escapeHtml(`${group.members.length} attached service${group.members.length === 1 ? "" : "s"}`)}</span>
+              <span class="pill ok">${escapeHtml(`${group.running_count} running`)}</span>
+              <span class="pill warn">${escapeHtml(`${group.ready_count} ready`)}</span>
+            </div>
+            ${group.actions && group.actions.length ? `
+              <div class="action-row">
+                ${group.actions.map((action) => `
+                  <button
+                    class="${action.tone === "danger" ? "danger" : action.tone === "secondary" ? "secondary" : ""}"
+                    data-group-id="${escapeHtml(group.id)}"
+                    data-group-action="${escapeHtml(action.id)}"
+                  >${escapeHtml(action.label)}</button>
+                `).join("")}
+              </div>
+            ` : ""}
+            <div class="preview-lines">
+              <div class="preview-line">
+                <strong>Services in this room</strong>
+                <span>${escapeHtml(summarizeList(group.service_names || [], "No services projected yet"))}</span>
+              </div>
+              <div class="preview-line">
+                <strong>Truth owners in this room</strong>
+                <span>${escapeHtml(summarizeList(group.truth_owner_stories || [], "No owner story projected yet"))}</span>
+              </div>
+              <div class="preview-line">
+                <strong>Dependencies first</strong>
+                <span>${escapeHtml(group.plan && group.plan.dependencies_first ? summarizeList(group.dependency_service_names || [], "No dependency services projected yet") : "No dependency-first startup needed for this room")}</span>
+              </div>
+              <div class="preview-line">
+                <strong>Bring up in this order</strong>
+                <span>${escapeHtml(group.plan ? summarizeList(group.plan.start_order || [], "No start plan projected yet") : "No start plan projected yet")}</span>
+              </div>
+              <div class="preview-line">
+                <strong>Stop in this order</strong>
+                <span>${escapeHtml(group.plan ? summarizeList(group.plan.stop_order || [], "No stop plan projected yet") : "No stop plan projected yet")}</span>
+              </div>
+              <div class="preview-line">
+                <strong>Recover rebinds these owners</strong>
+                <span>${escapeHtml(group.plan && group.plan.rebind_owner_stories && group.plan.rebind_owner_stories.length ? summarizeList(group.plan.rebind_owner_stories, "No rebindable owners projected yet") : "No rebindable owners projected in this room")}</span>
+              </div>
+              <div class="preview-line">
+                <strong>Open this lane first</strong>
+                <span>${escapeHtml(group.links && group.links.length ? `${group.links[0].label || group.links[0].url} — ${group.links[0].description || ""}` : "No primary link projected yet")}</span>
+              </div>
+            </div>
+            ${group.links && group.links.length ? renderLinks(group.links) : "<p class='muted' style='margin-top:12px;'>No first links projected yet.</p>"}
+          </article>
+        `).join("");
+      }
+
+      function serverActionButtons(server) {
+        const target = server.action_target;
+        if (!target || !target.type || !target.id) {
+          return "";
+        }
+        const binding = server.binding || {};
+        const adoptLabel = binding.can_rebind ? "Adopt and bind" : "Adopt";
+        return `
+          <div class="action-row">
+            <button data-server-target-type="${escapeHtml(target.type)}" data-server-target-id="${escapeHtml(target.id)}" data-server-action="start">Start</button>
+            <button class="secondary" data-server-target-type="${escapeHtml(target.type)}" data-server-target-id="${escapeHtml(target.id)}" data-server-action="restart">Restart</button>
+            <button class="secondary" data-server-target-type="${escapeHtml(target.type)}" data-server-target-id="${escapeHtml(target.id)}" data-server-action="recover">Recover</button>
+            <button class="secondary" data-server-target-type="${escapeHtml(target.type)}" data-server-target-id="${escapeHtml(target.id)}" data-server-action="adopt">${escapeHtml(adoptLabel)}</button>
+            ${binding.can_rebind ? `<button class="secondary" data-server-target-type="${escapeHtml(target.type)}" data-server-target-id="${escapeHtml(target.id)}" data-server-action="rebind">Rebind</button>` : ""}
+            <button class="secondary danger" data-server-target-type="${escapeHtml(target.type)}" data-server-target-id="${escapeHtml(target.id)}" data-server-action="stop">Stop</button>
+          </div>
+        `;
+      }
+
+      function renderServer(server) {
+        const health = server.status && server.status.health ? JSON.stringify(server.status.health, null, 2) : "No health data.";
+        const logs = server.status && server.status.logs ? server.status.logs.slice(-28).join("\n") : "No logs yet.";
+        const primaryLink = serverPrimaryLink(server);
+        const attachedNames = [
+          ...(server.attached_registry_profiles || []).map((item) => item.title || item.id),
+          ...(server.attached_node_templates || []).map((item) => item.title || item.id),
+          ...(server.attached_node_instances || []).map((item) => item.title || item.id),
+        ];
+        const binding = server.binding || {};
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h2>${escapeHtml(server.name)}</h2>
+                <p class="muted">${escapeHtml(server.description || "")}</p>
+              </div>
+              ${serverActionButtons(server)}
+            </header>
+            ${statusPills(server)}
+            <div class="grid">
+              <div>
+                <div class="preview-lines">
+                  <div class="preview-line">
+                    <strong>Port story</strong>
+                    <span>${escapeHtml(server.port ? `This service owns port ${server.port}` : "No fixed port projected")} · ${escapeHtml(serverMeaning(server))}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Truth owner</strong>
+                    <span>${escapeHtml(binding.owner_story || "No bound owner projected yet")} · ${escapeHtml(binding.description || "This room has no explicit owner story for this runtime yet.")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Open this first</strong>
+                    <span>${escapeHtml(primaryLink ? `${primaryLink.label || primaryLink.url} — ${primaryLink.description || ""}` : "No primary surface link projected yet")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Recover path</strong>
+                    <span>${escapeHtml(server.status && server.status.external ? "Adopt if the port is already alive, or recover by launching from this room if the old external owner is gone." : "Restart or recover directly from this room if the process drifts or stops answering.")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Adopt and bind</strong>
+                    <span>${escapeHtml(binding.can_rebind ? "Adopt binds the live port to this saved node or registry-lane truth. Rebind forgets stale port ownership first, then re-adopts it under this owner." : "Adopt keeps this runtime under its current canonical service owner in the lab.")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Depends on</strong>
+                    <span>${escapeHtml(summarizeList(server.dependency_service_names || [], "No dependency services projected for this runtime"))}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>What lives here</strong>
+                    <span>${escapeHtml(summarizeList(attachedNames, "No attached lanes projected yet"))}</span>
+                  </div>
+                </div>
+                <div class="meta-row">
+                  <span class="pill">${escapeHtml(server.cwd || "")}</span>
+                  ${server.command ? `<span class="pill">${escapeHtml(server.command)}</span>` : ""}
+                </div>
+                <h3 style="margin-top:14px;">Attached registry lanes</h3>
+                ${renderAttachedList(server.attached_registry_profiles, "registry lanes")}
+                <h3 style="margin-top:14px;">Attached node templates</h3>
+                ${renderAttachedList(server.attached_node_templates, "node templates")}
+                <h3 style="margin-top:14px;">Attached node instances</h3>
+                ${renderAttachedList(server.attached_node_instances, "node instances")}
+              </div>
+              <div>
+                <h3>Open this layer</h3>
+                ${renderLinks(server.layer_links)}
+              </div>
+            </div>
+            <details>
+              <summary>Health JSON</summary>
+              <pre>${escapeHtml(health)}</pre>
+            </details>
+            <details>
+              <summary>Logs</summary>
+              <pre>${escapeHtml(logs)}</pre>
+            </details>
+          </article>
+        `;
+      }
+
+      async function refresh() {
+        showError("");
+        const payload = await api("/api/servers");
+        const servers = payload.servers || [];
+        const groups = payload.groups || [];
+        document.getElementById("server-summary").innerHTML = renderServerSummary(servers);
+        document.getElementById("server-groups").innerHTML = renderServerGroups(groups);
+        document.getElementById("servers").innerHTML = servers.length
+          ? servers.map(renderServer).join("")
+          : "<p class='muted'>No known services projected yet.</p>";
+      }
+
+      document.addEventListener("click", async (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        if (!target) return;
+        try {
+          if (target.dataset.groupId && target.dataset.groupAction) {
+            await api(`/api/server-groups/${encodeURIComponent(target.dataset.groupId)}/${encodeURIComponent(target.dataset.groupAction)}`, { method: "POST" });
+          }
+          if (target.dataset.serverTargetType && target.dataset.serverTargetId && target.dataset.serverAction) {
+            await api(
+              `/api/server-actions/${encodeURIComponent(target.dataset.serverTargetType)}/${encodeURIComponent(target.dataset.serverTargetId)}/${encodeURIComponent(target.dataset.serverAction)}`,
+              { method: "POST" }
+            );
+          }
+          await refresh();
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Action failed.");
+        }
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => showError(error.message));
+      });
+
+      refresh().catch((error) => showError(error.message));
+      setInterval(() => refresh().catch(() => {}), 2500);
+    </script>
+  </body>
+</html>

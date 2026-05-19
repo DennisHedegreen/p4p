@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "internal-mock-planned",
-  "description": "Internal payment chaos mock for future stress-testing of edge cases and invalid provider states.",
+  "description": {
+    "da": "Intern betalings-kaos-mock til fremtidig stresstest af edge cases og ugyldige provider-tilstande.",
+    "sv": "Intern betal-kaos-mock för framtida stresstest av edge cases och ogiltiga provider-tillstånd.",
+    "tr": "Edge case’ler ve geçersiz sağlayıcı durumları için gelecekteki stres testlerine yönelik iç ödeme kaosu mock’u.",
+    "ar": "Mock فوضى دفع داخلي لاختبار الضغط المستقبلي للحالات الحديّة وحالات المزوّد غير الصالحة.",
+    "ku": "Mocka kaosa dravdanê ya navxweyî ji bo stres-testkirina paşerojê ya edge-case û rewşên providerê yên nederbasdar.",
+    "en": "Internal payment chaos mock for future stress-testing of edge cases and invalid provider states."
+  },
   "visibility": "operator_only",
   "capabilities": ["simulate_payment_edge_cases", "report_payment_state"],
   "input_events": ["PAYMENT_REQUIRED"],
@@ -27,10 +34,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Planned internal mock for ugly payment scenarios such as timeout, cancel, wrong amount, invalid signature, duplicate callback, late callback, and conflicting status.",
-    "data_access_summary": "Order total and order state only. No customer funds, wallet data, card data, settlement, or real provider data.",
-    "trust_status": "planned internal debug mock, not real payment",
+    "function": {
+      "da": "Planlagt intern mock til grimme betalingsscenarier som timeout, cancel, forkert beløb, ugyldig signatur, dobbelt callback, sen callback og konfliktende status.",
+      "sv": "Planerad intern mock för fula betalningsscenarier som timeout, cancel, fel belopp, ogiltig signatur, dubbel callback, sen callback och konfliktstatus.",
+      "tr": "Timeout, iptal, yanlış tutar, geçersiz imza, yinelenen callback, geç callback ve çelişkili durum gibi çirkin ödeme senaryoları için planlı iç mock.",
+      "ar": "Mock داخلي مخطّط لسيناريوهات الدفع القبيحة مثل timeout والإلغاء والمبلغ الخاطئ والتوقيع غير الصالح والـ callback المكرر والمتأخر والحالة المتعارضة.",
+      "ku": "Mocka navxweyî ya plankirî ji bo senaryoyên dravdanê yên xedaraz wek timeout, cancel, mezinahiya şaş, îmzeya nederbasdar, callbackê dubare, callbackê dereng û rewşa nakok.",
+      "en": "Planned internal mock for ugly payment scenarios such as timeout, cancel, wrong amount, invalid signature, duplicate callback, late callback, and conflicting status."
+    },
+    "data_access_summary": {
+      "da": "Kun ordretotal og ordretilstand. Ingen kundefonde, wallet-data, kortdata, settlement eller rigtig provider-data.",
+      "sv": "Bara ordertotal och orderstatus. Inga kundmedel, wallet-data, kortdata, settlement eller riktig provider-data.",
+      "tr": "Yalnızca sipariş toplamı ve sipariş durumu. Müşteri fonları, wallet verisi, kart verisi, settlement ya da gerçek sağlayıcı verisi yok.",
+      "ar": "إجمالي الطلب وحالة الطلب فقط. لا توجد أموال عميل أو بيانات wallet أو بيانات بطاقة أو settlement أو بيانات مزوّد حقيقية.",
+      "ku": "Tenê tevahiya fermanê û rewşa fermanê. Tu fonên mişterî, daneyên wallet, daneyên kartê, settlement an daneyên providerê rastîn tune.",
+      "en": "Order total and order state only. No customer funds, wallet data, card data, settlement, or real provider data."
+    },
+    "trust_status": {
+      "da": "planlagt intern debug-mock, ikke rigtig betaling",
+      "sv": "planerad intern debug-mock, inte riktig betalning",
+      "tr": "planlı iç debug mock’u, gerçek ödeme değil",
+      "ar": "mock تصحيح داخلي مخطّط، وليس دفعاً حقيقياً",
+      "ku": "mocka debug-a navxweyî ya plankirî ye, ne dravdana rastîn",
+      "en": "planned internal debug mock, not real payment"
+    },
     "readiness": "planned",
-    "operator_status": "declared only; scenario executor intentionally not enabled yet"
+    "operator_status": {
+      "da": "kun deklareret; scenario-executor er bevidst ikke aktiveret endnu",
+      "sv": "endast deklarerad; scenario-executorn är medvetet inte aktiverad ännu",
+      "tr": "yalnızca ilan edildi; senaryo çalıştırıcısı bilerek henüz etkin değil",
+      "ar": "معلَن فقط؛ منفّذ السيناريو غير مفعّل عمداً بعد",
+      "ku": "tenê hate ragihandin; scenario-executor bi qest hîn neçalak e",
+      "en": "declared only; scenario executor intentionally not enabled yet"
+    }
   }
 }

@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>P4P Lab Runs</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071119;
+        --panel: #0d1a24;
+        --line: #294458;
+        --text: #e6f0f6;
+        --muted: #8ea6b7;
+        --good: #89e2b0;
+        --warn: #ffd166;
+        --bad: #ff7f7f;
+        --accent: #6dd3ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #08131c, #071119 35%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1680px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+      h1, h2, h3 { margin: 0; }
+      h1 { font-size: 2rem; }
+      p { margin: 0; }
+      .muted { color: var(--muted); }
+      .error {
+        color: var(--bad);
+        margin-bottom: 16px;
+      }
+      .top-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .summary-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-bottom: 18px;
+      }
+      .form-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+      .summary-card,
+      .card {
+        background: rgba(13, 26, 36, 0.95);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+      }
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+      .card header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 18px;
+      }
+      .pill-row, .run-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .pill {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 3px 9px;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .pill.ok {
+        color: var(--good);
+        border-color: rgba(137, 226, 176, 0.4);
+      }
+      .pill.bad {
+        color: var(--bad);
+        border-color: rgba(255, 127, 127, 0.4);
+      }
+      button,
+      a.button {
+        border-radius: 999px;
+        border: 1px solid rgba(109, 211, 255, 0.45);
+        padding: 9px 14px;
+        color: var(--text);
+        background: rgba(109, 211, 255, 0.08);
+        text-decoration: none;
+        cursor: pointer;
+        font: inherit;
+      }
+      button.secondary,
+      a.button.secondary {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--line);
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      select {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #08131b;
+        color: var(--text);
+        padding: 10px 12px;
+        font: inherit;
+      }
+      .preview-panel {
+        border: 1px solid rgba(109, 211, 255, 0.2);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(109, 211, 255, 0.04);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .preview-lines {
+        display: grid;
+        gap: 10px;
+      }
+      .preview-line {
+        display: grid;
+        gap: 2px;
+      }
+      .preview-line strong {
+        font-size: 0.92rem;
+      }
+      details {
+        margin-top: 12px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--accent);
+      }
+      pre {
+        margin: 8px 0 0;
+        background: #08131b;
+        border-radius: 12px;
+        padding: 12px;
+        overflow: auto;
+        font: 0.85rem/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      @media (max-width: 1024px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 720px) {
+        main { padding: 18px; }
+        header { flex-direction: column; }
+        .top-links a.button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>P4P Lab Runs</h1>
+          <p class="muted">Human reading room for what the recent local fixture and flow runs actually proved.</p>
+        </div>
+        <div class="top-links">
+          <a class="button secondary" href="/">Back to Lab</a>
+          <a class="button secondary" href="/nodes">Open Nodes room</a>
+          <a class="button secondary" href="/control">Open Control Rooms</a>
+          <a class="button secondary" href="/servers">Open Servers page</a>
+          <a class="button secondary" href="/topology">Open Topology page</a>
+          <button class="secondary" id="refresh">Refresh</button>
+        </div>
+      </header>
+
+      <p class="error" id="error" hidden></p>
+
+      <section class="summary-grid" id="runs-summary"></section>
+      <section class="summary-card" style="margin-bottom:18px;">
+        <h2>Filter these runs</h2>
+        <p class="muted" style="margin-top:8px;">Narrow the local proof by outcome, kind, owner lane, public/customer layer, or registry path.</p>
+        <div class="form-grid" style="margin-top:14px;">
+          <div>
+            <label for="filter-outcome">Outcome</label>
+            <select id="filter-outcome"></select>
+          </div>
+          <div>
+            <label for="filter-kind">Run kind</label>
+            <select id="filter-kind"></select>
+          </div>
+          <div>
+            <label for="filter-owner">Owner lane</label>
+            <select id="filter-owner"></select>
+          </div>
+          <div>
+            <label for="filter-surface">Public/customer layer</label>
+            <select id="filter-surface"></select>
+          </div>
+          <div>
+            <label for="filter-registry">Registry lane</label>
+            <select id="filter-registry"></select>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" id="reset-filters">Reset filters</button>
+        </div>
+        <div class="preview-panel" id="filtered-summary" style="margin-top:14px;">
+          <h3>Matching runs</h3>
+          <div class="preview-lines"></div>
+        </div>
+      </section>
+      <section class="stack">
+        <article class="summary-card">
+          <h2>Proof lanes in this room</h2>
+          <p class="muted">Read the run history by owner lane instead of only by individual run cards.</p>
+        </article>
+        <div class="stack" id="proof-lanes"></div>
+      </section>
+      <section class="stack" id="runs"></section>
+    </main>
+
+    <script>
+      let runsRoomData = { summary: {}, filters: {}, proof_lanes: [], runs: [] };
+
+      async function api(url, options = {}) {
+        const response = await fetch(url, {
+          method: options.method || "GET",
+          headers: { "Content-Type": "application/json" },
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function showError(message) {
+        const target = document.getElementById("error");
+        target.hidden = !message;
+        target.textContent = message || "";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function summarizeList(items, fallback = "Nothing recorded yet") {
+        const values = (items || []).filter(Boolean);
+        if (!values.length) return fallback;
+        if (values.length <= 3) return values.join(", ");
+        return `${values.slice(0, 3).join(", ")} +${values.length - 3} more`;
+      }
+
+      function renderStaticPreviewLines(lines) {
+        return `
+          <div class="preview-lines">
+            ${lines.map((line) => `
+              <div class="preview-line">
+                <strong>${escapeHtml(line.label)}</strong>
+                <span>${escapeHtml(line.value)}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function prettifyLabel(value) {
+        return String(value || "")
+          .replaceAll("_", " ")
+          .replaceAll("-", " ")
+          .replace(/\b\w/g, (match) => match.toUpperCase());
+      }
+
+      function renderSelectOptions(options, selectedValue, blankLabel) {
+        const rows = [];
+        if (blankLabel) {
+          rows.push(`<option value="">${escapeHtml(blankLabel)}</option>`);
+        }
+        for (const option of (options || [])) {
+          rows.push(
+            `<option value="${escapeHtml(option.id)}"${option.id === selectedValue ? " selected" : ""}>${escapeHtml(`${option.label} (${option.count})`)}</option>`
+          );
+        }
+        return rows.join("");
+      }
+
+      function seedFilters(filters, selected = {}) {
+        document.getElementById("filter-outcome").innerHTML = renderSelectOptions(filters.outcomes || [], selected.outcome || "", "All outcomes");
+        document.getElementById("filter-kind").innerHTML = renderSelectOptions(filters.kinds || [], selected.kind || "", "All run kinds");
+        document.getElementById("filter-owner").innerHTML = renderSelectOptions(filters.owners || [], selected.owner || "", "All owner lanes");
+        document.getElementById("filter-surface").innerHTML = renderSelectOptions(filters.surfaces || [], selected.surface || "", "All public/customer layers");
+        document.getElementById("filter-registry").innerHTML = renderSelectOptions(filters.registries || [], selected.registry || "", "All registry lanes");
+      }
+
+      function currentFilters() {
+        return {
+          outcome: document.getElementById("filter-outcome").value,
+          kind: document.getElementById("filter-kind").value,
+          owner: document.getElementById("filter-owner").value,
+          surface: document.getElementById("filter-surface").value,
+          registry: document.getElementById("filter-registry").value,
+        };
+      }
+
+      function runMatchesFilters(run, filters) {
+        if (filters.outcome === "success" && !run.success) return false;
+        if (filters.outcome === "failed" && run.success) return false;
+        if (filters.kind && run.kind !== filters.kind) return false;
+        if (filters.owner && !(run.owner_stories || []).includes(filters.owner)) return false;
+        if (filters.surface && !(run.surface_keys || []).includes(filters.surface)) return false;
+        if (filters.registry && !(run.registry_lanes || []).includes(filters.registry)) return false;
+        return true;
+      }
+
+      function buildProofLanes(runs) {
+        const lanes = new Map();
+        for (const run of runs || []) {
+          const owners = (run.owner_stories && run.owner_stories.length) ? run.owner_stories : ["No owner story recorded"];
+          for (const ownerStory of owners) {
+            const lane = lanes.get(ownerStory) || {
+              owner_story: ownerStory,
+              run_count: 0,
+              success_count: 0,
+              failed_count: 0,
+              kinds: {},
+              surface_labels: [],
+              registry_lanes: [],
+              latest_run_title: "",
+            };
+            lane.run_count += 1;
+            if (run.success) lane.success_count += 1;
+            else lane.failed_count += 1;
+            lane.kinds[run.kind || "run"] = (lane.kinds[run.kind || "run"] || 0) + 1;
+            lane.surface_labels.push(...(run.surface_labels || []));
+            lane.registry_lanes.push(...(run.registry_lanes || []));
+            if (!lane.latest_run_title) {
+              lane.latest_run_title = run.title || run.scenario_id || run.fixture_id || run.run_id || "";
+            }
+            lanes.set(ownerStory, lane);
+          }
+        }
+        return [...lanes.values()]
+          .map((lane) => ({
+            ...lane,
+            surface_labels: [...new Set((lane.surface_labels || []).filter(Boolean))],
+            registry_lanes: [...new Set((lane.registry_lanes || []).filter(Boolean))],
+          }))
+          .sort((a, b) => (b.run_count - a.run_count) || a.owner_story.localeCompare(b.owner_story));
+      }
+
+      function renderProofLane(lane) {
+        const kindSummary = Object.entries(lane.kinds || {}).map(([kind, count]) => `${prettifyLabel(kind)} ${count}`);
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h2>${escapeHtml(lane.owner_story)}</h2>
+                <p class="muted">${escapeHtml(lane.latest_run_title ? `Latest proof: ${lane.latest_run_title}` : "No latest proof title recorded yet")}</p>
+              </div>
+              <div class="pill-row">
+                <span class="pill ok">${escapeHtml(`${lane.success_count} success`)}</span>
+                <span class="pill bad">${escapeHtml(`${lane.failed_count} failed`)}</span>
+                <span class="pill">${escapeHtml(`${lane.run_count} run${lane.run_count === 1 ? "" : "s"}`)}</span>
+              </div>
+            </header>
+            <div class="preview-panel">
+              ${renderStaticPreviewLines([
+                { label: "Run kinds", value: summarizeList(kindSummary, "No run kinds recorded") },
+                { label: "Public/customer layers", value: summarizeList(lane.surface_labels || [], "No public/customer layer recorded") },
+                { label: "Registry lanes", value: summarizeList(lane.registry_lanes || [], "No registry lane recorded") },
+              ])}
+            </div>
+            <div class="actions">
+              <button type="button" class="secondary" data-proof-owner="${escapeHtml(lane.owner_story)}">Show matching runs</button>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderFilteredSummary(filters, runs) {
+        const active = [];
+        if (filters.outcome) active.push(`outcome ${filters.outcome}`);
+        if (filters.kind) active.push(`kind ${prettifyLabel(filters.kind)}`);
+        if (filters.owner) active.push(`owner ${filters.owner}`);
+        if (filters.surface) active.push(`layer ${prettifyLabel(filters.surface)}`);
+        if (filters.registry) active.push(`registry ${filters.registry}`);
+        return renderStaticPreviewLines([
+          {
+            label: "Active filters",
+            value: active.length ? summarizeList(active) : "No filters applied yet",
+          },
+          {
+            label: "Matching runs",
+            value: runs.length ? `${runs.length} matching run${runs.length === 1 ? "" : "s"}` : "No runs match these filters yet",
+          },
+          {
+            label: "Matching proof lanes",
+            value: buildProofLanes(runs).length
+              ? `${buildProofLanes(runs).length} owner lane${buildProofLanes(runs).length === 1 ? "" : "s"}`
+              : "No owner lanes match these filters yet",
+          },
+          {
+            label: "First matching run",
+            value: runs.length
+              ? (runs[0].title || runs[0].scenario_id || runs[0].fixture_id || runs[0].run_id || "Matching run")
+              : "No matching run to open yet",
+          },
+        ]);
+      }
+
+      function renderRunsSummary(summary) {
+        const runKinds = Object.entries(summary?.kinds || {}).map(([kind, count]) => `${prettifyLabel(kind)} ${count}`);
+        return `
+          <article class="summary-card">
+            <h2>What the recent runs say</h2>
+            <p class="muted">${escapeHtml(summary?.total_runs ? `${summary.success_count || 0} successful, ${summary.failed_count || 0} failed, ${summary.total_runs || 0} total` : "No fixture or flow runs recorded yet")}</p>
+          </article>
+          <article class="summary-card">
+            <h2>Latest proof</h2>
+            <p class="muted">${escapeHtml(summary?.latest_run_title || "No latest run yet")}</p>
+            <p class="muted" style="margin-top:8px;">${escapeHtml(summary?.latest_run_story || "Run one local fixture or flow to start building proof here.")}</p>
+          </article>
+          <article class="summary-card">
+            <h2>Run kinds</h2>
+            <p class="muted">${escapeHtml(summarizeList(runKinds, "No flow or fixture runs recorded yet"))}</p>
+          </article>
+          <article class="summary-card">
+            <h2>Owners and layers touched</h2>
+            <p class="muted">${escapeHtml(summarizeList(summary?.owner_stories || [], "No owner-truth recorded yet"))}</p>
+            <p class="muted" style="margin-top:8px;">${escapeHtml(summarizeList(summary?.surface_labels || [], "No public/customer layer recorded yet"))}</p>
+          </article>
+        `;
+      }
+
+      function renderRun(run) {
+        const tone = run.success ? "ok" : "bad";
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h2>${escapeHtml(run.title || run.scenario_id || run.fixture_id || run.run_id)}</h2>
+                <p class="muted">${escapeHtml(prettifyLabel(run.kind || "run"))}</p>
+              </div>
+              <span class="pill ${tone}">${run.success ? "success" : "failed"}</span>
+            </header>
+            <div class="run-summary">
+              ${run.profile_id ? `<span class="pill">${escapeHtml(`profile ${run.profile_id}`)}</span>` : ""}
+              ${run.order_id ? `<span class="pill">${escapeHtml(`order ${run.order_id}`)}</span>` : ""}
+              ${(run.surface_labels || []).map((label) => `<span class="pill">${escapeHtml(label)}</span>`).join("")}
+              ${(run.registry_lanes || []).slice(0, 2).map((lane) => `<span class="pill">${escapeHtml(lane)}</span>`).join("")}
+            </div>
+            <div class="grid" style="margin-top:14px;">
+              <div class="preview-panel">
+                <h3>Run story</h3>
+                ${renderStaticPreviewLines([
+                  { label: "What this proved", value: run.run_story || "No run story projected yet" },
+                  { label: "Owners touched", value: summarizeList(run.owner_stories || [], "No owner story recorded") },
+                  { label: "Public/customer layers", value: summarizeList(run.surface_labels || [], "No public/customer layer recorded") },
+                  { label: "Registry lanes", value: summarizeList(run.registry_lanes || [], "No registry path recorded") },
+                ])}
+              </div>
+              <div class="preview-panel">
+                <h3>Run contract</h3>
+                ${renderStaticPreviewLines([
+                  { label: "Services", value: summarizeList(run.services || [], "No services recorded") },
+                  { label: "Targets", value: summarizeList((run.resolved_targets || []).map((target) => target.id || target.owner_story), "No resolved targets recorded") },
+                  { label: "Checks", value: Array.isArray(run.checks) ? `${run.checks.length} explicit check${run.checks.length === 1 ? "" : "s"}` : "No checks recorded" },
+                  { label: "Errors", value: run.error ? run.error : "No runtime error recorded" },
+                ])}
+              </div>
+            </div>
+            <details>
+              <summary>Run data</summary>
+              <pre>${escapeHtml(JSON.stringify(run, null, 2))}</pre>
+            </details>
+          </article>
+        `;
+      }
+
+      function renderRunsRoom() {
+        const filters = currentFilters();
+        const runs = (runsRoomData.runs || []).filter((run) => runMatchesFilters(run, filters));
+        const proofLanes = buildProofLanes(runs);
+        document.getElementById("filtered-summary").innerHTML = `
+          <h3>Matching runs</h3>
+          ${renderFilteredSummary(filters, runs)}
+        `;
+        document.getElementById("proof-lanes").innerHTML = proofLanes.length
+          ? proofLanes.map(renderProofLane).join("")
+          : "<p class='muted'>No proof lanes match these filters yet.</p>";
+        document.getElementById("runs").innerHTML = runs.length
+          ? runs.map(renderRun).join("")
+          : "<p class='muted'>No fixture or flow runs recorded yet.</p>";
+      }
+
+      function applyFilters(next = {}) {
+        const selected = {
+          ...currentFilters(),
+          ...next,
+        };
+        seedFilters(runsRoomData.filters || {}, selected);
+        renderRunsRoom();
+      }
+
+      async function refresh() {
+        showError("");
+        const selected = currentFilters();
+        runsRoomData = await api("/api/runs-room");
+        const summary = runsRoomData.summary || {};
+        document.getElementById("runs-summary").innerHTML = renderRunsSummary(summary);
+        seedFilters(runsRoomData.filters || {}, selected);
+        renderRunsRoom();
+      }
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => showError(error.message));
+      });
+
+      ["filter-outcome", "filter-kind", "filter-owner", "filter-surface", "filter-registry"].forEach((id) => {
+        document.getElementById(id).addEventListener("change", () => {
+          renderRunsRoom();
+        });
+      });
+
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        if (!target) return;
+        if (target.dataset.proofOwner) {
+          applyFilters({ owner: target.dataset.proofOwner });
+          document.getElementById("runs").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+
+      document.getElementById("reset-filters").addEventListener("click", () => {
+        applyFilters({ outcome: "", kind: "", owner: "", surface: "", registry: "" });
+      });
+
+      refresh().catch((error) => showError(error.message));
+      setInterval(() => refresh().catch(() => {}), 2500);
+    </script>
+  </body>
+</html>

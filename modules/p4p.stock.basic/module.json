@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Performs a final local stock check between order acceptance and the next operator lane.",
+  "description": {
+    "da": "Udfører en sidste lokal lagercheck mellem ordreaccept og næste operator-lane.",
+    "sv": "Utför en sista lokal lagerkontroll mellan orderaccept och nästa operatörslane.",
+    "tr": "Sipariş kabulü ile bir sonraki operatör hattı arasında son bir yerel stok kontrolü yapar.",
+    "ar": "يجري فحص مخزون محلي أخير بين قبول الطلب والمسار التالي للمشغّل.",
+    "ku": "Di navbera pejirandina fermanê û lane-ya operatorê ya paşîn de kontrola dawî ya herêmî ya stokê dike.",
+    "en": "Performs a final local stock check between order acceptance and the next operator lane."
+  },
   "visibility": "operator_only",
   "capabilities": ["check_stock", "emit_validation_result"],
   "input_events": ["ORDER_ACCEPTED"],
@@ -24,10 +31,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Checks local stock before the next module continues the order flow.",
-    "data_access_summary": "Order items and local stock state.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Checker lokalt lager før næste modul fortsætter ordreflowet.",
+      "sv": "Kontrollerar lokalt lager innan nästa modul fortsätter orderflödet.",
+      "tr": "Bir sonraki modül sipariş akışını sürdürmeden önce yerel stoğu kontrol eder.",
+      "ar": "يفحص المخزون المحلي قبل أن تتابع الوحدة التالية تدفق الطلب.",
+      "ku": "Berî ku modula paşîn flowa fermanê berdewam bike stokê herêmî kontrol dike.",
+      "en": "Checks local stock before the next module continues the order flow."
+    },
+    "data_access_summary": {
+      "da": "Ordrevarer og lokal lagerstatus.",
+      "sv": "Beställningsvaror och lokal lagerstatus.",
+      "tr": "Sipariş kalemleri ve yerel stok durumu.",
+      "ar": "عناصر الطلب وحالة المخزون المحلية.",
+      "ku": "Tiştên fermanê û rewşa stokê ya herêmî.",
+      "en": "Order items and local stock state."
+    },
+    "trust_status": {
+      "da": "reference-manifest, unsigned provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifesti, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manîfesta referansê, provider-a bêîmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "available in the pilot node when enabled"
+    "operator_status": {
+      "da": "tilgængelig i pilot-noden når den er aktiveret",
+      "sv": "tillgänglig i pilot-noden när den är aktiverad",
+      "tr": "etkinleştirildiğinde pilot node’da kullanılabilir",
+      "ar": "متاحة في pilot-node عند تفعيلها",
+      "ku": "dema ku were çalakirin di pilot-node de berdest e",
+      "en": "available in the pilot node when enabled"
+    }
   }
 }

@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "planned",
-  "description": "Prints or forwards accepted test orders to a restaurant-owned printer or POS surface.",
+  "description": {
+    "da": "Printer eller videresender accepterede testordrer til en restaurant-ejet printer- eller POS-flade.",
+    "sv": "Skriver ut eller vidarebefordrar accepterade testbeställningar till en restaurangägd skrivar- eller POS-yta.",
+    "tr": "Kabul edilen test siparişlerini restorana ait bir yazıcıya ya da POS yüzeyine yazdırır veya iletir.",
+    "ar": "يطبع أو يمرر طلبات الاختبار المقبولة إلى واجهة طابعة أو نقطة بيع يملكها المطعم.",
+    "ku": "Fermanên testê yên pejirandî bo rûyê çapker an POS-ê yê xwediyê restaurantê çap dike an dişîne.",
+    "en": "Prints or forwards accepted test orders to a restaurant-owned printer or POS surface."
+  },
   "visibility": "operator_only",
   "capabilities": ["print_order", "report_status"],
   "input_events": ["ORDER_ACCEPTED", "PRINT_REQUESTED"],
@@ -47,10 +54,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Prints or forwards accepted test orders to a restaurant-owned printer/POS surface.",
-    "data_access_summary": "Order items, note, customer contact, and fulfillment type.",
-    "trust_status": "placeholder manifest",
+    "function": {
+      "da": "Printer eller videresender accepterede testordrer til en restaurant-ejet printer-/POS-flade.",
+      "sv": "Skriver ut eller vidarebefordrar accepterade testbeställningar till en restaurangägd skrivar-/POS-yta.",
+      "tr": "Kabul edilen test siparişlerini restorana ait bir yazıcı/POS yüzeyine yazdırır veya iletir.",
+      "ar": "يطبع أو يمرر طلبات الاختبار المقبولة إلى واجهة طابعة/نقطة بيع يملكها المطعم.",
+      "ku": "Fermanên testê yên pejirandî bo rûyê çapker/POS-ê yê xwediyê restaurantê çap dike an dişîne.",
+      "en": "Prints or forwards accepted test orders to a restaurant-owned printer/POS surface."
+    },
+    "data_access_summary": {
+      "da": "Ordrevarer, note, kundekontakt og fulfillment-type.",
+      "sv": "Beställningsvaror, notering, kundkontakt och fulfillment-typ.",
+      "tr": "Sipariş kalemleri, not, müşteri iletişimi ve teslim türü.",
+      "ar": "عناصر الطلب والملاحظة وبيانات تواصل العميل ونوع التسليم.",
+      "ku": "Tiştên fermanê, têbinî, têkiliya mişterî û cureya fulfillment.",
+      "en": "Order items, note, customer contact, and fulfillment type."
+    },
+    "trust_status": {
+      "da": "placeholder-manifest",
+      "sv": "platshållarmanifest",
+      "tr": "yer tutucu manifest",
+      "ar": "manifest مؤقت",
+      "ku": "manifesta cîgirtinê",
+      "en": "placeholder manifest"
+    },
     "readiness": "planned",
-    "operator_status": "not enabled"
+    "operator_status": {
+      "da": "ikke aktiveret",
+      "sv": "inte aktiverad",
+      "tr": "etkin değil",
+      "ar": "غير مفعّل",
+      "ku": "ne çalak e",
+      "en": "not enabled"
+    }
   }
 }

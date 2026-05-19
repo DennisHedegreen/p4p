@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Operator-owned draft OCR helper for previewing menu text or photographed paper menus before catalog review.",
+  "description": {
+    "da": "Operator-ejet kladde-OCR-hjælper til at forhåndsvise menutekst eller fotograferede papirmenuer før katalog-review.",
+    "sv": "Operatörsägd utkast-OCR-hjälp för att förhandsgranska menytext eller fotograferade pappersmenyer före kataloggranskning.",
+    "tr": "Katalog incelemesinden önce menü metnini ya da fotoğraflanmış kâğıt menüleri önizlemek için operatöre ait taslak OCR yardımcısı.",
+    "ar": "مساعد OCR مسودّة مملوك للمشغّل لمعاينة نص القائمة أو القوائم الورقية المصوّرة قبل مراجعة الكاتالوغ.",
+    "ku": "Alîkarê pêşnûmeya OCR a xwediyê operatorê ji bo pêşdîtina nivîsa menûyê an menûyên kaxezî yên wênekirî berî review-a katalogê.",
+    "en": "Operator-owned draft OCR helper for previewing menu text or photographed paper menus before catalog review."
+  },
   "visibility": "operator_only",
   "capabilities": [
     "preview_catalog_import_from_text",
@@ -42,10 +49,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Lets a restaurant operator preview OCR/scanned menu lines as draft catalog items before human review.",
-    "data_access_summary": "Draft item ids, names, prices, categories, and OCR source lines. Operator-only; does not write catalog truth by itself.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Lader en restaurantoperator forhåndsvise OCR-/scannede menu-linjer som kladde-katalogvarer før menneskelig review.",
+      "sv": "Låter en restaurangoperatör förhandsgranska OCR-/skannade menyrader som utkastskatalogposter före mänsklig granskning.",
+      "tr": "Bir restoran operatörünün OCR/taranmış menü satırlarını insan incelemesinden önce taslak katalog öğeleri olarak önizlemesini sağlar.",
+      "ar": "يتيح لمشغّل المطعم معاينة سطور القائمة الممسوحة/OCR كعناصر كاتالوغ مسودة قبل المراجعة البشرية.",
+      "ku": "Dihêle operatorê restaurantê rêzên menûyê yên OCR/scan kirî berî review-a mirovî wekî tiştên pêşnûmeya katalogê bibîne.",
+      "en": "Lets a restaurant operator preview OCR/scanned menu lines as draft catalog items before human review."
+    },
+    "data_access_summary": {
+      "da": "Kladde-id’er, navne, priser, kategorier og OCR-kildelinjer. Kun operatorside; skriver ikke katalog-sandhed af sig selv.",
+      "sv": "Utkasts-id:n, namn, priser, kategorier och OCR-källrader. Endast operatörssida; skriver inte katalogsanning av sig självt.",
+      "tr": "Taslak id’ler, adlar, fiyatlar, kategoriler ve OCR kaynak satırları. Yalnızca operatör tarafı; katalog gerçeğini kendi başına yazmaz.",
+      "ar": "معرّفات وأسماء وأسعار وفئات المسودّة وسطور مصدر OCR. لواجهة المشغّل فقط؛ لا يكتب حقيقة الكاتالوغ من تلقاء نفسه.",
+      "ku": "ID, nav, biha, kategorî û rêzên çavkaniyê yên OCR yên pêşnûmeyê. Tenê aliyê operatorê ye; bi xwe rastiya katalogê nanivîse.",
+      "en": "Draft item ids, names, prices, categories, and OCR source lines. Operator-only; does not write catalog truth by itself."
+    },
+    "trust_status": {
+      "da": "reference-manifest, unsigned provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifesti, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manîfesta referansê, provider-a bêîmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "available in the pilot-node operator dashboard when enabled alongside the catalog editor"
+    "operator_status": {
+      "da": "tilgængelig i pilot-node-operator-dashboardet når den er aktiveret sammen med katalog-editoren",
+      "sv": "tillgänglig i pilot-node-operatörsdashboarden när den aktiveras tillsammans med katalogeditorn",
+      "tr": "katalog editörüyle birlikte etkinleştirildiğinde pilot-node operatör panelinde kullanılabilir",
+      "ar": "متاحة في لوحة مشغّل pilot-node عند تفعيلها مع محرّر الكاتالوغ",
+      "ku": "demê ku ligel edîtorê katalogê were çalakirin di dashboard-a operatorê ya pilot-node de berdest e",
+      "en": "available in the pilot-node operator dashboard when enabled alongside the catalog editor"
+    }
   }
 }

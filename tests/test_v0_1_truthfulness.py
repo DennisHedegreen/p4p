@@ -2911,6 +2911,947 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(service.env["P4P_NODE_MODULES"], "p4p.payment.cash")
         self.assertEqual(service.env["P4P_NODE_ORDER_MODE"], "test")
 
+    def test_lab_projection_includes_profiles_fixtures_flows_and_legacy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+            projection = lab.scenario_projection(config)
+
+        self.assertEqual(projection["version"], "0.2-lab-v2")
+        self.assertIn("secondary-registry", projection["services"])
+        self.assertIn("registry_profiles", projection)
+        self.assertIn("node_profiles", projection)
+        self.assertIn("node_templates", projection)
+        self.assertIn("node_instances", projection)
+        self.assertIn("customer_fixtures", projection)
+        self.assertIn("customer_fixture_instances", projection)
+        self.assertIn("flow_scenarios", projection)
+        self.assertIn("legacy_scenarios", projection)
+        self.assertEqual(projection["registry_profiles"][0]["id"], "main-open")
+        self.assertEqual(projection["node_profiles"][0]["id"], "pizza-shop")
+        self.assertEqual(projection["node_templates"][0]["id"], "pizza-shop")
+        self.assertEqual(projection["node_instances"][0]["id"], "pizza-shop")
+        self.assertEqual(
+            projection["node_profiles"][0]["public_shop_url"],
+            "http://127.0.0.1:8595/p4p/menu/list",
+        )
+        self.assertEqual(projection["customer_fixtures"][0]["id"], "pickup-basic")
+        self.assertEqual(projection["customer_fixture_instances"], [])
+        self.assertEqual(projection["flow_scenarios"][0]["id"], "single-pizza-order")
+        self.assertEqual(projection["legacy_scenarios"][0]["id"], "pilot-photo-map-menu")
+
+    def test_lab_topology_projection_attaches_registry_lanes_templates_and_instances(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+            projection = lab.topology_projection(config)
+
+        self.assertIn("registry_profiles", projection)
+        self.assertEqual(projection["registry_profiles"][0]["id"], "main-open")
+        self.assertEqual(projection["registry_profiles"][1]["id"], "main-open-backup")
+        main_open = next(item for item in projection["registry_profiles"] if item["id"] == "main-open")
+        dk_curated = next(item for item in projection["registry_profiles"] if item["id"] == "dk-p4p-curated")
+        main_backup = next(item for item in projection["registry_profiles"] if item["id"] == "main-open-backup")
+
+        self.assertEqual(main_open["service"]["name"], "primary-registry")
+        self.assertEqual(main_open["service"]["port"], 8000)
+        self.assertEqual(dk_curated["service"]["name"], "secondary-registry")
+        self.assertEqual(dk_curated["curation_mode"], "curated")
+        self.assertEqual(main_backup["backup_for"], "main-open")
+        self.assertIn("Registry info", {link["label"] for link in main_open["layer_links"]})
+        self.assertIn("pizza-shop", {item["id"] for item in main_open["attached_node_templates"]})
+        self.assertIn("pizza-shop", {item["id"] for item in main_open["attached_node_instances"]})
+        self.assertTrue(next(item for item in main_open["attached_node_templates"] if item["id"] == "pizza-shop")["registry_targeted"])
+        self.assertTrue(next(item for item in dk_curated["attached_node_templates"] if item["id"] == "pizza-shop")["visibility_expected"])
+        self.assertEqual(next(item for item in main_open["attached_node_instances"] if item["id"] == "pizza-shop")["public_surface_key"], "public_shop")
+        self.assertTrue(any(profile["id"] == "main-open" for profile in dk_curated["upstream_profiles"]))
+
+    def test_lab_registry_profile_overrides_feed_scenario_and_topology_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+
+            override = lab.state_store.update_registry_profile_override(
+                config=config,
+                profile_id="dk-p4p-curated",
+                title="DK Pizza4People Curated Lane",
+                description="Local curated lane for Danish Pizza4People testing.",
+                upstreams=["main-open-backup"],
+                announce_policy="approval-before-lane",
+                discover_policy="filtered-local-priority",
+                notes=["Local test curation only.", "Does not rewrite registry runtime."],
+            )
+
+            scenario = lab.scenario_projection(config)
+            topology = lab.topology_projection(config)
+
+        self.assertEqual(override["profile_id"], "dk-p4p-curated")
+        self.assertEqual(override["upstreams"], ["main-open-backup"])
+        scenario_profile = next(item for item in scenario["registry_profiles"] if item["id"] == "dk-p4p-curated")
+        self.assertTrue(scenario_profile["override_active"])
+        self.assertEqual(scenario_profile["title"], "DK Pizza4People Curated Lane")
+        self.assertEqual(scenario_profile["announce_policy"], "approval-before-lane")
+        self.assertEqual(scenario_profile["discover_policy"], "filtered-local-priority")
+        self.assertEqual(scenario_profile["upstreams"], ["main-open-backup"])
+        self.assertEqual(scenario_profile["notes"][0], "Local test curation only.")
+        topology_profile = next(item for item in topology["registry_profiles"] if item["id"] == "dk-p4p-curated")
+        self.assertTrue(topology_profile["override_active"])
+        self.assertEqual(topology_profile["upstream_profiles"][0]["id"], "main-open-backup")
+
+    def test_lab_can_create_registry_lane_instance_and_target_it_from_generated_node_instance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+
+            lane = lab.state_store.create_registry_lane_instance(
+                config=config,
+                template=config.registry_profiles["dk-p4p-curated"],
+                instance_id="dk-curated-local-001",
+                title="DK Curated Local 001",
+                description="Generated curated lane for local testing.",
+                notes=["Starts as a local generated lane."],
+            )
+            self.assertEqual(lane["template_id"], "dk-p4p-curated")
+            self.assertEqual(lane["service_name"], "registry-lane-dk-curated-local-001")
+            self.assertGreaterEqual(lane["port"], 8010)
+            self.assertEqual(lane["launch_mode"], "generated_lane")
+
+            updated_lane = lab.state_store.update_registry_lane_instance(
+                config=config,
+                instance_id="dk-curated-local-001",
+                title="DK Curated Local 001",
+                description="Generated curated lane for topology tests.",
+                upstreams=["main-open-backup"],
+                announce_policy="approval-before-lane",
+                discover_policy="filtered-local-priority",
+                notes=["Curated local lane."],
+            )
+            self.assertEqual(updated_lane["upstreams"], ["main-open-backup"])
+            self.assertEqual(updated_lane["announce_policy"], "approval-before-lane")
+
+            created_instance = lab.state_store.create_node_instance(
+                config=config,
+                template=config.node_profiles["pizza-shop"],
+                instance_id="pizza-shop-curated-001",
+                title="Pizza Shop Curated 001",
+                description="Generated node instance for registry-lane targeting.",
+                notes="",
+            )
+            self.assertEqual(created_instance["launch_mode"], "generated_instance")
+
+            node_instance = lab.state_store.update_node_instance(
+                config=config,
+                instance_id="pizza-shop-curated-001",
+                title="Pizza Shop Curated 001",
+                description="Generated runtime instance with local targeting.",
+                notes="",
+                registry_targets=["main-open", "dk-curated-local-001"],
+                visibility_expectations=["dk-p4p-curated", "dk-curated-local-001"],
+                module_ids=["p4p.menu.list", "p4p.payment.cash"],
+                menu_seed={"items": []},
+                node_id="pizza-shop-curated-001",
+                city="Brondby",
+                country="DK",
+                categories=["pizza"],
+                order_mode="menu_only",
+                public_surface_key="public_shop",
+            )
+            self.assertIn("dk-curated-local-001", node_instance["registry_targets"])
+
+            definition = lab._build_node_instance_service_definition(config, node_instance)
+            self.assertIn(
+                f"http://127.0.0.1:{updated_lane['port']}",
+                definition.env["P4P_REGISTRY_URLS"],
+            )
+
+            topology = lab.topology_projection(config)
+            generated_lane = next(item for item in topology["registry_profiles"] if item["id"] == "dk-curated-local-001")
+            self.assertTrue(generated_lane["generated"])
+            self.assertEqual(generated_lane["service"]["port"], updated_lane["port"])
+            self.assertEqual(generated_lane["upstream_profiles"][0]["id"], "main-open-backup")
+            self.assertIn("pizza-shop-curated-001", {item["id"] for item in generated_lane["attached_node_instances"]})
+
+    def test_lab_state_store_seeds_and_creates_node_instances(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+
+            seeded = lab.state_store.list_node_instances()
+            self.assertIn("pizza-shop", {item["id"] for item in seeded})
+            self.assertTrue(next(item for item in seeded if item["id"] == "pizza-shop")["launchable_now"])
+
+            created = lab.state_store.create_node_instance(
+                config=config,
+                template=config.node_profiles["pizza-shop"],
+                instance_id="pizza-shop-custom-001",
+                title="Custom Pizza Draft",
+                description="Generated instance for runtime launch.",
+                notes="Saved through state store.",
+            )
+
+            self.assertEqual(created["template_id"], "pizza-shop")
+            self.assertTrue(created["launchable_now"])
+            self.assertEqual(created["launch_mode"], "generated_instance")
+            self.assertEqual(created["service_name"], "instance-pizza-shop-custom-001")
+            self.assertEqual(created["node_id"], "pizza-shop-custom-001")
+            self.assertEqual(created["city"], "Brondby")
+            self.assertEqual(created["country"], "DK")
+            self.assertEqual(created["categories"], ["pizza"])
+            self.assertEqual(created["order_mode"], "live")
+            self.assertEqual(created["public_surface_key"], "public_shop")
+            self.assertEqual(created["operator_token"], "lab-pizza-shop-custom-001")
+            self.assertIn("p4p.catalog.editor", created["module_ids"])
+            self.assertEqual(created["menu_seed"]["currency"], "DKK")
+            self.assertEqual(created["menu_seed"]["items"][0]["id"], "margherita")
+            self.assertIsInstance(created["port"], int)
+            self.assertGreaterEqual(created["port"], 8700)
+            self.assertIn("pizza-shop-custom-001", {item["id"] for item in lab.state_store.list_node_instances()})
+
+            updated = lab.state_store.update_node_instance(
+                config=config,
+                instance_id="pizza-shop-custom-001",
+                title="Custom Pizza DK Curated",
+                description="Updated generated instance.",
+                notes="Owns its own lane choices now.",
+                registry_targets=["dk-p4p-curated"],
+                visibility_expectations=["dk-p4p-curated", "main-open"],
+                module_ids=["p4p.menu.list", "p4p.customer.status"],
+                menu_seed={
+                    "currency": "DKK",
+                    "items": [
+                        {
+                            "id": "lab-special",
+                            "name": "Lab Special",
+                            "description": "Instance-owned menu item.",
+                            "category": "pizza",
+                            "price_minor": 9900,
+                            "image_url": "",
+                        }
+                    ],
+                },
+                node_id="dk-custom-pizza-001",
+                city="Copenhagen",
+                country="dk",
+                categories=["pizza", "late-night"],
+                order_mode="test",
+                public_surface_key="menu_json",
+            )
+
+            self.assertEqual(updated["title"], "Custom Pizza DK Curated")
+            self.assertEqual(updated["node_id"], "dk-custom-pizza-001")
+            self.assertEqual(updated["city"], "Copenhagen")
+            self.assertEqual(updated["country"], "DK")
+            self.assertEqual(updated["categories"], ["pizza", "late-night"])
+            self.assertEqual(updated["order_mode"], "test")
+            self.assertEqual(updated["public_surface_key"], "menu_json")
+            self.assertEqual(updated["registry_targets"], ["dk-p4p-curated"])
+            self.assertEqual(updated["visibility_expectations"], ["dk-p4p-curated", "main-open"])
+            self.assertEqual(updated["module_ids"], ["p4p.menu.list", "p4p.customer.status"])
+            self.assertEqual(updated["menu_seed"]["items"][0]["id"], "lab-special")
+            self.assertEqual(updated["public_shop_url"], updated["customer_urls"]["menu_json"])
+
+    def test_lab_server_inventory_projects_ports_layers_and_instances(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+
+            inventory = lab.server_inventory_projection(config)
+
+        servers = {item["name"]: item for item in inventory["servers"]}
+        pizza_server = servers["pilot-pizza-shop"]
+        self.assertEqual(pizza_server["port"], 8595)
+        self.assertEqual(pizza_server["attached_node_templates"][0]["id"], "pizza-shop")
+        self.assertIn("pizza-shop", {item["id"] for item in pizza_server["attached_node_instances"]})
+        self.assertIn("pizza-shop public shop", {link["label"] for link in pizza_server["layer_links"]})
+        group_ids = {group["id"] for group in inventory["groups"]}
+        self.assertEqual(group_ids, {"registry-stack", "node-runtimes", "live-layers"})
+        registry_group = next(group for group in inventory["groups"] if group["id"] == "registry-stack")
+        self.assertIn("primary-registry", registry_group["service_names"])
+        self.assertEqual([action["id"] for action in registry_group["actions"]], ["start", "stop", "restart", "recover"])
+        node_group = next(group for group in inventory["groups"] if group["id"] == "node-runtimes")
+        self.assertIn("pilot-pizza-shop", node_group["service_names"])
+        self.assertTrue(node_group["truth_owner_stories"])
+        self.assertIn("Seeded node template Pizza shop", node_group["truth_owner_stories"])
+        live_group = next(group for group in inventory["groups"] if group["id"] == "live-layers")
+        self.assertFalse(live_group["actions"])
+        self.assertTrue(live_group["links"])
+        self.assertEqual(pizza_server["action_target"]["type"], "service")
+        self.assertIn("primary-registry", pizza_server["dependency_service_names"])
+        self.assertEqual(pizza_server["binding"]["kind"], "node-template")
+        self.assertFalse(pizza_server["binding"]["can_rebind"])
+        self.assertTrue(node_group["plan"]["dependencies_first"])
+        self.assertIn("primary-registry", node_group["plan"]["start_order"])
+        self.assertIn("pilot-pizza-shop", node_group["plan"]["start_order"])
+        self.assertIn("pilot-pizza-shop", node_group["plan"]["stop_order"])
+        self.assertEqual(node_group["plan"]["rebind_owner_stories"], [])
+
+    def test_lab_control_rooms_projection_turns_server_groups_into_room_stories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+
+            projection = lab.control_rooms_projection(config)
+
+        room_ids = {room["id"] for room in projection["rooms"]}
+        self.assertEqual(room_ids, {"registry-stack", "node-runtimes", "live-layers"})
+        self.assertEqual(projection["summary"]["room_count"], 3)
+        self.assertEqual(projection["summary"]["actionable_room_count"], 2)
+        self.assertEqual(projection["summary"]["dependency_room_count"], 2)
+
+        registry_room = next(room for room in projection["rooms"] if room["id"] == "registry-stack")
+        self.assertEqual(registry_room["kind"], "registry-room")
+        self.assertTrue(registry_room["actionable"])
+        self.assertIn("discovery backbone", registry_room["room_story"])
+        self.assertIn("Bring this room up in order", registry_room["start_story"])
+
+        node_room = next(room for room in projection["rooms"] if room["id"] == "node-runtimes")
+        self.assertEqual(node_room["kind"], "runtime-room")
+        self.assertIn("operator and public shop lanes", node_room["room_story"])
+        self.assertTrue(node_room["truth_owner_stories"])
+        self.assertIn("Seeded node template Pizza shop", node_room["truth_owner_stories"])
+
+        live_room = next(room for room in projection["rooms"] if room["id"] == "live-layers")
+        self.assertEqual(live_room["kind"], "reading-room")
+        self.assertFalse(live_room["actionable"])
+        self.assertIn("does not start anything directly", live_room["start_story"])
+        self.assertTrue(live_room["links"])
+
+    def test_lab_nodes_room_projection_turns_templates_instances_and_surfaces_into_node_workbench(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+
+            projection = lab.nodes_room_projection(config)
+
+        self.assertEqual(projection["summary"]["template_count"], len(config.node_profiles))
+        self.assertEqual(projection["summary"]["instance_count"], len(projection["node_instances"]))
+        self.assertGreater(projection["summary"]["surface_count"], 0)
+        self.assertGreater(projection["summary"]["primary_surface_count"], 0)
+        self.assertIn("shop", projection["filters"]["families"])
+        self.assertIn("live", projection["filters"]["order_modes"])
+        self.assertIn("main-open", projection["filters"]["registry_lanes"])
+        self.assertIn("template", projection["filters"]["owner_kinds"])
+        self.assertIn("instance", projection["filters"]["owner_kinds"])
+        self.assertIn("public_shop", projection["filters"]["surface_keys"])
+
+        pizza_template = next(item for item in projection["node_templates"] if item["id"] == "pizza-shop")
+        self.assertEqual(pizza_template["owner_story"], "Seeded node template Pizza shop")
+        self.assertEqual(pizza_template["service_name"], "pilot-pizza-shop")
+        self.assertIn("Announces", pizza_template["registry_story"])
+        self.assertIn("public lane", pizza_template["open_first_story"])
+
+        seeded_instance = next(item for item in projection["node_instances"] if item["id"] == "pizza-shop")
+        self.assertEqual(seeded_instance["launch_mode"], "seeded_service")
+        self.assertEqual(seeded_instance["public_surface_key"], "public_shop")
+        self.assertIn("runtime", seeded_instance["runtime_story"].lower())
+        self.assertIn("node instance", seeded_instance["owner_story"].lower())
+
+        template_surface = next(
+            item
+            for item in projection["customer_surfaces"]
+            if item["owner_kind"] == "template" and item["owner_id"] == "pizza-shop" and item["primary"]
+        )
+        self.assertEqual(template_surface["surface_key"], "public_shop")
+        self.assertTrue(template_surface["surface_url"].startswith("http://127.0.0.1:8595/"))
+
+        instance_surface = next(
+            item
+            for item in projection["customer_surfaces"]
+            if item["owner_kind"] == "instance" and item["owner_id"] == "pizza-shop" and item["primary"]
+        )
+        self.assertEqual(instance_surface["surface_key"], "public_shop")
+        self.assertIn("main-open", instance_surface["registry_targets"])
+
+    def test_lab_server_group_action_starts_members_via_action_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            group_projection = {
+                "servers": [],
+                "groups": [
+                    {
+                        "id": "registry-stack",
+                        "actions": [{"id": "start"}],
+                        "members": [
+                            {"action_target": {"type": "service", "id": "primary-registry"}},
+                            {"action_target": {"type": "service", "id": "backup-registry"}},
+                        ],
+                    }
+                ],
+            }
+            with (
+                patch.object(lab, "server_inventory_projection", side_effect=[group_projection, group_projection]),
+                patch.object(lab, "_start_server_action_target") as start_target,
+                patch.object(lab.manager, "status", return_value={"services": []}),
+            ):
+                payload = lab.api_server_group_action("registry-stack", "start")
+
+        self.assertEqual(payload["groups"][0]["id"], "registry-stack")
+        self.assertEqual(start_target.call_count, 2)
+        self.assertEqual(start_target.call_args_list[0].args[1], {"type": "service", "id": "primary-registry"})
+        self.assertEqual(start_target.call_args_list[1].args[1], {"type": "service", "id": "backup-registry"})
+
+    def test_lab_server_group_action_starts_node_dependencies_before_runtime_members(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            group_projection = {
+                "servers": [],
+                "groups": [
+                    {
+                        "id": "node-runtimes",
+                        "actions": [{"id": "start"}],
+                        "dependency_service_names": ["primary-registry", "backup-registry"],
+                        "plan": {
+                            "start_order": ["primary-registry", "backup-registry", "pilot-pizza-shop"],
+                            "stop_order": ["pilot-pizza-shop"],
+                            "dependencies_first": True,
+                            "rebind_owner_stories": ["Generated node instance Pizza Shop Bind"],
+                        },
+                        "members": [
+                            {
+                                "name": "pilot-pizza-shop",
+                                "action_target": {"type": "service", "id": "pilot-pizza-shop"},
+                                "binding": {"owner_story": "Generated node instance Pizza Shop Bind", "can_rebind": True},
+                            },
+                        ],
+                        "truth_owner_stories": ["Generated node instance Pizza Shop Bind"],
+                    }
+                ],
+            }
+            with (
+                patch.object(lab, "server_inventory_projection", side_effect=[group_projection, group_projection]),
+                patch.object(lab, "_start_server_action_target") as start_target,
+                patch.object(lab.manager, "status", return_value={"services": []}),
+            ):
+                payload = lab.api_server_group_action("node-runtimes", "start")
+
+        self.assertEqual(payload["groups"][0]["id"], "node-runtimes")
+        self.assertEqual(start_target.call_args_list[0].args[1], {"type": "service", "id": "primary-registry"})
+        self.assertEqual(start_target.call_args_list[1].args[1], {"type": "service", "id": "backup-registry"})
+        self.assertEqual(start_target.call_args_list[2].args[1], {"type": "service", "id": "pilot-pizza-shop"})
+
+    def test_lab_recover_server_action_forgets_stale_external_then_restarts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+            service = lab.ManagedProcess(
+                name="primary-registry",
+                port=8000,
+                kind="registry",
+                cwd=lab.REGISTRY_ROOT,
+                command=["echo", "ignored"],
+                env={},
+                external=True,
+            )
+            lab.manager._services["primary-registry"] = service
+
+            with (
+                patch.object(lab.manager, "get_service_status", return_value={"name": "primary-registry", "running": True, "usable": False}),
+                patch.object(lab, "_start_server_action_target") as start_target,
+            ):
+                lab._recover_server_action_target(config, {"type": "service", "id": "primary-registry"})
+
+        self.assertIsNone(lab.manager.get_managed("primary-registry"))
+        self.assertEqual(start_target.call_args.args[1], {"type": "service", "id": "primary-registry"})
+
+    def test_lab_rebind_server_action_forgets_conflicting_port_owner_then_adopts_target(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+            instance = lab.state_store.create_node_instance(
+                config=config,
+                template=config.node_profiles["pizza-shop"],
+                instance_id="pizza-shop-custom-bind",
+                title="Pizza Shop Bind",
+                description="",
+                notes="",
+            )
+            stale_owner = lab.ManagedProcess(
+                name="orphan-pizza-owner",
+                port=instance["port"],
+                kind="pilot-node",
+                cwd=lab.PILOT_NODE_ROOT,
+                command=["echo", "ignored"],
+                env={},
+                external=True,
+            )
+            lab.manager._services["orphan-pizza-owner"] = stale_owner
+
+            with patch.object(lab.manager, "adopt_existing_service") as adopt_service:
+                lab._rebind_server_action_target(config, {"type": "node-instance", "id": instance["id"]})
+
+        self.assertIsNone(lab.manager.get_managed("orphan-pizza-owner"))
+        self.assertIsNone(lab.manager.get_managed(instance["service_name"]))
+        definition = adopt_service.call_args.args[0]
+        self.assertEqual(definition.name, instance["service_name"])
+        self.assertEqual(definition.port, instance["port"])
+
+    def test_lab_can_build_and_start_generated_node_instance_service(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+            created = lab.state_store.create_node_instance(
+                config=config,
+                template=config.node_profiles["pizza-shop"],
+                instance_id="pizza-shop-custom-002",
+                title="Custom Pizza Launchable",
+                description="Launchable generated node instance.",
+                notes="Runtime generation test.",
+            )
+
+            created = lab.state_store.update_node_instance(
+                config=config,
+                instance_id="pizza-shop-custom-002",
+                title="Custom Pizza Launchable",
+                description="Launchable generated node instance.",
+                notes="Runtime generation test.",
+                registry_targets=["dk-p4p-curated", "main-open"],
+                visibility_expectations=["dk-p4p-curated"],
+                module_ids=["p4p.menu.list", "p4p.customer.status", "p4p.payment.cash"],
+                menu_seed={
+                    "currency": "DKK",
+                    "items": [
+                        {
+                            "id": "deep-pan",
+                            "name": "Deep Pan",
+                            "description": "Generated instance menu override.",
+                            "category": "pizza",
+                            "price_minor": 12300,
+                            "image_url": "",
+                        }
+                    ],
+                },
+                node_id="dk-generated-pizza-002",
+                city="Roskilde",
+                country="dk",
+                categories=["pizza", "deep-pan"],
+                order_mode="menu_only",
+                public_surface_key="menu_json",
+            )
+
+            definition = lab._build_node_instance_service_definition(config, created)
+
+        self.assertEqual(definition.name, "instance-pizza-shop-custom-002")
+        self.assertEqual(definition.port, created["port"])
+        self.assertEqual(definition.env["P4P_NODE_ID"], "dk-generated-pizza-002")
+        self.assertEqual(definition.env["P4P_NODE_NAME"], "Custom Pizza Launchable")
+        self.assertEqual(definition.env["P4P_NODE_CITY"], "Roskilde")
+        self.assertEqual(definition.env["P4P_NODE_COUNTRY"], "DK")
+        self.assertEqual(definition.env["P4P_NODE_CATEGORIES"], "pizza,deep-pan")
+        self.assertEqual(definition.env["P4P_NODE_ORDER_MODE"], "menu_only")
+        self.assertEqual(definition.env["P4P_OPERATOR_TOKEN"], "lab-pizza-shop-custom-002")
+        self.assertEqual(definition.env["P4P_REGISTRY_URL"], "http://127.0.0.1:8001")
+        self.assertEqual(
+            definition.env["P4P_REGISTRY_URLS"],
+            "http://127.0.0.1:8001,http://127.0.0.1:8000",
+        )
+        self.assertEqual(definition.env["P4P_NODE_MODULES"], "p4p.menu.list,p4p.customer.status,p4p.payment.cash")
+        self.assertEqual(definition.env["P4P_MENU_ITEM_1_ID"], "deep-pan")
+        self.assertEqual(definition.env["P4P_MENU_ITEM_1_PRICE"], "12300")
+        self.assertEqual(definition.health_url, f"http://127.0.0.1:{created['port']}/")
+        self.assertTrue(any(link["label"] == "Generated public shop" for link in definition.links))
+        self.assertEqual(created["public_surface_key"], "menu_json")
+        self.assertEqual(created["public_shop_url"], created["customer_urls"]["menu_json"])
+
+    def test_lab_process_manager_adopts_existing_service_when_port_is_already_live(self) -> None:
+        lab = load_module("lab/app.py")
+        manager = lab.ProcessManager()
+        definition = lab.LabServiceDefinition(
+            name="external-pizza-shop",
+            kind="pilot-node",
+            description="Already running outside lab manager.",
+            cwd="{pilot_node_root}",
+            command=["{python}", "-m", "http.server", "9999"],
+            env={},
+            port=8595,
+            health_url="http://127.0.0.1:8595/",
+        )
+
+        with (
+            patch.object(manager, "_probe_url_health", return_value=(True, 200, {"status": "ready"})),
+            patch.object(manager, "_spawn") as spawn,
+        ):
+            service = manager.start_configured_service(definition)
+
+        self.assertTrue(service.external)
+        self.assertEqual(service.name, "external-pizza-shop")
+        self.assertIn("adopted existing service", service.logs[-1])
+        self.assertIs(manager._services["external-pizza-shop"], service)
+        spawn.assert_not_called()
+
+    def test_lab_process_manager_status_uses_snapshot_when_services_change_during_projection(self) -> None:
+        lab = load_module("lab/app.py")
+        manager = lab.ProcessManager()
+        service = lab.ManagedProcess(
+            name="mutating-service",
+            port=9999,
+            kind="registry",
+            cwd=lab.LAB_ROOT,
+            command=["echo", "test"],
+            env={},
+            external=True,
+        )
+        manager._services["mutating-service"] = service
+
+        def project_and_mutate(current_service):
+            manager._services["late-added"] = lab.ManagedProcess(
+                name="late-added",
+                port=10000,
+                kind="registry",
+                cwd=lab.LAB_ROOT,
+                command=["echo", "late"],
+                env={},
+                external=True,
+            )
+            return {
+                "name": current_service.name,
+                "kind": current_service.kind,
+                "port": current_service.port,
+            }
+
+        with patch.object(manager, "_project_service_status", side_effect=project_and_mutate):
+            payload = manager.status()
+
+        self.assertEqual(payload["services"][0]["name"], "mutating-service")
+        self.assertIn("late-added", manager._services)
+
+    def test_lab_customer_fixture_runner_records_order_and_status(self) -> None:
+        lab = load_module("lab/app.py")
+        config = lab.load_lab_config()
+        lab.run_store = lab.RunStore()
+
+        with (
+            patch.object(lab.manager, "start_configured_service") as start_service,
+            patch.object(
+                lab,
+                "_wait_for_service_ready",
+                return_value={"name": "pilot-pizza-shop", "running": True, "usable": True},
+            ),
+            patch.object(
+                lab,
+                "_http_json_request",
+                side_effect=[
+                    (200, {"currency": "DKK", "items": [{"id": "margherita"}, {"id": "pepperoni"}]}),
+                    (
+                        200,
+                        {
+                            "accepted": True,
+                            "order_id": "ord-test-1",
+                            "estimated_ready": "2026-05-14T00:00:00Z",
+                            "message": "ok",
+                        },
+                    ),
+                    (200, {"order_id": "ord-test-1", "status": "accepted"}),
+                ],
+            ),
+        ):
+            run = lab.run_customer_fixture(config, "pickup-basic")
+
+        start_service.assert_called_once()
+        self.assertTrue(run["success"])
+        self.assertEqual(run["order_id"], "ord-test-1")
+        self.assertEqual(run["owner_story"], "Seeded node template Pizza shop")
+        self.assertEqual(run["public_surface_key"], "list_menu")
+        self.assertIn("main-open", run["registry_targets"])
+        self.assertEqual(run["status_payload"]["status"], "accepted")
+        self.assertEqual(lab.run_store.list()[0]["run_id"], run["run_id"])
+
+    def test_lab_customer_fixture_instance_can_target_generated_node_instance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+            lab.run_store = lab.RunStore()
+
+            created_instance = lab.state_store.create_node_instance(
+                config=config,
+                template=config.node_profiles["pizza-shop"],
+                instance_id="pizza-shop-fixture-001",
+                title="Pizza Shop Fixture 001",
+                description="Generated node instance for local fixture tests.",
+                notes="",
+            )
+            fixture = lab.state_store.create_customer_fixture_instance(
+                config=config,
+                instance_id="local-pizza-fixture-001",
+                title="Local Pizza Fixture 001",
+                description="Generated local fixture against a generated node instance.",
+                target_ref="pizza-shop-fixture-001",
+                menu_surface="list_menu",
+                order_request={
+                    "customer_name": "Anna Hansen",
+                    "customer_contact": "+4512345678",
+                    "fulfillment": "pickup",
+                    "items": [{"id": "margherita", "quantity": 1}],
+                    "note": "No onions",
+                },
+                poll_status={"enabled": True, "attempts": 3, "interval_ms": 10},
+                expected={"accepted": True, "final_status": "accepted"},
+            )
+
+            self.assertEqual(fixture["id"], "local-pizza-fixture-001")
+            self.assertTrue(fixture["generated"])
+            self.assertEqual(fixture["target_profile"], "pizza-shop-fixture-001")
+
+            with (
+                patch.object(lab.manager, "start_configured_service"),
+                patch.object(
+                    lab,
+                    "_wait_for_service_ready",
+                    return_value={"name": created_instance["service_name"], "running": True, "usable": True},
+                ),
+                patch.object(
+                    lab,
+                    "_http_json_request",
+                    side_effect=[
+                        (200, {"currency": "DKK", "items": [{"id": "margherita"}]}),
+                        (
+                            200,
+                            {
+                                "accepted": True,
+                                "order_id": "ord-local-fixture-1",
+                                "estimated_ready": "2026-05-14T00:00:00Z",
+                                "message": "ok",
+                            },
+                        ),
+                        (200, {"order_id": "ord-local-fixture-1", "status": "accepted"}),
+                    ],
+                ),
+            ):
+                run = lab.run_customer_fixture(config, "local-pizza-fixture-001")
+
+            self.assertTrue(run["success"])
+            self.assertEqual(run["fixture_id"], "local-pizza-fixture-001")
+            self.assertEqual(run["profile_id"], "pizza-shop-fixture-001")
+            self.assertEqual(run["owner_story"], "Generated node instance Pizza Shop Fixture 001")
+            self.assertEqual(run["public_surface_key"], "list_menu")
+            self.assertEqual(run["order_id"], "ord-local-fixture-1")
+
+    def test_lab_flow_scenario_can_stop_primary_and_keep_backup(self) -> None:
+        lab = load_module("lab/app.py")
+        config = lab.load_lab_config()
+        lab.run_store = lab.RunStore()
+        stopped: set[str] = set()
+
+        def fake_status(name: str):
+            if name == "primary-registry":
+                running = name not in stopped
+                return {"name": name, "running": running, "usable": running}
+            if name in {"secondary-registry", "backup-registry", "curated-backup-registry", "pilot-pizza-shop"}:
+                return {"name": name, "running": True, "usable": True}
+            return None
+
+        with (
+            patch.object(lab.manager, "start_configured_service"),
+            patch.object(
+                lab,
+                "_wait_for_service_ready",
+                return_value={"running": True, "usable": True},
+            ),
+            patch.object(lab.manager, "get_service_status", side_effect=fake_status),
+            patch.object(lab.manager, "stop", side_effect=lambda name: stopped.add(name)),
+        ):
+            run = lab.run_flow_scenario(config, "fail-primary-keep-backup")
+
+        self.assertTrue(run["success"])
+        self.assertIn("primary-registry", stopped)
+        self.assertTrue(all(item["success"] for item in run["checks"]))
+
+    def test_lab_flow_scenario_instance_can_target_generated_node_instance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+            lab.run_store = lab.RunStore()
+
+            created_instance = lab.state_store.create_node_instance(
+                config=config,
+                template=config.node_profiles["pizza-shop"],
+                instance_id="pizza-shop-flow-001",
+                title="Pizza Shop Flow 001",
+                description="Generated node instance for local flow tests.",
+                notes="",
+            )
+            flow = lab.state_store.create_flow_scenario_instance(
+                config=config,
+                instance_id="local-pizza-flow-001",
+                title="Local Pizza Flow 001",
+                description="Generated local flow against a generated node instance.",
+                services=["primary-registry"],
+                node_refs=["pizza-shop-flow-001"],
+                fixture_runs=[{"fixture_id": "pickup-basic", "profile_id": "pizza-shop-flow-001"}],
+                notes=["Local flow test."],
+            )
+
+            self.assertEqual(flow["id"], "local-pizza-flow-001")
+            self.assertTrue(flow["generated"])
+            self.assertEqual(flow["node_profiles"], ["pizza-shop-flow-001"])
+
+            def fake_status(name: str):
+                if name == "primary-registry":
+                    return {"name": name, "running": True, "usable": True}
+                if name == created_instance["service_name"]:
+                    return {"name": name, "running": True, "usable": True}
+                return None
+
+            with (
+                patch.object(lab.manager, "start_configured_service"),
+                patch.object(
+                    lab,
+                    "_wait_for_service_ready",
+                    return_value={"running": True, "usable": True},
+                ),
+                patch.object(lab.manager, "get_service_status", side_effect=fake_status),
+                patch.object(
+                    lab,
+                    "_http_json_request",
+                    side_effect=[
+                        (200, {"currency": "DKK", "items": [{"id": "margherita"}]}),
+                        (
+                            200,
+                            {
+                                "accepted": True,
+                                "order_id": "ord-flow-local-1",
+                                "estimated_ready": "2026-05-14T00:00:00Z",
+                                "message": "ok",
+                            },
+                        ),
+                        (200, {"order_id": "ord-flow-local-1", "status": "accepted"}),
+                    ],
+                ),
+            ):
+                run = lab.run_flow_scenario_instance(config, "local-pizza-flow-001")
+
+            self.assertTrue(run["success"])
+            self.assertEqual(run["kind"], "flow_scenario_instance")
+            self.assertEqual(run["scenario_id"], "local-pizza-flow-001")
+            self.assertIn("pizza-shop-flow-001", run["node_profiles"])
+            self.assertEqual(run["resolved_targets"][0]["owner_story"], "Generated node instance Pizza Shop Flow 001")
+            self.assertEqual(run["resolved_targets"][0]["public_surface_key"], "public_shop")
+            self.assertTrue(all(item["success"] for item in run["checks"]))
+
+    def test_lab_flow_scenario_instance_can_store_explicit_checks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"P4P_LAB_STATE_DB_PATH": str(Path(tmpdir) / "lab-state.sqlite3")}
+            lab = load_module("lab/app.py", env)
+            config = lab.load_lab_config()
+
+            flow = lab.state_store.create_flow_scenario_instance(
+                config=config,
+                instance_id="local-explicit-checks-001",
+                title="Local Explicit Checks 001",
+                description="Generated local flow with explicit checks.",
+                services=["primary-registry"],
+                node_refs=["pizza-shop"],
+                fixture_runs=[{"fixture_id": "pickup-basic", "profile_id": "pizza-shop"}],
+                notes=["Explicit checks are local truth."],
+                checks=[
+                    {"kind": "service_running", "service": "primary-registry"},
+                    {"kind": "fixture_succeeded", "fixture_id": "pickup-basic", "profile_id": "pizza-shop"},
+                ],
+            )
+
+            self.assertEqual(flow["id"], "local-explicit-checks-001")
+            self.assertEqual(
+                flow["checks"],
+                [
+                    {"kind": "service_running", "service": "primary-registry", "fixture_id": None, "profile_id": None},
+                    {"kind": "fixture_succeeded", "service": None, "fixture_id": "pickup-basic", "profile_id": "pizza-shop"},
+                ],
+            )
+
+    def test_lab_runs_api_summarizes_owner_and_layer_truth(self) -> None:
+        lab = load_module("lab/app.py")
+        config = lab.load_lab_config()
+        lab.run_store = lab.RunStore()
+
+        with (
+            patch.object(lab.manager, "start_configured_service"),
+            patch.object(
+                lab,
+                "_wait_for_service_ready",
+                return_value={"name": "pilot-pizza-shop", "running": True, "usable": True},
+            ),
+            patch.object(
+                lab,
+                "_http_json_request",
+                side_effect=[
+                    (200, {"currency": "DKK", "items": [{"id": "margherita"}]}),
+                    (
+                        200,
+                        {
+                            "accepted": True,
+                            "order_id": "ord-summary-1",
+                            "estimated_ready": "2026-05-14T00:00:00Z",
+                            "message": "ok",
+                        },
+                    ),
+                    (200, {"order_id": "ord-summary-1", "status": "accepted"}),
+                ],
+            ),
+        ):
+            lab.run_customer_fixture(config, "pickup-basic")
+
+        payload = lab.api_runs()
+        self.assertEqual(payload["summary"]["total_runs"], 1)
+        self.assertEqual(payload["summary"]["success_count"], 1)
+        self.assertEqual(payload["summary"]["failed_count"], 0)
+        self.assertEqual(payload["summary"]["kinds"]["customer_fixture"], 1)
+        self.assertIn("Seeded node template Pizza shop", payload["summary"]["owner_stories"])
+        self.assertIn("list_menu", payload["summary"]["surface_keys"])
+        self.assertIn("main-open", payload["summary"]["registry_lanes"])
+
+    def test_lab_runs_room_projection_projects_human_run_story(self) -> None:
+        lab = load_module("lab/app.py")
+        lab.run_store = lab.RunStore()
+        lab.run_store.record(
+            {
+                "kind": "flow_scenario",
+                "run_id": "run-flow-1",
+                "title": "Single Pizza Order",
+                "success": True,
+                "resolved_targets": [
+                    {
+                        "id": "pizza-shop",
+                        "owner_story": "Seeded node template Pizza shop",
+                        "public_surface_key": "list_menu",
+                        "registry_targets": ["main-open"],
+                        "visibility_expectations": ["dk-p4p-curated"],
+                    }
+                ],
+                "checks": [{"kind": "service_usable"}],
+            }
+        )
+
+        payload = lab.runs_room_projection()
+
+        self.assertEqual(payload["summary"]["total_runs"], 1)
+        self.assertEqual(payload["summary"]["latest_run_title"], "Single Pizza Order")
+        self.assertIn("local owner", payload["summary"]["latest_run_story"])
+        self.assertEqual(payload["filters"]["outcomes"][0]["id"], "success")
+        self.assertEqual(payload["filters"]["kinds"][0]["label"], "Flow Scenario")
+        self.assertEqual(payload["filters"]["owners"][0]["id"], "Seeded node template Pizza shop")
+        self.assertEqual(payload["proof_lanes"][0]["owner_story"], "Seeded node template Pizza shop")
+        self.assertEqual(payload["proof_lanes"][0]["run_count"], 1)
+        self.assertEqual(payload["proof_lanes"][0]["surface_labels"], ["List Menu"])
+        self.assertEqual(payload["runs"][0]["owner_stories"], ["Seeded node template Pizza shop"])
+        self.assertEqual(payload["runs"][0]["surface_labels"], ["List Menu"])
+        self.assertIn("main-open", payload["runs"][0]["registry_lanes"])
+        self.assertIn("dk-p4p-curated", payload["runs"][0]["registry_lanes"])
+        self.assertIn("This flow tested 1 local owner", payload["runs"][0]["run_story"])
+
     def test_pilot_node_defaults_to_menu_only_and_rejects_orders(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pilot = load_module(
@@ -2929,6 +3870,52 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertFalse(response.accepted)
             self.assertEqual(response.reason, "orders_disabled")
             self.assertEqual(pilot.store.list_orders(), [])
+            pilot.store.close()
+
+    def test_pilot_node_public_order_localizes_customer_rejection_message(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "menu_only",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            response = pilot.public_order(self.make_pilot_order_request(pilot), locale="sv")
+
+            self.assertFalse(response.accepted)
+            self.assertEqual(response.reason, "orders_disabled")
+            self.assertEqual(response.message, "Restaurangen tar inte emot beställningar just nu.")
+            self.assertEqual(pilot.store.list_orders(), [])
+            pilot.store.close()
+
+    def test_pilot_node_public_order_localizes_customer_runtime_message_without_changing_storage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot), locale="sv")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertTrue(accepted.accepted)
+            self.assertEqual(
+                accepted.message,
+                "Ordern har accepterats. Betalning är satt till vid avhämtning.",
+            )
+            self.assertEqual(stored[0].status_message, "Order accepted. Payment set to pay at pickup.")
             pilot.store.close()
 
     def test_pilot_node_announces_only_public_modules_but_keeps_internal_declarations(self) -> None:
@@ -3263,11 +4250,90 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
             self.assertEqual(ready_status.status, "ready")
             self.assertEqual(ready_status.status_message, "Ready for pickup.")
-            self.assertIn("Ready", status_page)
+            self.assertIn("Klar til afhentning.", status_page)
             self.assertIn(accepted.order_id, status_page)
             self.assertNotIn("+4512345678", status_page)
             self.assertNotIn("Anna Hansen", status_page)
             self.assertNotIn("No onions", status_page)
+            pilot.store.close()
+
+    def test_pilot_node_customer_status_page_localizes_runtime_message_from_requested_locale(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.customer.status,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            status_page = pilot.public_order_status_page(accepted.order_id, locale="tr")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertIn("lang=\"tr\"", status_page)
+            self.assertIn("Sipariş kabul edildi. Ödeme teslim almada ödenecek olarak ayarlandı.", status_page)
+            self.assertNotIn("Order accepted. Payment set to pay at pickup.", status_page)
+            self.assertEqual(stored[0].status_message, "Order accepted. Payment set to pay at pickup.")
+            pilot.store.close()
+
+    def test_pilot_node_customer_status_page_localizes_operator_ready_message(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.customer.status,p4p.payment.cash,p4p.kitchen.screen",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            pilot.operator_update_order(
+                accepted.order_id,
+                pilot.OrderStatusUpdate(status="ready", status_message="Ready for pickup."),
+                authorization="Bearer operator-secret",
+            )
+            status_page = pilot.public_order_status_page(accepted.order_id, locale="sv")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertIn("Klar för avhämtning.", status_page)
+            self.assertNotIn("Ready for pickup.", status_page)
+            self.assertEqual(stored[0].status_message, "Ready for pickup.")
+            pilot.store.close()
+
+    def test_pilot_node_customer_status_page_keeps_free_operator_message_raw(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.customer.status,p4p.payment.cash,p4p.kitchen.screen",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+            pilot.operator_update_order(
+                accepted.order_id,
+                pilot.OrderStatusUpdate(status="accepted", status_message="Seen by kitchen"),
+                authorization="Bearer operator-secret",
+            )
+            status_page = pilot.public_order_status_page(accepted.order_id, locale="sv")
+            stored = pilot.operator_orders(authorization="Bearer operator-secret")
+
+            self.assertIn("Seen by kitchen", status_page)
+            self.assertEqual(stored[0].status_message, "Seen by kitchen")
             pilot.store.close()
 
     def test_pilot_node_customer_status_endpoint_requires_enabled_module(self) -> None:
@@ -4049,6 +5115,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             }["p4p.menu.list"]
             info = pilot.public_info()
             page = pilot.public_menu_list_page()
+            page_sv = pilot.public_menu_list_page(locale="sv")
             active_order = pilot.public_order(
                 pilot.OrderRequest(
                     customer_name="Anna Hansen",
@@ -4077,10 +5144,17 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIn('class="item has-image"', page)
             self.assertIn('src="/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png"', page)
             self.assertNotIn("Durum Test", page)
-            self.assertIn('fetch("/p4p/order"', page)
+            self.assertIn('fetch("/p4p/order?lang=da"', page)
             self.assertIn("p4p-menu-list-0.1", page)
             self.assertIn("/p4p/orders/${encodeURIComponent(body.order_id)}", page)
+            self.assertIn('<html lang="sv" dir="ltr">', page_sv)
+            self.assertIn("Skicka order", page_sv)
+            self.assertIn("Språk", page_sv)
             self.assertTrue(active_order.accepted)
+            status_page_ar = pilot.public_order_status_page(active_order.order_id, locale="ar")
+            self.assertIn('<html lang="ar" dir="rtl">', status_page_ar)
+            self.assertIn("حالة الطلب", status_page_ar)
+            self.assertIn("العودة إلى القائمة", status_page_ar)
             self.assertIsNotNone(row)
             event = json.loads(str(row["event_json"]))
             self.assertEqual(event["event"], "CUSTOMER_MENU_VIEWED")
@@ -4155,6 +5229,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             }["p4p.menu.photo-map"]
             info = pilot.public_info()
             page = pilot.public_menu_photo_map_page()
+            page_ar = pilot.public_menu_photo_map_page(locale="ar")
             active_order = pilot.public_order(
                 pilot.OrderRequest(
                     customer_name="Anna Hansen",
@@ -4176,7 +5251,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(photo_entry["implementation"], "builtin_customer_surface")
             self.assertEqual(photo_entry["health"], "available")
             self.assertIn("p4p.menu.photo-map", info["modules"])
-            self.assertIn("Photo Map Menu", page)
+            self.assertIn("Fotomenu", page)
             self.assertIn("Pizza 17", page)
             self.assertIn("Tomato, cheese, chili", page)
             self.assertIn("89.00 DKK", page)
@@ -4185,9 +5260,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIn('class="hotspot has-image"', page)
             self.assertIn('src="/p4p/assets/food-image-fixtures/dishes/dish-margherita-pizza.png"', page)
             self.assertNotIn("Durum Test", page)
-            self.assertIn('fetch("/p4p/order"', page)
+            self.assertIn('fetch("/p4p/order?lang=da"', page)
             self.assertIn("p4p-menu-photo-map-0.1", page)
             self.assertIn("/p4p/orders/${encodeURIComponent(body.order_id)}", page)
+            self.assertIn('<html lang="ar" dir="rtl">', page_ar)
+            self.assertIn("أرسل الطلب", page_ar)
+            self.assertIn("اللغة", page_ar)
             self.assertTrue(active_order.accepted)
             self.assertIsNotNone(row)
             event = json.loads(str(row["event_json"]))

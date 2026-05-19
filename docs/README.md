@@ -50,6 +50,12 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Short packet for independent node builders and interop sessions.
 - `NODE-OPERATOR-LITE.md`
   Reference node-owned operator surface for controlling order mode, modules, and registry health.
+- `P4P-LAB-v2.md`
+  Planned local orchestration direction for `lab/`: registries, pilot-node profiles, customer fixtures, flow scenarios, and honest synthetic test surfaces above the protocol.
+- `P4P-LAB-v3.md`
+  Next local control-plane shape for `lab/`: persistent state, real pages for servers/topology/templates/instances/public surfaces, and UI-created node instances instead of a mostly hardcoded scenario wall.
+- `P4P-REGISTRY-TOPOLOGY-v1.md`
+  Next local topology layer for `lab/`: one broad open registry lane, one narrower curated sub-registry lane, backups for both, and explicit announcement/visibility tests.
 - `LANGUAGE-PACKS-v2.md`
   Next-step spec for moving operator/public shell copy into installable language-pack JSON layers while keeping the locale engine in code and module/provider text in manifests.
 - `NODE-IDENTITY.md`

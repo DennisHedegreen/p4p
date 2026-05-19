@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "reference-example",
-  "description": "Customer-facing clickable paper-menu style surface built from active structured catalog items.",
+  "description": {
+    "da": "Kundevendt klikbar papir-menu-lignende flade bygget fra aktive strukturerede katalogvarer.",
+    "sv": "Kundvänd klickbar pappersmeny-liknande yta byggd från aktiva strukturerade katalogvaror.",
+    "tr": "Aktif yapılandırılmış katalog öğelerinden kurulan, müşteri dönük tıklanabilir kâğıt menü benzeri yüzey.",
+    "ar": "واجهة تشبه القائمة الورقية وقابلة للنقر، موجّهة للعميل ومبنية من عناصر الكاتالوغ النشطة والمنظّمة.",
+    "ku": "Rûyê mîna menûya kaxezî ya ji bo mişterî ku dikare were tikandin, ji tiştên katalogê yên çalak û sazûmanî hatiye çêkirin.",
+    "en": "Customer-facing clickable paper-menu style surface built from active structured catalog items."
+  },
   "visibility": "public",
   "capabilities": [
     "view_active_menu_items",
@@ -44,10 +51,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Shows a paper-menu style customer surface with clickable regions that map to active catalog items and post ordinary order requests to the node.",
-    "data_access_summary": "Active item ids, names, descriptions, prices, and categories only. It does not own photos, OCR, prices, inventory, payment, or operator data.",
-    "trust_status": "reference manifest, unsigned provider",
+    "function": {
+      "da": "Viser en papir-menu-lignende kundeflade med klikbare regioner der peger på aktive katalogvarer og sender almindelige ordreanmodninger til noden.",
+      "sv": "Visar en kundyta i pappersmenystil med klickbara regioner som pekar mot aktiva katalogvaror och skickar vanliga beställningsförfrågningar till noden.",
+      "tr": "Aktif katalog öğelerine eşlenen tıklanabilir bölgelerle kâğıt menü tarzı bir müşteri yüzeyi gösterir ve düğüme sıradan sipariş istekleri gönderir.",
+      "ar": "يعرض واجهة عميل بأسلوب قائمة ورقية مع مناطق قابلة للنقر ترتبط بعناصر الكاتالوغ النشطة وترسل طلبات الشراء العادية إلى العقدة.",
+      "ku": "Rûyê mişterî yê mîna menûya kaxezî bi herêmên biklikbar nîşan dide ku bi tiştên katalogê yên çalak ve girêdayî ne û daxwazên fermana asayî dişînin nodeyê.",
+      "en": "Shows a paper-menu style customer surface with clickable regions that map to active catalog items and post ordinary order requests to the node."
+    },
+    "data_access_summary": {
+      "da": "Kun aktive vare-id’er, navne, beskrivelser, priser og kategorier. Den ejer ikke fotos, OCR, priser, lager, betaling eller operatørdata.",
+      "sv": "Endast aktiva varu-id:n, namn, beskrivningar, priser och kategorier. Den äger inte foton, OCR, priser, lager, betalning eller operatörsdata.",
+      "tr": "Yalnızca aktif ürün id’leri, adlar, açıklamalar, fiyatlar ve kategoriler. Fotoğraflara, OCR’ye, fiyatlara, stoğa, ödemeye ya da operatör verilerine sahip değildir.",
+      "ar": "معرّفات العناصر النشطة والأسماء والأوصاف والأسعار والفئات فقط. لا تملك الصور أو OCR أو الأسعار أو المخزون أو الدفع أو بيانات المشغّل.",
+      "ku": "Tenê nasnavên tiştan yên çalak, nav, danasîn, biha û kategorî. Ew ne xwediyê wêne, OCR, bihayan, stokê, dravdanê an daneyên operatorê ye.",
+      "en": "Active item ids, names, descriptions, prices, and categories only. It does not own photos, OCR, prices, inventory, payment, or operator data."
+    },
+    "trust_status": {
+      "da": "reference-manifest, usigneret provider",
+      "sv": "referensmanifest, osignerad provider",
+      "tr": "referans manifest, imzasız sağlayıcı",
+      "ar": "manifest مرجعي، مزوّد غير موقّع",
+      "ku": "manifesta referansê, providerê bê îmze",
+      "en": "reference manifest, unsigned provider"
+    },
     "readiness": "test",
-    "operator_status": "available as the pilot-node photo map menu route when enabled"
+    "operator_status": {
+      "da": "tilgængelig som pilot-node-ruten for foto-menuen når den er slået til",
+      "sv": "tillgänglig som pilot-node-rutten för fotomenyn när den är aktiverad",
+      "tr": "etkinleştirildiğinde pilot-node foto menü rotası olarak kullanılabilir",
+      "ar": "متاحة كمسار قائمة الصور في الـ pilot-node عندما تكون مفعّلة",
+      "ku": "dema çalak be wek rêça menuya wêneyî ya pilot-node heye",
+      "en": "available as the pilot-node photo map menu route when enabled"
+    }
   }
 }

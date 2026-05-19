@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>P4P Lab Control Rooms</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071119;
+        --panel: #0d1a24;
+        --line: #294458;
+        --text: #e6f0f6;
+        --muted: #8ea6b7;
+        --good: #89e2b0;
+        --warn: #ffd166;
+        --bad: #ff7f7f;
+        --accent: #6dd3ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #08131c, #071119 35%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1680px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+      h1, h2, h3 { margin: 0; }
+      h1 { font-size: 2rem; }
+      p { margin: 0; }
+      .muted { color: var(--muted); }
+      .error {
+        color: var(--bad);
+        margin-bottom: 16px;
+      }
+      .top-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .summary-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-bottom: 18px;
+      }
+      .summary-card,
+      .card {
+        background: rgba(13, 26, 36, 0.95);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+      }
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+      .card header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 18px;
+      }
+      .pill-row,
+      .action-row,
+      .meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .pill {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 3px 9px;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .pill.ok {
+        color: var(--good);
+        border-color: rgba(137, 226, 176, 0.4);
+      }
+      .pill.warn {
+        color: var(--warn);
+        border-color: rgba(255, 209, 102, 0.35);
+      }
+      button,
+      a.button {
+        border-radius: 999px;
+        border: 1px solid rgba(109, 211, 255, 0.45);
+        padding: 9px 14px;
+        color: var(--text);
+        background: rgba(109, 211, 255, 0.08);
+        text-decoration: none;
+        cursor: pointer;
+        font: inherit;
+      }
+      button.secondary,
+      a.button.secondary {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--line);
+      }
+      button.danger {
+        border-color: rgba(255, 127, 127, 0.32);
+        background: rgba(255, 127, 127, 0.08);
+      }
+      .preview-panel,
+      .subcard {
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .preview-panel {
+        border-color: rgba(109, 211, 255, 0.2);
+        background: rgba(109, 211, 255, 0.04);
+      }
+      .preview-lines {
+        display: grid;
+        gap: 10px;
+      }
+      .preview-line {
+        display: grid;
+        gap: 2px;
+      }
+      .preview-line strong {
+        font-size: 0.92rem;
+      }
+      .link-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .link-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .link-row a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      ul {
+        padding-left: 18px;
+        margin: 10px 0 0;
+      }
+      @media (max-width: 1024px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 720px) {
+        main { padding: 18px; }
+        header { flex-direction: column; }
+        .action-row button,
+        .top-links a.button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>P4P Lab Control Rooms</h1>
+          <p class="muted">Human grouped control for the local registry, runtime, and live-layer rooms in the P4P test stack.</p>
+        </div>
+        <div class="top-links">
+          <a class="button secondary" href="/">Back to Lab</a>
+          <a class="button secondary" href="/nodes">Open Nodes room</a>
+          <a class="button secondary" href="/runs">Open Runs room</a>
+          <a class="button secondary" href="/servers">Open Servers page</a>
+          <a class="button secondary" href="/topology">Open Topology page</a>
+          <button class="secondary" id="refresh">Refresh</button>
+        </div>
+      </header>
+
+      <p class="error" id="error" hidden></p>
+
+      <section class="summary-grid" id="room-summary"></section>
+      <section class="stack" id="rooms"></section>
+    </main>
+
+    <script>
+      async function api(url, options = {}) {
+        const response = await fetch(url, {
+          method: options.method || "GET",
+          headers: { "Content-Type": "application/json" },
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function showError(message) {
+        const target = document.getElementById("error");
+        target.hidden = !message;
+        target.textContent = message || "";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function summarizeList(items, fallback = "Nothing projected yet") {
+        const values = (items || []).filter(Boolean);
+        if (!values.length) return fallback;
+        if (values.length <= 3) return values.join(", ");
+        return `${values.slice(0, 3).join(", ")} +${values.length - 3} more`;
+      }
+
+      function renderLinks(links) {
+        if (!links || links.length === 0) return "<p class='muted'>No live links projected yet.</p>";
+        return `
+          <div class="link-list">
+            ${links.map((link) => `
+              <div class="link-row">
+                <a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label || link.url)}</a>
+                <span class="muted">${escapeHtml(link.description || "")}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function roomPills(room) {
+        return `
+          <div class="pill-row">
+            <span class="pill">${escapeHtml(room.kind || "control-room")}</span>
+            <span class="pill ok">${escapeHtml(`${room.running_count || 0} running`)}</span>
+            <span class="pill warn">${escapeHtml(`${room.ready_count || 0} ready`)}</span>
+            <span class="pill">${escapeHtml(`${(room.members || []).length} service${(room.members || []).length === 1 ? "" : "s"}`)}</span>
+          </div>
+        `;
+      }
+
+      function roomActionButtons(room) {
+        if (!room.actions || room.actions.length === 0) return "";
+        return `
+          <div class="action-row">
+            ${room.actions.map((action) => `
+              <button
+                class="${action.tone === "danger" ? "danger" : action.tone === "secondary" ? "secondary" : ""}"
+                data-room-id="${escapeHtml(room.id)}"
+                data-room-action="${escapeHtml(action.id)}"
+              >
+                ${escapeHtml(action.label)}
+              </button>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function renderSummary(summary) {
+        const labels = summary.first_open_labels || [];
+        return `
+          <article class="summary-card">
+            <h2>What these rooms control</h2>
+            <p class="muted">${escapeHtml(`${summary.room_count || 0} room(s) · ${summary.running_room_count || 0} already carrying live process truth`)}</p>
+          </article>
+          <article class="summary-card">
+            <h2>Actionable rooms</h2>
+            <p class="muted">${escapeHtml(`${summary.actionable_room_count || 0} room(s) can start, stop, restart, or recover grouped lanes`)}</p>
+          </article>
+          <article class="summary-card">
+            <h2>Open this room first</h2>
+            <p class="muted">${escapeHtml(summarizeList(labels, "No first-open guidance projected yet"))}</p>
+          </article>
+        `;
+      }
+
+      function renderRoom(room) {
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h2>${escapeHtml(room.title)}</h2>
+                <p class="muted">${escapeHtml(room.description || "")}</p>
+              </div>
+              ${roomActionButtons(room)}
+            </header>
+            ${roomPills(room)}
+            <div class="grid">
+              <div class="preview-panel">
+                <div class="preview-lines">
+                  <div class="preview-line">
+                    <strong>What this room is for</strong>
+                    <span>${escapeHtml(room.room_story || "")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Start path</strong>
+                    <span>${escapeHtml(room.start_story || "")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Recovery path</strong>
+                    <span>${escapeHtml(room.recover_story || "")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Open this room first</strong>
+                    <span>${escapeHtml(room.open_first_story || "")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Truth owners in this room</strong>
+                    <span>${escapeHtml(summarizeList(room.truth_owner_stories || [], "No explicit owner stories projected yet"))}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Services in this room</strong>
+                    <span>${escapeHtml(summarizeList((room.members || []).map((member) => member.name), "No attached services projected yet"))}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="subcard">
+                <div class="preview-lines">
+                  <div class="preview-line">
+                    <strong>Dependencies first</strong>
+                    <span>${escapeHtml(room.plan && room.plan.dependencies_first ? "Yes. This room starts dependency lanes before attached runtime members." : "No dependency-first startup path is projected for this room.")}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Bring up in this order</strong>
+                    <span>${escapeHtml(summarizeList(room.plan && room.plan.start_order ? room.plan.start_order : [], "No grouped start order projected"))}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Stop in this order</strong>
+                    <span>${escapeHtml(summarizeList(room.plan && room.plan.stop_order ? room.plan.stop_order : [], "No grouped stop order projected"))}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Open the attached layers</strong>
+                    <span>${escapeHtml(summarizeList((room.links || []).map((link) => link.label || link.url), "No attached live links projected"))}</span>
+                  </div>
+                </div>
+                ${renderLinks(room.links || [])}
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      async function refresh() {
+        showError("");
+        const payload = await api("/api/control-rooms");
+        const summary = payload.summary || {};
+        const rooms = payload.rooms || [];
+        document.getElementById("room-summary").innerHTML = renderSummary(summary);
+        document.getElementById("rooms").innerHTML = rooms.length
+          ? rooms.map(renderRoom).join("")
+          : "<p class='muted'>No control rooms projected yet.</p>";
+      }
+
+      document.addEventListener("click", async (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        if (!target) return;
+        if (!target.dataset.roomId || !target.dataset.roomAction) return;
+        try {
+          await api(`/api/server-groups/${encodeURIComponent(target.dataset.roomId)}/${encodeURIComponent(target.dataset.roomAction)}`, { method: "POST" });
+          await refresh();
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Action failed.");
+        }
+      });
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        refresh().catch((error) => showError(error.message));
+      });
+
+      refresh().catch((error) => showError(error.message));
+      setInterval(() => refresh().catch(() => {}), 2500);
+    </script>
+  </body>
+</html>

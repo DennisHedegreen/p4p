@@ -6,7 +6,14 @@
   "provider_id": "p4p.reference",
   "version": "0.1",
   "status": "internal-mock",
-  "description": "Internal random approval/failure payment mock for local P4P debugging.",
+  "description": {
+    "da": "Intern random approval/failure betalings-mock til lokal P4P-debugging.",
+    "sv": "Intern slumpmässig approval/failure betal-mock för lokal P4P-debugging.",
+    "tr": "Yerel P4P hata ayıklaması için içsel rastgele approval/failure ödeme mock’u.",
+    "ar": "Mock دفع داخلي عشوائي للقبول/الفشل من أجل تصحيح P4P المحلي.",
+    "ku": "Ji bo debugging-a herêmî ya P4P mocka dravdanê ya navxweyî ya approval/failure bi tesadufî.",
+    "en": "Internal random approval/failure payment mock for local P4P debugging."
+  },
   "visibility": "operator_only",
   "capabilities": ["simulate_payment_decision", "report_payment_state"],
   "input_events": ["PAYMENT_REQUIRED"],
@@ -27,10 +34,38 @@
   "entrypoint": null,
   "signature": null,
   "public_catalog": {
-    "function": "Internal mock that rolls 1..100 and accepts or rejects a test payment based on a configured threshold.",
-    "data_access_summary": "Order total only. No customer funds, wallet data, card data, settlement, or real provider data.",
-    "trust_status": "internal debug mock, not real payment",
+    "function": {
+      "da": "Intern mock der ruller 1..100 og accepterer eller afviser en testbetaling ud fra en konfigureret tærskel.",
+      "sv": "Intern mock som rullar 1..100 och accepterar eller avvisar en testbetalning utifrån en konfigurerad tröskel.",
+      "tr": "1..100 arasında yuvarlayıp yapılandırılmış bir eşik üzerinden test ödemesini kabul eden ya da reddeden iç mock.",
+      "ar": "Mock داخلي يرمي 1..100 ويقبل أو يرفض دفعة اختبار بناءً على عتبة مهيأة.",
+      "ku": "Mocka navxweyî ku 1..100 diqulipîne û li gorî eşîka mîhengkirî dravdana testê qebûl dike an red dike.",
+      "en": "Internal mock that rolls 1..100 and accepts or rejects a test payment based on a configured threshold."
+    },
+    "data_access_summary": {
+      "da": "Kun ordretotal. Ingen kundefonde, wallet-data, kortdata, settlement eller rigtig provider-data.",
+      "sv": "Bara ordertotal. Inga kundmedel, wallet-data, kortdata, settlement eller riktig provider-data.",
+      "tr": "Yalnızca sipariş toplamı. Müşteri fonları, wallet verisi, kart verisi, settlement ya da gerçek sağlayıcı verisi yok.",
+      "ar": "إجمالي الطلب فقط. لا توجد أموال عميل أو بيانات wallet أو بيانات بطاقة أو settlement أو بيانات مزوّد حقيقية.",
+      "ku": "Tenê tevahiya fermanê. Tu fonên mişterî, daneyên wallet, daneyên kartê, settlement an daneyên providerê rastîn tune.",
+      "en": "Order total only. No customer funds, wallet data, card data, settlement, or real provider data."
+    },
+    "trust_status": {
+      "da": "intern debug-mock, ikke rigtig betaling",
+      "sv": "intern debug-mock, inte riktig betalning",
+      "tr": "iç debug mock’u, gerçek ödeme değil",
+      "ar": "mock تصحيح داخلي، وليس دفعاً حقيقياً",
+      "ku": "mocka debug-a navxweyî ye, ne dravdana rastîn",
+      "en": "internal debug mock, not real payment"
+    },
     "readiness": "test",
-    "operator_status": "executable in pilot-node when explicitly selected"
+    "operator_status": {
+      "da": "kan køres i pilot-node når den vælges eksplicit",
+      "sv": "kan köras i pilot-node när den väljs explicit",
+      "tr": "açıkça seçildiğinde pilot-node içinde çalıştırılabilir",
+      "ar": "يمكن تشغيله داخل pilot-node عندما يُختار صراحةً",
+      "ku": "dema ku bi zelalî were hilbijartin di pilot-node de dikare were xebitandin",
+      "en": "executable in pilot-node when explicitly selected"
+    }
   }
 }

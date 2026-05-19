@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>P4P Lab Nodes</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071119;
+        --panel: #0d1a24;
+        --line: #294458;
+        --text: #e6f0f6;
+        --muted: #8ea6b7;
+        --good: #89e2b0;
+        --warn: #ffd166;
+        --bad: #ff7f7f;
+        --accent: #6dd3ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #08131c, #071119 35%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1680px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+      h1, h2, h3 { margin: 0; }
+      h1 { font-size: 2rem; }
+      p { margin: 0; }
+      .muted { color: var(--muted); }
+      .error {
+        color: var(--bad);
+        margin-bottom: 16px;
+      }
+      .top-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .summary-grid,
+      .subgrid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 18px;
+      }
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: rgba(13, 26, 36, 0.95);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+      }
+      .card header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+      .pill-row,
+      .actions,
+      .meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .pill {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 3px 9px;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      .pill.ok {
+        color: var(--good);
+        border-color: rgba(137, 226, 176, 0.4);
+      }
+      .pill.warn {
+        color: var(--warn);
+        border-color: rgba(255, 209, 102, 0.35);
+      }
+      button,
+      a.button {
+        border-radius: 999px;
+        border: 1px solid rgba(109, 211, 255, 0.45);
+        padding: 9px 14px;
+        color: var(--text);
+        background: rgba(109, 211, 255, 0.08);
+        text-decoration: none;
+        cursor: pointer;
+        font: inherit;
+      }
+      button.secondary,
+      a.button.secondary {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--line);
+      }
+      button.danger {
+        border-color: rgba(255, 127, 127, 0.32);
+        background: rgba(255, 127, 127, 0.08);
+      }
+      .preview-panel,
+      .subcard {
+        border: 1px solid rgba(109, 211, 255, 0.2);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(109, 211, 255, 0.04);
+      }
+      .subcard {
+        border-color: rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .preview-lines {
+        display: grid;
+        gap: 10px;
+      }
+      .preview-line {
+        display: grid;
+        gap: 2px;
+      }
+      .preview-line strong {
+        font-size: 0.92rem;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      input, select, textarea {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #08131b;
+        color: var(--text);
+        padding: 10px 12px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 84px;
+        resize: vertical;
+      }
+      .form-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .form-grid .full {
+        grid-column: 1 / -1;
+      }
+      .wizard {
+        display: grid;
+        gap: 14px;
+      }
+      .wizard-step {
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .wizard-step h3 {
+        margin-bottom: 6px;
+      }
+      .wizard-help {
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      .link-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .link-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .link-row a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .section-note {
+        margin-top: 8px;
+        margin-bottom: 14px;
+      }
+      @media (max-width: 1024px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 720px) {
+        main { padding: 18px; }
+        header { flex-direction: column; }
+        .actions button,
+        .top-links a.button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>P4P Lab Nodes</h1>
+          <p class="muted">Human node workbench for reusable seeded templates, persistent local node instances, and the customer/public surfaces attached to each lane.</p>
+        </div>
+        <div class="top-links">
+          <a class="button secondary" href="/">Back to Lab</a>
+          <a class="button secondary" href="/runs">Open Runs room</a>
+          <a class="button secondary" href="/control">Open Control Rooms</a>
+          <a class="button secondary" href="/topology">Open Topology page</a>
+          <a class="button secondary" href="/servers">Open Servers page</a>
+          <button class="secondary" id="refresh">Refresh</button>
+        </div>
+      </header>
+
+      <p class="error" id="error" hidden></p>
+
+      <section class="summary-grid" id="summary"></section>
+      <section class="card" style="margin:18px 0;">
+        <h2>Filter these node lanes</h2>
+        <p class="muted section-note">Narrow the room by family, order mode, registry lane, owner kind, or public/customer surface before you read templates, instances, and open layers.</p>
+        <div class="form-grid">
+          <div>
+            <label for="filter-family">Family</label>
+            <select id="filter-family"></select>
+          </div>
+          <div>
+            <label for="filter-order-mode">Order mode</label>
+            <select id="filter-order-mode"></select>
+          </div>
+          <div>
+            <label for="filter-registry">Registry lane</label>
+            <select id="filter-registry"></select>
+          </div>
+          <div>
+            <label for="filter-owner-kind">Owner kind</label>
+            <select id="filter-owner-kind"></select>
+          </div>
+          <div>
+            <label for="filter-surface-key">Public/customer surface</label>
+            <select id="filter-surface-key"></select>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" id="reset-filters">Reset filters</button>
+        </div>
+        <div class="preview-panel" id="filtered-summary" style="margin-top:14px;">
+          <h3>Matching node lanes</h3>
+          <div class="preview-lines"></div>
+        </div>
+      </section>
+
+      <div class="grid">
+        <div class="stack">
+          <section class="card">
+            <h2>Seed templates in this room</h2>
+            <p class="muted section-note">These are the reusable restaurant shapes the lab already ships with. They explain the runtime seed, the registry path, and which public/customer lanes come with that seed.</p>
+            <div class="stack" id="templates"></div>
+          </section>
+
+          <section class="card">
+            <h2>Create local node instance</h2>
+            <p class="muted section-note">Use this room when you want a remembered local restaurant lane instead of only working with the shipped seeds.</p>
+            <form id="instance-form" class="stack">
+              <div class="wizard">
+                <section class="wizard-step">
+                  <h3>Step 1 · Choose the seed</h3>
+                  <p class="wizard-help">Pick the seeded template first. The generated local lane will inherit its first runtime shape from that seed.</p>
+                  <div class="form-grid">
+                    <div>
+                      <label for="instance-template">Template</label>
+                      <select id="instance-template" name="template_id"></select>
+                    </div>
+                    <div>
+                      <label for="instance-id">Instance id</label>
+                      <input id="instance-id" name="instance_id" placeholder="custom-pizza-lab-001" />
+                    </div>
+                    <div class="full">
+                      <label for="instance-title">Title</label>
+                      <input id="instance-title" name="title" placeholder="Custom Pizza Lab Instance" />
+                    </div>
+                  </div>
+                </section>
+                <section class="wizard-step">
+                  <h3>Step 2 · Say why this local lane exists</h3>
+                  <p class="wizard-help">Keep the local meaning visible now; deeper runtime edits can still happen later on the main lab page.</p>
+                  <div class="form-grid">
+                    <div class="full">
+                      <label for="instance-description">Description</label>
+                      <textarea id="instance-description" name="description" placeholder="Saved draft for a future node instance."></textarea>
+                    </div>
+                    <div class="full">
+                      <label for="instance-notes">Notes</label>
+                      <textarea id="instance-notes" name="notes" placeholder="Optional local notes for this instance."></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="preview-panel" id="instance-preview">
+                  <h3>Node draft preview</h3>
+                  <div class="preview-lines"></div>
+                </section>
+              </div>
+              <div class="actions">
+                <button type="submit">Create launchable node lane</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card">
+            <h2>Node instances in this room</h2>
+            <p class="muted section-note">These are the actual local restaurant lanes the lab can start, stop, and open.</p>
+            <div class="stack" id="instances"></div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="card">
+            <h2>Customer/public surfaces in this room</h2>
+            <p class="muted section-note">Read the whole public pizzeria side here: which owner each surface belongs to, which lane is primary, and which registry path it is meant to travel through.</p>
+            <div class="stack" id="surfaces"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      let roomData = { summary: {}, filters: {}, node_templates: [], node_instances: [], customer_surfaces: [] };
+
+      async function api(url, options = {}) {
+        const response = await fetch(url, {
+          method: options.method || "GET",
+          headers: { "Content-Type": "application/json" },
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+        return response.json();
+      }
+
+      function showError(message) {
+        const target = document.getElementById("error");
+        target.hidden = !message;
+        target.textContent = message || "";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function surfaceKeyLabel(key) {
+        return String(key || "surface")
+          .replaceAll("_", " ")
+          .replace(/\b\w/g, (match) => match.toUpperCase());
+      }
+
+      function summarizeList(items, fallback = "Nothing projected yet") {
+        const values = (items || []).filter(Boolean);
+        if (!values.length) return fallback;
+        if (values.length <= 3) return values.join(", ");
+        return `${values.slice(0, 3).join(", ")} +${values.length - 3} more`;
+      }
+
+      function renderSelectOptions(items, selectedValue, blankLabel) {
+        const rows = [];
+        if (blankLabel) {
+          rows.push(`<option value="">${escapeHtml(blankLabel)}</option>`);
+        }
+        for (const item of items || []) {
+          rows.push(`<option value="${escapeHtml(item)}"${item === selectedValue ? " selected" : ""}>${escapeHtml(item)}</option>`);
+        }
+        return rows.join("");
+      }
+
+      function currentFilters() {
+        return {
+          family: document.getElementById("filter-family").value,
+          order_mode: document.getElementById("filter-order-mode").value,
+          registry: document.getElementById("filter-registry").value,
+          owner_kind: document.getElementById("filter-owner-kind").value,
+          surface_key: document.getElementById("filter-surface-key").value,
+        };
+      }
+
+      function applyFilters(next = {}) {
+        const filters = { ...currentFilters(), ...next };
+        document.getElementById("filter-family").value = filters.family || "";
+        document.getElementById("filter-order-mode").value = filters.order_mode || "";
+        document.getElementById("filter-registry").value = filters.registry || "";
+        document.getElementById("filter-owner-kind").value = filters.owner_kind || "";
+        document.getElementById("filter-surface-key").value = filters.surface_key || "";
+        renderRoom();
+      }
+
+      function matchesRegistryPath(item, registryLane) {
+        if (!registryLane) return true;
+        const registryTargets = item.registry_targets || [];
+        const visibilityExpectations = item.visibility_expectations || [];
+        return registryTargets.includes(registryLane) || visibilityExpectations.includes(registryLane);
+      }
+
+      function matchesSurfaceKey(item, surfaceKey) {
+        if (!surfaceKey) return true;
+        const customerUrls = item.customer_urls || {};
+        return Boolean(customerUrls[surfaceKey]);
+      }
+
+      function filterTemplates(filters) {
+        return (roomData.node_templates || []).filter((item) => {
+          if (filters.family && item.family !== filters.family) return false;
+          if (filters.owner_kind && filters.owner_kind !== "template") return false;
+          if (!matchesRegistryPath(item, filters.registry)) return false;
+          if (!matchesSurfaceKey(item, filters.surface_key)) return false;
+          return true;
+        });
+      }
+
+      function filterInstances(filters) {
+        return (roomData.node_instances || []).filter((item) => {
+          if (filters.family && item.family !== filters.family) return false;
+          if (filters.order_mode && item.order_mode !== filters.order_mode) return false;
+          if (filters.owner_kind && filters.owner_kind !== "instance") return false;
+          if (!matchesRegistryPath(item, filters.registry)) return false;
+          if (!matchesSurfaceKey(item, filters.surface_key)) return false;
+          return true;
+        });
+      }
+
+      function filterSurfaces(filters) {
+        return (roomData.customer_surfaces || []).filter((item) => {
+          if (filters.owner_kind && item.owner_kind !== filters.owner_kind) return false;
+          if (filters.surface_key && item.surface_key !== filters.surface_key) return false;
+          if (filters.order_mode && item.order_mode !== filters.order_mode) return false;
+          if (!matchesRegistryPath(item, filters.registry)) return false;
+          const familySource = [...(roomData.node_templates || []), ...(roomData.node_instances || [])]
+            .find((owner) => owner.id === item.owner_id && (item.owner_kind === "template" || item.owner_kind === "instance"));
+          if (filters.family && familySource && familySource.family !== filters.family) return false;
+          return true;
+        });
+      }
+
+      function renderSummaryCard(label, value, detail) {
+        return `
+          <article class="card">
+            <h2>${escapeHtml(label)}</h2>
+            <p style="font-size:1.9rem; margin-top:6px;">${escapeHtml(value)}</p>
+            <p class="muted" style="margin-top:8px;">${escapeHtml(detail)}</p>
+          </article>
+        `;
+      }
+
+      function renderPills(item) {
+        const runningClass = item.running ? "ok" : "warn";
+        const usableClass = item.usable ? "ok" : "warn";
+        const pills = [
+          `<span class="pill">${escapeHtml(item.family || item.seed_kind || "node")}</span>`,
+          `<span class="pill ${runningClass}">${item.running ? "running" : "not running"}</span>`,
+          `<span class="pill ${usableClass}">${item.usable ? "ready" : "not ready"}</span>`,
+        ];
+        if (item.port !== undefined && item.port !== null) {
+          pills.push(`<span class="pill">port ${escapeHtml(item.port)}</span>`);
+        }
+        if (item.public_surface_key) {
+          pills.push(`<span class="pill">primary ${escapeHtml(item.public_surface_key)}</span>`);
+        }
+        if (item.launch_mode) {
+          pills.push(`<span class="pill">${escapeHtml(item.launch_mode)}</span>`);
+        }
+        return `<div class="pill-row">${pills.join("")}</div>`;
+      }
+
+      function renderLinks(links) {
+        if (!links || !links.length) return "<p class='muted'>No live links projected yet.</p>";
+        return `
+          <div class="link-list">
+            ${links.map((link) => `
+              <div class="link-row">
+                <a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>
+                <span class="muted">${escapeHtml(link.description || "")}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function templateLinks(template) {
+        const links = [];
+        if (template.operator_url) {
+          links.push({ label: "Open operator", url: template.operator_url, description: "Open the seeded operator lane." });
+        }
+        if (template.public_shop_url) {
+          links.push({ label: "Open primary public lane", url: template.public_shop_url, description: "Open the main customer/public lane for this seed." });
+        }
+        for (const [key, url] of Object.entries(template.customer_urls || {})) {
+          if (!url || url === template.public_shop_url) continue;
+          links.push({ label: `Open ${surfaceKeyLabel(key)}`, url, description: "Open another projected customer/public lane." });
+        }
+        return links;
+      }
+
+      function instanceLinks(instance) {
+        const links = [];
+        if (instance.operator_url) {
+          links.push({ label: "Open operator", url: instance.operator_url, description: "Open the operator lane for this local node." });
+        }
+        if (instance.public_shop_url) {
+          links.push({ label: "Open primary public lane", url: instance.public_shop_url, description: "Open the main customer/public lane for this local node." });
+        }
+        for (const [key, url] of Object.entries(instance.customer_urls || {})) {
+          if (!url || url === instance.public_shop_url) continue;
+          links.push({ label: `Open ${surfaceKeyLabel(key)}`, url, description: "Open another projected customer/public lane." });
+        }
+        return links;
+      }
+
+      function renderTemplateCard(template) {
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(template.title)}</h3>
+                <p class="muted">${escapeHtml(template.description || "No description yet.")}</p>
+              </div>
+              <span class="pill">template ${escapeHtml(template.id)}</span>
+            </header>
+            ${renderPills(template)}
+            <div class="preview-panel">
+              <div class="preview-lines">
+                <div class="preview-line">
+                  <strong>Runtime story</strong>
+                  <span>${escapeHtml(template.runtime_story)}</span>
+                </div>
+                <div class="preview-line">
+                  <strong>Open this lane first</strong>
+                  <span>${escapeHtml(template.open_first_story)}</span>
+                </div>
+                <div class="preview-line">
+                  <strong>Registry path</strong>
+                  <span>${escapeHtml(template.registry_story)}</span>
+                </div>
+                <div class="preview-line">
+                  <strong>Customer/public shape</strong>
+                  <span>${escapeHtml(template.surface_story)}</span>
+                </div>
+              </div>
+            </div>
+            ${renderLinks(templateLinks(template))}
+          </article>
+        `;
+      }
+
+      function renderInstanceCard(instance) {
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(instance.title)}</h3>
+                <p class="muted">${escapeHtml(instance.description || "No description yet.")}</p>
+              </div>
+              <span class="pill">${escapeHtml(instance.id)}</span>
+            </header>
+            ${renderPills(instance)}
+            <div class="subgrid">
+              <div class="subcard">
+                <div class="preview-lines">
+                  <div class="preview-line">
+                    <strong>Runtime story</strong>
+                    <span>${escapeHtml(instance.runtime_story)}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Open this lane first</strong>
+                    <span>${escapeHtml(instance.open_first_story)}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Registry path</strong>
+                    <span>${escapeHtml(instance.registry_story)}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Customer/public shape</strong>
+                    <span>${escapeHtml(instance.surface_story)}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="subcard">
+                <div class="preview-lines">
+                  <div class="preview-line">
+                    <strong>Node identity</strong>
+                    <span>${escapeHtml(instance.node_id)}${instance.city || instance.country ? ` · ${escapeHtml([instance.city, instance.country].filter(Boolean).join(", "))}` : ""}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Order mode and categories</strong>
+                    <span>${escapeHtml(instance.order_mode || "live")}${instance.categories?.length ? ` · ${escapeHtml(summarizeList(instance.categories))}` : ""}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Runtime shape</strong>
+                    <span>${escapeHtml(`${instance.module_count || 0} modules · ${instance.menu_item_count || 0} menu items`)}</span>
+                  </div>
+                  <div class="preview-line">
+                    <strong>Truth owner</strong>
+                    <span>${escapeHtml(instance.owner_story)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="actions">
+              <button data-start-instance="${escapeHtml(instance.id)}">Start</button>
+              <button class="secondary danger" data-stop-instance="${escapeHtml(instance.id)}">Stop</button>
+            </div>
+            ${renderLinks(instanceLinks(instance))}
+          </article>
+        `;
+      }
+
+      function renderSurfaceCard(surface) {
+        const pills = [
+          `<span class="pill">${escapeHtml(surface.owner_kind)}</span>`,
+          `<span class="pill ${surface.running ? "ok" : "warn"}">${surface.running ? "owner running" : "owner not running"}</span>`,
+          `<span class="pill ${surface.usable ? "ok" : "warn"}">${surface.usable ? "surface ready" : "surface not ready"}</span>`,
+        ];
+        if (surface.primary) {
+          pills.push(`<span class="pill ok">primary lane</span>`);
+        }
+        if (surface.order_mode) {
+          pills.push(`<span class="pill">mode ${escapeHtml(surface.order_mode)}</span>`);
+        }
+        return `
+          <article class="card">
+            <header>
+              <div>
+                <h3>${escapeHtml(surfaceKeyLabel(surface.surface_key))}</h3>
+                <p class="muted">${escapeHtml(surface.owner_story)}</p>
+              </div>
+              <a class="button secondary" href="${escapeHtml(surface.surface_url)}" target="_blank" rel="noreferrer">Open surface</a>
+            </header>
+            <div class="pill-row">${pills.join("")}</div>
+            <div class="preview-panel">
+              <div class="preview-lines">
+                <div class="preview-line">
+                  <strong>Owner lane</strong>
+                  <span>${escapeHtml(`${surface.owner_title} (${surface.owner_id})`)}</span>
+                </div>
+                <div class="preview-line">
+                  <strong>Registry path</strong>
+                  <span>${escapeHtml(`Announces ${summarizeList(surface.registry_targets, "no announce lanes yet")}; visible through ${summarizeList(surface.visibility_expectations, "no visibility lanes yet")}`)}</span>
+                </div>
+                <div class="preview-line">
+                  <strong>URL</strong>
+                  <span>${escapeHtml(surface.surface_url)}</span>
+                </div>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      function updateCreatePreview() {
+        const form = document.getElementById("instance-form");
+        const data = new FormData(form);
+        const templateId = String(data.get("template_id") || "").trim();
+        const template = roomData.node_templates.find((item) => item.id === templateId) || null;
+        const title = String(data.get("title") || "").trim() || "Untitled node instance";
+        const instanceId = String(data.get("instance_id") || "").trim() || "no instance id yet";
+        const description = String(data.get("description") || "").trim();
+        const notes = String(data.get("notes") || "").split("\n").map((line) => line.trim()).filter(Boolean);
+        const target = document.querySelector("#instance-preview .preview-lines");
+        target.innerHTML = [
+          { label: "Seed", value: template ? `${template.title} (${template.id})` : "No template chosen yet" },
+          { label: "Identity", value: description ? `${title} · ${description}` : title },
+          { label: "Runtime lane", value: `instance-${instanceId} on the next free node port` },
+          { label: "Open this lane first", value: template ? template.open_first_story : "Choose a template first." },
+          { label: "What this creates", value: template ? `A remembered local node lane derived from ${template.id}.` : "Choose a template to see the local lane shape." },
+          { label: "Notes", value: notes.length ? summarizeList(notes) : "No local notes yet" },
+        ].map((line) => `
+          <div class="preview-line">
+            <strong>${escapeHtml(line.label)}</strong>
+            <span>${escapeHtml(line.value)}</span>
+          </div>
+        `).join("");
+      }
+
+      function renderRoom() {
+        const summary = roomData.summary || {};
+        const filters = currentFilters();
+        const filteredTemplates = filterTemplates(filters);
+        const filteredInstances = filterInstances(filters);
+        const filteredSurfaces = filterSurfaces(filters);
+        const matchingOwners = [
+          ...filteredTemplates.map((item) => item.owner_story),
+          ...filteredInstances.map((item) => item.owner_story),
+        ];
+        document.getElementById("summary").innerHTML = [
+          renderSummaryCard("Template seeds", summary.template_count || 0, "Reusable local node shapes shipped with the lab."),
+          renderSummaryCard("Node instances", summary.instance_count || 0, "Persistent local lanes that can actually be launched and reopened later."),
+          renderSummaryCard("Generated lanes", summary.generated_instance_count || 0, "Locally created node instances beyond the seeded service-backed ones."),
+          renderSummaryCard("Running node lanes", summary.running_instance_count || 0, "How many persisted node lanes currently have a live runtime."),
+          renderSummaryCard("Customer/public surfaces", summary.surface_count || 0, "Projected menu, status, and public-facing restaurant layers in this room."),
+          renderSummaryCard("Primary surfaces", summary.primary_surface_count || 0, "How many owners currently expose a designated primary public lane."),
+        ].join("");
+
+        document.getElementById("templates").innerHTML = filteredTemplates.length
+          ? filteredTemplates.map(renderTemplateCard).join("")
+          : "<p class='muted'>No seeded templates projected yet.</p>";
+        document.getElementById("instances").innerHTML = filteredInstances.length
+          ? filteredInstances.map(renderInstanceCard).join("")
+          : "<p class='muted'>No node instances stored yet.</p>";
+        document.getElementById("surfaces").innerHTML = filteredSurfaces.length
+          ? filteredSurfaces.map(renderSurfaceCard).join("")
+          : "<p class='muted'>No customer/public surfaces projected yet.</p>";
+
+        const filteredSummaryTarget = document.querySelector("#filtered-summary .preview-lines");
+        filteredSummaryTarget.innerHTML = [
+          {
+            label: "Matching owners",
+            value: summarizeList([...new Set(matchingOwners)], "No matching node owners yet"),
+          },
+          {
+            label: "Matching templates and instances",
+            value: `${filteredTemplates.length} template${filteredTemplates.length === 1 ? "" : "s"} · ${filteredInstances.length} instance${filteredInstances.length === 1 ? "" : "s"}`,
+          },
+          {
+            label: "Matching public/customer surfaces",
+            value: `${filteredSurfaces.length} surface${filteredSurfaces.length === 1 ? "" : "s"}`,
+          },
+          {
+            label: "Open this lane first",
+            value: filteredInstances[0]?.open_first_story || filteredTemplates[0]?.open_first_story || "No matching lane story yet",
+          },
+        ].map((line) => `
+          <div class="preview-line">
+            <strong>${escapeHtml(line.label)}</strong>
+            <span>${escapeHtml(line.value)}</span>
+          </div>
+        `).join("");
+
+        const select = document.getElementById("instance-template");
+        const currentValue = select.value;
+        select.innerHTML = roomData.node_templates.map((template) =>
+          `<option value="${escapeHtml(template.id)}">${escapeHtml(template.title)} (${escapeHtml(template.id)})</option>`
+        ).join("");
+        if (currentValue && roomData.node_templates.some((template) => template.id === currentValue)) {
+          select.value = currentValue;
+        }
+        if (!select.value && roomData.node_templates[0]) {
+          select.value = roomData.node_templates[0].id;
+        }
+
+        document.getElementById("filter-family").innerHTML = renderSelectOptions(roomData.filters?.families || [], filters.family, "All families");
+        document.getElementById("filter-order-mode").innerHTML = renderSelectOptions(roomData.filters?.order_modes || [], filters.order_mode, "All order modes");
+        document.getElementById("filter-registry").innerHTML = renderSelectOptions(roomData.filters?.registry_lanes || [], filters.registry, "All registry lanes");
+        document.getElementById("filter-owner-kind").innerHTML = renderSelectOptions(roomData.filters?.owner_kinds || [], filters.owner_kind, "All owner kinds");
+        document.getElementById("filter-surface-key").innerHTML = renderSelectOptions(roomData.filters?.surface_keys || [], filters.surface_key, "All public/customer surfaces");
+
+        updateCreatePreview();
+      }
+
+      async function loadRoom() {
+        showError("");
+        roomData = await api("/api/nodes-room");
+        renderRoom();
+      }
+
+      document.getElementById("refresh").addEventListener("click", () => {
+        loadRoom().catch((error) => showError(error.message));
+      });
+
+      for (const select of document.querySelectorAll("#filter-family, #filter-order-mode, #filter-registry, #filter-owner-kind, #filter-surface-key")) {
+        select.addEventListener("change", () => renderRoom());
+      }
+      document.getElementById("reset-filters").addEventListener("click", () => {
+        applyFilters({ family: "", order_mode: "", registry: "", owner_kind: "", surface_key: "" });
+      });
+
+      document.getElementById("instance-form").addEventListener("input", updateCreatePreview);
+      document.getElementById("instance-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        try {
+          await api("/api/node-instances", {
+            method: "POST",
+            body: {
+              template_id: String(data.get("template_id") || "").trim(),
+              instance_id: String(data.get("instance_id") || "").trim(),
+              title: String(data.get("title") || "").trim(),
+              description: String(data.get("description") || "").trim(),
+              notes: String(data.get("notes") || "").trim(),
+            },
+          });
+          form.reset();
+          await loadRoom();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+
+      document.addEventListener("click", async (event) => {
+        const target = event.target.closest("[data-start-instance], [data-stop-instance]");
+        if (!target) return;
+        try {
+          if (target.dataset.startInstance) {
+            await api(`/api/node-instances/${encodeURIComponent(target.dataset.startInstance)}/start`, { method: "POST" });
+          }
+          if (target.dataset.stopInstance) {
+            await api(`/api/node-instances/${encodeURIComponent(target.dataset.stopInstance)}/stop`, { method: "POST" });
+          }
+          await loadRoom();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+
+      loadRoom().catch((error) => showError(error.message));
+    </script>
+  </body>
+</html>
