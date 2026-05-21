@@ -523,6 +523,15 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
 def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
     verified_signature = require_valid_registry_source_snapshot(payload)
 
+    if (
+        payload.export_scope == "local_plus_trusted_mirrors"
+        and not payload.registry_metadata.capabilities.can_reexport_sources
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registry source export_scope=local_plus_trusted_mirrors requires can_reexport_sources capability",
+        )
+
     if payload.mirrored_sources and payload.export_scope != "local_plus_trusted_mirrors":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
