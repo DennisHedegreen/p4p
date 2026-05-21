@@ -33,6 +33,26 @@ Responsibilities:
 Target:
 FastAPI with default in-memory storage and optional SQLite-backed snapshot persistence.
 
+Administrative write routes use `P4P_REGISTRY_ADMIN_TOKEN` and accept either:
+
+- `Authorization: Bearer <token>`
+- `X-P4P-Registry-Token: <token>`
+
+This token is required for:
+
+- `GET /registry-mirrors`
+- `GET /curated-promotions`
+- `GET /curated-overrides`
+- `GET /directory-claims`
+- `GET /trust-claims`
+- `GET /registry-sync`
+- `POST /registry-source/import`
+- `POST /curated-overrides`
+- `POST /directory-claims`
+- `POST /trust-claims`
+- `POST /trust-claims/import`
+- `POST /registry-sync`
+
 ## Files
 
 - `main.py` — FastAPI app and registry store
@@ -50,6 +70,7 @@ P4P_MIRROR_UPSTREAMS=http://127.0.0.1:8002 \
 P4P_MIRROR_TRUSTED_UPSTREAMS=http://127.0.0.1:8002 \
 P4P_MIRROR_DISCOVERY_POLICY=trusted_only \
 P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors \
+P4P_REGISTRY_ADMIN_TOKEN=change-this \
 P4P_MIRROR_SYNC_INTERVAL_SECONDS=60 \
 P4P_MIRROR_SOURCE_TTL_SECONDS=600 \
 ./.venv/bin/uvicorn main:app --reload --port 8000
@@ -66,17 +87,17 @@ Then open:
 - `GET /identity-log`
 - `GET /registry-source`
 - `POST /registry-source/import`
-- `GET /registry-mirrors`
-- `GET /curated-promotions`
-- `GET /curated-overrides`
+- `GET /registry-mirrors` (admin token)
+- `GET /curated-promotions` (admin token)
+- `GET /curated-overrides` (admin token)
 - `POST /curated-overrides`
-- `GET /directory-claims`
+- `GET /directory-claims` (admin token)
 - `POST /directory-claims`
-- `GET /trust-claims`
+- `GET /trust-claims` (admin token)
 - `POST /trust-claims`
 - `POST /trust-claims/import`
 - `POST /registry-sync`
-- `GET /registry-sync`
+- `GET /registry-sync` (admin token)
 - `GET /registry-info`
 
 ## Notes
@@ -91,7 +112,7 @@ Then open:
 - `/identity-log` is read-only and contains public signing metadata, not node private keys
 - `/registry-source` is a full registry snapshot surface for later mirroring or umbrella ingestion
 - set `P4P_REGISTRY_KEY_FILE` or `P4P_REGISTRY_PRIVATE_KEY` when the snapshot should carry a registry signature
-- public `POST /registry-source/import` requires a registry signature unless the source registry URL is loopback HTTP for local reference development
+- `POST /registry-source/import` requires the registry admin token and still rejects unsigned public source snapshots unless the source registry URL is loopback HTTP for local reference development
 - mirrored nodes become discoverable, but local node state still wins on `node_id` collisions
 - discover results now carry provenance fields so clients can distinguish `local` vs `mirrored` nodes and see whether a mirrored result is visible via `trusted_upstream` or the looser `all_active_policy`
 - mirrored discovery may also report `trusted_relayed_upstream` when the original upstream snapshot arrived through a trusted umbrella or country relay
@@ -101,18 +122,18 @@ Then open:
 - `P4P_CURATED_INDEX_PROMOTION_POLICY` decides whether trusted mirrored evidence stays raw-only (`manual_only`) or may be promoted into the curated active index (`trusted_mirrors`)
 - `P4P_REGISTRY_METADATA` declares runtime scope and capability metadata such as `local`, `country`, `vertical`, or `umbrella`
 - `P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors` allows the registry to attach trusted mirrored upstream snapshots to `GET /registry-source` without flattening them into the top-level local source
-- `POST /registry-sync` triggers one fetch/import cycle for configured upstream registries
-- `GET /registry-sync` exposes last run state for the sync runtime
-- `GET /registry-mirrors` shows whether each cached mirror source is still active, whether it is currently discovery-eligible, and whether it was relayed by another registry
-- `GET /curated-promotions` shows the persisted promotion decision record for each mirrored source, including whether it was promoted or denied and which node ids currently flow into the curated active index
-- `GET /curated-overrides` shows persisted manual allow/deny overrides for mirrored sources
-- `POST /curated-overrides` requires `can_curate_active_index` and may steer discoverability only among still-valid mirrored evidence
+- `POST /registry-sync` requires the registry admin token and triggers one fetch/import cycle for configured upstream registries
+- `GET /registry-sync` requires the registry admin token and exposes last run state for the sync runtime
+- `GET /registry-mirrors` requires the registry admin token and shows whether each cached mirror source is still active, whether it is currently discovery-eligible, and whether it was relayed by another registry
+- `GET /curated-promotions` requires the registry admin token and shows the persisted promotion decision record for each mirrored source, including whether it was promoted or denied and which node ids currently flow into the curated active index
+- `GET /curated-overrides` requires the registry admin token and shows persisted manual allow/deny overrides for mirrored sources
+- `POST /curated-overrides` requires the registry admin token plus `can_curate_active_index` and may steer discoverability only among still-valid mirrored evidence
 - `GET /directory` is a separate moderated public directory layered on top of `GET /discover`
-- `GET /directory-claims` shows persisted directory-level claims such as `reviewed`, `verified`, `hidden`, `spam`, or `local_only`
-- `POST /directory-claims` requires `can_moderate_directory` and may annotate or hide discoverable nodes without rewriting source truth
-- `GET /trust-claims` shows signed trust claims currently stored by the registry
-- `POST /trust-claims` requires `can_issue_trust_claims` and a configured registry signing key
-- `POST /trust-claims/import` requires `can_moderate_directory` and only imports signed trust claims for moderated-directory projection
+- `GET /directory-claims` requires the registry admin token and shows persisted directory-level claims such as `reviewed`, `verified`, `hidden`, `spam`, or `local_only`
+- `POST /directory-claims` requires the registry admin token plus `can_moderate_directory` and may annotate or hide discoverable nodes without rewriting source truth
+- `GET /trust-claims` requires the registry admin token and shows signed trust claims currently stored by the registry
+- `POST /trust-claims` requires the registry admin token, `can_issue_trust_claims`, and a configured registry signing key
+- `POST /trust-claims/import` requires the registry admin token plus `can_moderate_directory` and only imports signed trust claims for moderated-directory projection
 - `can_curate_active_index`, `can_moderate_directory`, and `can_issue_trust_claims` are intentionally separate powers in the runtime metadata
 - mirrored source cache expires from discovery after `P4P_MIRROR_SOURCE_TTL_SECONDS`
 - imported mirror records always land in raw mirror cache first

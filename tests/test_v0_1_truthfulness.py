@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 import httpx
 from fastapi import HTTPException, Response
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from starlette.requests import Request
 
@@ -254,6 +255,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
         payload.update(overrides)
         payload["signature"] = demo_module.sign_payload(payload, demo_module.NODE_PRIVATE_KEY)
         return payload
+
+    def make_registry_admin_env(self) -> dict[str, str]:
+        return {"P4P_REGISTRY_ADMIN_TOKEN": "registry-admin-secret"}
+
+    def registry_admin_authorization(self) -> str:
+        return "Bearer registry-admin-secret"
 
     def make_node_manifest_request(self, demo_module, **kwargs):
         manifest = kwargs.pop("manifest", None)
@@ -1293,6 +1300,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_MIRROR_UPSTREAMS": "",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1312,7 +1320,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         source.announce(source.Node(**demo.sign_node_announcement()))
         snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
 
-        imported = mirror.registry_source_import(snapshot)
+        imported = mirror.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
         discover_result = mirror.discover(
             lat=55.6517,
             lng=12.4126,
@@ -1320,8 +1331,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        mirrors = mirror.registry_mirrors()
-        promotions = mirror.curated_promotions()
+        mirrors = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertTrue(imported.verified_signature)
         self.assertEqual(imported.imported_nodes, 1)
@@ -1346,12 +1357,15 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
             },
         )
-        mirror = load_module("registry/main.py")
+        mirror = load_module("registry/main.py", self.make_registry_admin_env())
 
         snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
 
         with self.assertRaises(HTTPException) as import_error:
-            mirror.registry_source_import(snapshot)
+            mirror.registry_source_import(
+                snapshot,
+                authorization=self.registry_admin_authorization(),
+            )
 
         self.assertEqual(import_error.exception.status_code, 403)
         self.assertEqual(
@@ -1374,6 +1388,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1401,7 +1416,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "AsyncClient",
             new=lambda *args, **kwargs: RegistrySourceAsyncClient(routes),
         ):
-            sync_result = asyncio.run(mirror.run_mirror_sync_once())
+            sync_result = asyncio.run(
+                mirror.registry_sync(authorization=self.registry_admin_authorization())
+            )
 
         discover_result = mirror.discover(
             lat=55.6517,
@@ -1410,7 +1427,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        sync_status = mirror.registry_sync_status()
+        sync_status = mirror.registry_sync_status(authorization=self.registry_admin_authorization())
 
         self.assertEqual(len(sync_result.upstreams), 1)
         self.assertEqual(sync_result.upstreams[0].status, "imported")
@@ -1446,6 +1463,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1464,7 +1482,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
         snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
-        mirror.registry_source_import(snapshot)
+        mirror.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
 
         discover_result = mirror.discover(
             lat=55.6517,
@@ -1473,7 +1494,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        promotions = mirror.curated_promotions()
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertEqual(mirror.health()["curated_active_index_entries"], 1)
         self.assertEqual(mirror.health()["curated_promoted_sources"], 1)
@@ -1506,6 +1527,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1523,7 +1545,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
-        mirror.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
 
         override = mirror.curated_override(
             mirror.CuratedOverrideRequest(
@@ -1531,7 +1556,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 decision="deny",
                 reason="Temporary local hold",
                 set_by="ops",
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
         discover_result = mirror.discover(
             lat=55.6517,
@@ -1540,8 +1566,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        promotions = mirror.curated_promotions()
-        overrides = mirror.curated_overrides()
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
+        overrides = mirror.curated_overrides(authorization=self.registry_admin_authorization())
 
         self.assertEqual(override.override.decision, "deny")
         self.assertEqual(override.override.reason, "Temporary local hold")
@@ -1576,6 +1602,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-b.pizza4people.com",
                 "P4P_MIRROR_UPSTREAMS": "",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1593,7 +1620,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
-        mirror.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
 
         before_override = mirror.discover(
             lat=55.6517,
@@ -1608,7 +1638,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 decision="allow",
                 reason="Local scope approved this upstream",
                 set_by="country-curator",
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
         discover_result = mirror.discover(
             lat=55.6517,
@@ -1617,7 +1648,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        promotions = mirror.curated_promotions()
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertEqual(before_override.nodes, [])
         self.assertEqual(len(discover_result.nodes), 1)
@@ -1651,6 +1682,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     registry_type="umbrella",
                     capabilities={"can_reexport_sources": True},
@@ -1670,7 +1702,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
         snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
-        relay.registry_source_import(snapshot)
+        relay.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
 
         relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
 
@@ -1711,6 +1746,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     registry_type="umbrella",
                     capabilities={"can_reexport_sources": True},
@@ -1723,6 +1759,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1740,10 +1777,16 @@ class P4PTruthfulnessTests(unittest.TestCase):
             source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
-        relay.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        relay.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
         relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
 
-        imported = downstream.registry_source_import(relay_snapshot)
+        imported = downstream.registry_source_import(
+            relay_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
         discover_result = downstream.discover(
             lat=55.6517,
             lng=12.4126,
@@ -1751,8 +1794,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        mirror_status = downstream.registry_mirrors()
-        promotions = downstream.curated_promotions()
+        mirror_status = downstream.registry_mirrors(authorization=self.registry_admin_authorization())
+        promotions = downstream.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertEqual(imported.imported_relayed_sources, 1)
         self.assertEqual(len(discover_result.nodes), 1)
@@ -1806,6 +1849,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-b.pizza4people.com",
                 "P4P_MIRROR_UPSTREAMS": "",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1824,7 +1868,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
         snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
-        mirror.registry_source_import(snapshot)
+        mirror.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
 
         discover_result = mirror.discover(
             lat=55.6517,
@@ -1833,9 +1880,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        mirror_status = mirror.registry_mirrors()
-        sync_status = mirror.registry_sync_status()
-        promotions = mirror.curated_promotions()
+        mirror_status = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
+        sync_status = mirror.registry_sync_status(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertEqual(discover_result.nodes, [])
         self.assertEqual(mirror.health()["mirrored_registries"], 1)
@@ -1868,6 +1915,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_UPSTREAMS": "",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1885,7 +1933,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
-        mirror.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
 
         promoted_result = mirror.discover(
             lat=55.6517,
@@ -1896,7 +1947,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         self.assertEqual(len(promoted_result.nodes), 1)
         self.assertEqual(mirror.health()["curated_active_index_entries"], 1)
-        self.assertEqual(mirror.curated_promotions().records[0].decision, "promote")
+        self.assertEqual(
+            mirror.curated_promotions(authorization=self.registry_admin_authorization()).records[0].decision,
+            "promote",
+        )
 
         source.node_manifest(
             source.NodeManifestRequest(
@@ -1908,7 +1962,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 )
             )
         )
-        mirror.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
 
         discover_result = mirror.discover(
             lat=55.6517,
@@ -1920,9 +1977,18 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
         self.assertEqual(discover_result.nodes, [])
         self.assertEqual(mirror.health()["curated_active_index_entries"], 0)
-        self.assertEqual(mirror.curated_promotions().records[0].decision, "deny")
-        self.assertEqual(mirror.curated_promotions().records[0].decision_basis, "no_visible_nodes")
-        self.assertEqual(mirror.curated_promotions().records[0].promoted_node_ids, [])
+        self.assertEqual(
+            mirror.curated_promotions(authorization=self.registry_admin_authorization()).records[0].decision,
+            "deny",
+        )
+        self.assertEqual(
+            mirror.curated_promotions(authorization=self.registry_admin_authorization()).records[0].decision_basis,
+            "no_visible_nodes",
+        )
+        self.assertEqual(
+            mirror.curated_promotions(authorization=self.registry_admin_authorization()).records[0].promoted_node_ids,
+            [],
+        )
 
     def test_expired_mirror_source_is_hidden_from_discovery(self) -> None:
         identity = load_module("p4p_identity.py")
@@ -1940,6 +2006,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_UPSTREAMS": "",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -1958,7 +2025,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
         snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
-        mirror.registry_source_import(snapshot)
+        mirror.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
 
         stored = next(iter(mirror.store._mirror_sources.values()))
         stored.imported_at = mirror.utc_now() - mirror.timedelta(seconds=2)
@@ -1970,8 +2040,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        mirror_status = mirror.registry_mirrors()
-        promotions = mirror.curated_promotions()
+        mirror_status = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertEqual(discover_result.nodes, [])
         self.assertEqual(mirror.health()["mirrored_registries"], 0)
@@ -1999,6 +2069,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_UPSTREAMS": "",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -2016,14 +2087,18 @@ class P4PTruthfulnessTests(unittest.TestCase):
             source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
-        mirror.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
         mirror.curated_override(
             mirror.CuratedOverrideRequest(
                 source_registry_url="https://registry-a.pizza4people.com",
                 decision="allow",
                 reason="Still valid only while source is fresh",
                 set_by="ops",
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
 
         stored = next(iter(mirror.store._mirror_sources.values()))
@@ -2036,7 +2111,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        promotions = mirror.curated_promotions()
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertEqual(discover_result.nodes, [])
         self.assertEqual(mirror.health()["curated_active_index_entries"], 0)
@@ -2061,6 +2136,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_MIRROR_UPSTREAMS": "",
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
                 ),
@@ -2078,7 +2154,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
         )
         source.announce(source.Node(**demo.sign_node_announcement()))
-        mirror.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
 
         source.node_manifest(
             source.NodeManifestRequest(
@@ -2090,14 +2169,18 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 )
             )
         )
-        mirror.registry_source_import(source.registry_source(SimpleNamespace(base_url="https://ignored.example/")))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
         mirror.curated_override(
             mirror.CuratedOverrideRequest(
                 source_registry_url="https://registry-a.pizza4people.com",
                 decision="allow",
                 reason="Manual allow must not bypass revoked source",
                 set_by="ops",
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
 
         discover_result = mirror.discover(
@@ -2107,7 +2190,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        promotions = mirror.curated_promotions()
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertEqual(discover_result.nodes, [])
         self.assertEqual(mirror.health()["curated_active_index_entries"], 0)
@@ -2122,6 +2205,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         registry = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True, "can_moderate_directory": True}
                 ),
@@ -2145,7 +2229,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 claims=["hidden"],
                 reason="Removed from moderated directory",
                 set_by="editorial",
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
 
         discover_result = registry.discover(
@@ -2162,7 +2247,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        claims = registry.directory_claims()
+        claims = registry.directory_claims(authorization=self.registry_admin_authorization())
 
         self.assertEqual(len(discover_result.nodes), 1)
         self.assertEqual(discover_result.nodes[0].node_id, demo.NODE.node_id)
@@ -2177,6 +2262,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         registry = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True, "can_moderate_directory": True}
                 ),
@@ -2200,7 +2286,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 claims=["reviewed", "verified"],
                 reason="Checked by local trust group",
                 set_by="trust-group",
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
 
         directory_result = registry.directory(
@@ -2222,6 +2309,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         registry = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     registry_type="country",
                     scope={"country_code": "DK"},
@@ -2247,7 +2335,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 claims=["local_only"],
                 reason="Keep this node in local directories only",
                 set_by="country-curator",
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
 
         discover_result = registry.discover(
@@ -2273,6 +2362,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         registry = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True, "can_moderate_directory": True}
                 ),
@@ -2297,7 +2387,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 reason="Temporary hide",
                 set_by="ops",
                 expires_at=registry.utc_now() + registry.timedelta(seconds=1),
-            )
+            ),
+            authorization=self.registry_admin_authorization(),
         )
         stored_claim = registry.store._directory_claims[demo.NODE.node_id]
         stored_claim.expires_at = registry.utc_now() - registry.timedelta(seconds=1)
@@ -2321,6 +2412,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://issuer.registry.test",
                 "P4P_REGISTRY_PRIVATE_KEY": issuer_private_key,
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_issue_trust_claims": True}
                 ),
@@ -2330,6 +2422,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_REGISTRY_URL": "https://directory.registry.test",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_moderate_directory": True}
                 ),
@@ -2349,8 +2442,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 expires_at=issuer.utc_now() + issuer.timedelta(days=30),
             ),
             SimpleNamespace(base_url="https://issuer.registry.test/"),
+            authorization=self.registry_admin_authorization(),
         )
-        imported = directory.trust_claim_import(issued.claim)
+        imported = directory.trust_claim_import(
+            issued.claim,
+            authorization=self.registry_admin_authorization(),
+        )
 
         directory_result = directory.directory(
             lat=55.6517,
@@ -2366,7 +2463,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        trust_claims = directory.trust_claims()
+        trust_claims = directory.trust_claims(authorization=self.registry_admin_authorization())
 
         self.assertEqual(str(imported.issuer_registry_url), "https://issuer.registry.test/")
         self.assertEqual(imported.node_id, demo.NODE.node_id)
@@ -2388,6 +2485,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         directory = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_moderate_directory": True}
                 ),
@@ -2422,7 +2520,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
 
         with self.assertRaises(HTTPException) as trust_claim_error:
-            directory.trust_claim_import(tampered)
+            directory.trust_claim_import(
+                tampered,
+                authorization=self.registry_admin_authorization(),
+            )
 
         self.assertEqual(trust_claim_error.exception.status_code, 400)
         self.assertEqual(trust_claim_error.exception.detail, "Invalid trust claim signature")
@@ -2433,6 +2534,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         directory = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_moderate_directory": True}
                 ),
@@ -2469,7 +2571,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             }
         )
 
-        directory.trust_claim_import(expired_claim)
+        directory.trust_claim_import(
+            expired_claim,
+            authorization=self.registry_admin_authorization(),
+        )
         directory_result = directory.directory(
             lat=55.6517,
             lng=12.4126,
@@ -2477,7 +2582,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
-        trust_claims = directory.trust_claims()
+        trust_claims = directory.trust_claims(authorization=self.registry_admin_authorization())
 
         self.assertEqual(len(directory_result.nodes), 1)
         self.assertEqual(directory_result.nodes[0].trust_claims, [])
@@ -2491,6 +2596,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://local.registry.test",
                 "P4P_REGISTRY_PRIVATE_KEY": issuer_private_key,
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(),
             },
         )
@@ -2505,6 +2611,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     claims=["reviewed"],
                 ),
                 SimpleNamespace(base_url="https://local.registry.test/"),
+                authorization=self.registry_admin_authorization(),
             )
 
         self.assertEqual(trust_claim_error.exception.status_code, 403)
@@ -2512,6 +2619,255 @@ class P4PTruthfulnessTests(unittest.TestCase):
             trust_claim_error.exception.detail,
             "This registry is not allowed to issue signed trust claims",
         )
+
+    def test_registry_admin_write_routes_require_admin_token(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={
+                        "can_relay_sources": True,
+                        "can_curate_active_index": True,
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    },
+                ),
+            },
+        )
+        demo = load_module("demo-node/demo_node.py")
+
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        with self.assertRaises(HTTPException) as import_error:
+            registry.registry_source_import(snapshot)
+        with self.assertRaises(HTTPException) as import_wrong_error:
+            registry.registry_source_import(snapshot, authorization="Bearer wrong-secret")
+        with self.assertRaises(HTTPException) as override_error:
+            registry.curated_override(
+                registry.CuratedOverrideRequest(
+                    source_registry_url="https://registry-a.pizza4people.com",
+                    decision="deny",
+                    reason="Unauthorized test",
+                )
+            )
+        with self.assertRaises(HTTPException) as directory_claim_error:
+            registry.directory_claim(
+                registry.DirectoryClaimRequest(
+                    node_id=demo.NODE.node_id,
+                    claims=["reviewed"],
+                    reason="Unauthorized test",
+                )
+            )
+        with self.assertRaises(HTTPException) as trust_claim_error:
+            registry.trust_claim_issue(
+                registry.TrustClaimIssueRequest(node_id=demo.NODE.node_id, claims=["reviewed"]),
+                SimpleNamespace(base_url="https://local.registry.test/"),
+            )
+        with self.assertRaises(HTTPException) as sync_error:
+            asyncio.run(registry.registry_sync())
+
+        self.assertEqual(import_error.exception.status_code, 401)
+        self.assertEqual(import_wrong_error.exception.status_code, 401)
+        self.assertEqual(override_error.exception.status_code, 401)
+        self.assertEqual(directory_claim_error.exception.status_code, 401)
+        self.assertEqual(trust_claim_error.exception.status_code, 401)
+        self.assertEqual(sync_error.exception.status_code, 401)
+
+    def test_registry_admin_write_routes_fail_closed_without_configured_token(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True},
+                ),
+            },
+        )
+        demo = load_module("demo-node/demo_node.py")
+
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        with self.assertRaises(HTTPException) as import_error:
+            registry.registry_source_import(snapshot)
+        with self.assertRaises(HTTPException) as override_error:
+            registry.curated_override(
+                registry.CuratedOverrideRequest(
+                    source_registry_url="https://registry-a.pizza4people.com",
+                    decision="deny",
+                    reason="Token missing",
+                )
+            )
+
+        self.assertEqual(import_error.exception.status_code, 503)
+        self.assertEqual(import_error.exception.detail, "Registry admin token is not configured")
+        self.assertEqual(override_error.exception.status_code, 503)
+        self.assertEqual(override_error.exception.detail, "Registry admin token is not configured")
+
+    def test_registry_admin_read_routes_require_admin_token(self) -> None:
+        registry = load_module(
+            "registry/main.py",
+            {
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={
+                        "can_curate_active_index": True,
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    },
+                ),
+            },
+        )
+
+        read_calls = (
+            lambda: registry.registry_mirrors(),
+            lambda: registry.curated_promotions(),
+            lambda: registry.curated_overrides(),
+            lambda: registry.directory_claims(),
+            lambda: registry.trust_claims(),
+            lambda: registry.registry_sync_status(),
+        )
+        for call in read_calls:
+            with self.assertRaises(HTTPException) as read_error:
+                call()
+            self.assertEqual(read_error.exception.status_code, 401)
+            self.assertEqual(read_error.exception.detail, "Invalid registry admin token")
+
+        self.assertEqual(
+            registry.registry_mirrors(authorization=self.registry_admin_authorization()).sources,
+            [],
+        )
+        self.assertEqual(
+            registry.registry_sync_status(authorization=self.registry_admin_authorization()).last_results,
+            [],
+        )
+
+    def test_registry_admin_read_routes_fail_closed_without_configured_token(self) -> None:
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True},
+                ),
+            },
+        )
+
+        with self.assertRaises(HTTPException) as promotions_error:
+            registry.curated_promotions()
+        with self.assertRaises(HTTPException) as sync_status_error:
+            registry.registry_sync_status()
+
+        self.assertEqual(promotions_error.exception.status_code, 503)
+        self.assertEqual(promotions_error.exception.detail, "Registry admin token is not configured")
+        self.assertEqual(sync_status_error.exception.status_code, 503)
+        self.assertEqual(sync_status_error.exception.detail, "Registry admin token is not configured")
+
+    def test_registry_http_public_surfaces_stay_open_while_admin_reads_require_token(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry_app = load_module(
+            "registry/registry_app.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                "P4P_REGISTRY_DB_PATH": ":memory:",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={
+                        "can_curate_active_index": True,
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    },
+                ),
+            },
+        )
+
+        with TestClient(registry_app.app) as client:
+            health = client.get("/health")
+            identity_log = client.get("/identity-log")
+            registry_source = client.get("/registry-source")
+            registry_info = client.get("/registry-info")
+            admin_read = client.get("/registry-mirrors")
+            admin_read_ok = client.get(
+                "/registry-mirrors",
+                headers={"Authorization": self.registry_admin_authorization()},
+            )
+
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(health.json()["status"], "ok")
+        self.assertEqual(identity_log.status_code, 200)
+        self.assertIn("records", identity_log.json())
+        self.assertEqual(registry_source.status_code, 200)
+        self.assertIn("registry_url", registry_source.json())
+        self.assertEqual(registry_info.status_code, 200)
+        self.assertEqual(admin_read.status_code, 401)
+        self.assertEqual(admin_read.json()["detail"], "Invalid registry admin token")
+        self.assertEqual(admin_read_ok.status_code, 200)
+        self.assertEqual(admin_read_ok.json()["sources"], [])
+
+    def test_registry_http_admin_token_headers_work_for_write_and_read_routes(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry_app = load_module(
+            "registry/registry_app.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                "P4P_REGISTRY_DB_PATH": ":memory:",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={
+                        "can_relay_sources": True,
+                        "can_curate_active_index": True,
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    },
+                ),
+            },
+        )
+
+        with TestClient(registry_app.app) as client:
+            blocked_sync = client.post("/registry-sync")
+            sync_via_token_header = client.post(
+                "/registry-sync",
+                headers={"X-P4P-Registry-Token": "registry-admin-secret"},
+            )
+            sync_status_via_bearer = client.get(
+                "/registry-sync",
+                headers={"Authorization": self.registry_admin_authorization()},
+            )
+
+        self.assertEqual(blocked_sync.status_code, 401)
+        self.assertEqual(blocked_sync.json()["detail"], "Invalid registry admin token")
+        self.assertEqual(sync_via_token_header.status_code, 200)
+        self.assertEqual(sync_via_token_header.json()["upstreams"], [])
+        self.assertEqual(sync_status_via_bearer.status_code, 200)
+        self.assertEqual(sync_status_via_bearer.json()["last_results"], [])
 
     def test_scope_and_capability_gating_blocks_onboard_relay_and_reexport(self) -> None:
         identity = load_module("p4p_identity.py")
@@ -2542,6 +2898,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         locked_relay = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     registry_type="vertical",
                     scope={"vertical_id": "pizza4people"},
@@ -2565,6 +2922,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": False},
                 ),
@@ -2573,6 +2931,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         locked_moderation = load_module(
             "registry/main.py",
             {
+                **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={
                         "can_curate_active_index": True,
@@ -2591,17 +2950,24 @@ class P4PTruthfulnessTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as onboard_error:
             locked_onboard.announce(locked_onboard.Node(**demo.sign_node_announcement()))
         with self.assertRaises(HTTPException) as relay_error:
-            locked_relay.registry_source_import(snapshot)
+            locked_relay.registry_source_import(
+                snapshot,
+                authorization=self.registry_admin_authorization(),
+            )
         with self.assertRaises(HTTPException) as reexport_error:
             locked_reexport.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
-        locked_curate.registry_source_import(snapshot)
+        locked_curate.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
         with self.assertRaises(HTTPException) as override_error:
             locked_curate.curated_override(
                 locked_curate.CuratedOverrideRequest(
                     source_registry_url="https://registry-a.pizza4people.com",
                     decision="allow",
                     reason="Not allowed here",
-                )
+                ),
+                authorization=self.registry_admin_authorization(),
             )
         with self.assertRaises(HTTPException) as directory_claim_error:
             locked_moderation.directory_claim(
@@ -2609,7 +2975,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
                     node_id=demo.NODE.node_id,
                     claims=["reviewed"],
                     reason="Not allowed here either",
-                )
+                ),
+                authorization=self.registry_admin_authorization(),
             )
         curated_result = locked_curate.discover(
             lat=55.6517,
@@ -2637,7 +3004,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         self.assertEqual(curated_result.nodes, [])
         self.assertEqual(locked_curate.health()["curated_active_index_entries"], 0)
-        self.assertEqual(locked_curate.curated_promotions().records[0].decision_basis, "curation_disabled")
+        self.assertEqual(
+            locked_curate.curated_promotions(authorization=self.registry_admin_authorization()).records[0].decision_basis,
+            "curation_disabled",
+        )
 
     def test_identity_log_ignores_unsigned_legacy_nodes(self) -> None:
         registry = load_module("registry/main.py")

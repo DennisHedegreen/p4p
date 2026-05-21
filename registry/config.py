@@ -132,6 +132,7 @@ def load_registry_metadata() -> RegistryMetadata:
 @dataclass(frozen=True)
 class RegistryConfig:
     registry_url: str
+    registry_admin_token: str
     backup_registries: list[RegistryEntry]
     mirror_upstreams: list[MirrorUpstream]
     mirror_trusted_upstreams: list[MirrorUpstream]
@@ -158,6 +159,7 @@ def build_registry_config() -> RegistryConfig:
     registry_private_key = load_registry_private_key()
     return RegistryConfig(
         registry_url=registry_url,
+        registry_admin_token=os.environ.get("P4P_REGISTRY_ADMIN_TOKEN", "").strip(),
         backup_registries=load_backup_registries(),
         mirror_upstreams=mirror_upstreams,
         mirror_trusted_upstreams=mirror_trusted_upstreams,

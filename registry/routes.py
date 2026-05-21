@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query, Request, status
+import secrets
+
+from fastapi import FastAPI, Header, HTTPException, Query, Request, status
 
 from p4p_core import AnnounceResponse, HeartbeatRequest, NodeManifestRequest, RegistryEntry, utc_now
 from p4p_core.constants import DEFAULT_RADIUS_KM, PROTOCOL_VERSION
@@ -51,6 +53,31 @@ def bind_routes(
     store: RegistryStore,
     mirror_sync_state: MirrorSyncState,
 ) -> dict[str, object]:
+    def header_value(raw: object) -> str | None:
+        if raw is None or not isinstance(raw, str):
+            return None
+        value = raw.strip()
+        return value or None
+
+    def require_registry_admin_token(
+        authorization: str | None = None,
+        x_p4p_registry_token: str | None = None,
+    ) -> None:
+        if not config.registry_admin_token:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Registry admin token is not configured",
+            )
+        token = header_value(x_p4p_registry_token) or ""
+        bearer = header_value(authorization) or ""
+        if bearer.lower().startswith("bearer "):
+            token = bearer[7:].strip()
+        if not token or not secrets.compare_digest(token, config.registry_admin_token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid registry admin token",
+            )
+
     @app.get("/health")
     def health() -> dict[str, object]:
         now = utc_now()
@@ -184,7 +211,12 @@ def bind_routes(
         return RegistrySourceResponse(**payload)
 
     @app.post("/registry-source/import", response_model=RegistrySourceImportResponse)
-    def registry_source_import(payload: RegistrySourceResponse) -> RegistrySourceImportResponse:
+    def registry_source_import(
+        payload: RegistrySourceResponse,
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> RegistrySourceImportResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         require_registry_capability(
             config.registry_metadata.capabilities.can_relay_sources,
             detail="This registry is not allowed to relay upstream sources",
@@ -193,19 +225,36 @@ def bind_routes(
         return store.import_source(payload, verified_signature=verified_signature)
 
     @app.get("/registry-mirrors", response_model=RegistryMirrorStatusResponse)
-    def registry_mirrors() -> RegistryMirrorStatusResponse:
+    def registry_mirrors(
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> RegistryMirrorStatusResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         return store.mirror_status()
 
     @app.get("/curated-promotions", response_model=CuratedPromotionStatusResponse)
-    def curated_promotions() -> CuratedPromotionStatusResponse:
+    def curated_promotions(
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> CuratedPromotionStatusResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         return store.curated_promotion_status()
 
     @app.get("/curated-overrides", response_model=CuratedOverrideStatusResponse)
-    def curated_overrides() -> CuratedOverrideStatusResponse:
+    def curated_overrides(
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> CuratedOverrideStatusResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         return store.curated_override_status()
 
     @app.post("/curated-overrides", response_model=CuratedOverrideResponse)
-    def curated_override(payload: CuratedOverrideRequest) -> CuratedOverrideResponse:
+    def curated_override(
+        payload: CuratedOverrideRequest,
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> CuratedOverrideResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         require_registry_capability(
             config.registry_metadata.capabilities.can_curate_active_index,
             detail="This registry is not allowed to curate a discoverable active index",
@@ -213,11 +262,20 @@ def bind_routes(
         return CuratedOverrideResponse(override=store.set_curated_override(payload))
 
     @app.get("/directory-claims", response_model=DirectoryClaimStatusResponse)
-    def directory_claims() -> DirectoryClaimStatusResponse:
+    def directory_claims(
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> DirectoryClaimStatusResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         return store.directory_claim_status()
 
     @app.post("/directory-claims", response_model=DirectoryClaimResponse)
-    def directory_claim(payload: DirectoryClaimRequest) -> DirectoryClaimResponse:
+    def directory_claim(
+        payload: DirectoryClaimRequest,
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> DirectoryClaimResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         require_registry_capability(
             config.registry_metadata.capabilities.can_moderate_directory,
             detail="This registry is not allowed to moderate a public directory",
@@ -225,11 +283,21 @@ def bind_routes(
         return DirectoryClaimResponse(record=store.set_directory_claim(payload))
 
     @app.get("/trust-claims", response_model=TrustClaimStatusResponse)
-    def trust_claims() -> TrustClaimStatusResponse:
+    def trust_claims(
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> TrustClaimStatusResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         return store.trust_claim_status()
 
     @app.post("/trust-claims", response_model=TrustClaimResponse)
-    def trust_claim_issue(payload: TrustClaimIssueRequest, request: Request) -> TrustClaimResponse:
+    def trust_claim_issue(
+        payload: TrustClaimIssueRequest,
+        request: Request,
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> TrustClaimResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         require_registry_capability(
             config.registry_metadata.capabilities.can_issue_trust_claims,
             detail="This registry is not allowed to issue signed trust claims",
@@ -246,7 +314,12 @@ def bind_routes(
         )
 
     @app.post("/trust-claims/import", response_model=TrustClaimImportResponse)
-    def trust_claim_import(payload: TrustClaimRecord) -> TrustClaimImportResponse:
+    def trust_claim_import(
+        payload: TrustClaimRecord,
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> TrustClaimImportResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         require_registry_capability(
             config.registry_metadata.capabilities.can_moderate_directory,
             detail="This registry is not allowed to project trust claims into a moderated directory",
@@ -255,7 +328,11 @@ def bind_routes(
         return store.import_trust_claim(local_payload)
 
     @app.post("/registry-sync", response_model=RegistrySyncResponse)
-    async def registry_sync() -> RegistrySyncResponse:
+    async def registry_sync(
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> RegistrySyncResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         return await run_mirror_sync_once(
             config=config,
             store=store,
@@ -263,7 +340,11 @@ def bind_routes(
         )
 
     @app.get("/registry-sync", response_model=RegistrySyncStatusResponse)
-    def registry_sync_status() -> RegistrySyncStatusResponse:
+    def registry_sync_status(
+        authorization: str | None = Header(default=None),
+        x_p4p_registry_token: str | None = Header(default=None),
+    ) -> RegistrySyncStatusResponse:
+        require_registry_admin_token(authorization, x_p4p_registry_token)
         return mirror_sync_state.snapshot()
 
     @app.get("/registry-info", response_model=RegistryInfoResponse)
