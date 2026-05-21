@@ -1373,6 +1373,34 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Public registry source import requires registry signature",
         )
 
+    def test_registry_rejects_import_of_its_own_source_snapshot(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True}
+                ),
+            },
+        )
+
+        snapshot = registry.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        with self.assertRaises(HTTPException) as import_error:
+            registry.registry_source_import(
+                snapshot,
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 409)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry cannot import its own source snapshot",
+        )
+
     def test_registry_sync_fetches_configured_upstream_and_updates_sync_status(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
@@ -1831,6 +1859,62 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(
             mirror_status_by_url["https://registry-a.pizza4people.com/"].discovery_basis,
             "trusted_relayed_upstream",
+        )
+
+    def test_relayed_registry_source_skips_nested_snapshot_of_self(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                **self.make_registry_admin_env(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        relay.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+        relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        imported = source.registry_source_import(
+            relay_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+        mirror_status = source.registry_mirrors(authorization=self.registry_admin_authorization())
+
+        self.assertEqual(imported.imported_relayed_sources, 0)
+        self.assertEqual(imported.imported_nodes, 0)
+        self.assertEqual(len(source.store._mirror_sources), 1)
+        self.assertEqual(len(mirror_status.sources), 1)
+        self.assertEqual(
+            str(mirror_status.sources[0].registry_url),
+            "https://umbrella.protocols4people.com/",
         )
 
     def test_untrusted_mirror_source_stays_cached_but_hidden_in_trusted_only_mode(self) -> None:

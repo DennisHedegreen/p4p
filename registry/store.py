@@ -424,6 +424,18 @@ class RegistryStore:
     ) -> bool:
         payload = self._snapshot_to_response(payload)
         registry_url = normalized_registry_url(payload.registry_url)
+        self_registry_url = (
+            normalized_registry_url(self._config.registry_url)
+            if self._config.registry_url
+            else None
+        )
+        if self_registry_url and registry_url == self_registry_url:
+            if relayed_by_registry_url is not None or allow_stale_skip:
+                return False
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Registry cannot import its own source snapshot",
+            )
         existing = self._mirror_sources.get(registry_url)
         if existing is not None and payload.exported_at <= existing.snapshot.exported_at:
             if allow_stale_skip:

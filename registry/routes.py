@@ -8,7 +8,7 @@ from p4p_core import AnnounceResponse, HeartbeatRequest, NodeManifestRequest, Re
 from p4p_core.constants import DEFAULT_RADIUS_KM, PROTOCOL_VERSION
 from p4p_identity import sign_payload
 
-from registry.config import RegistryConfig
+from registry.config import RegistryConfig, normalized_registry_url
 from registry.mirror import run_mirror_sync_once
 from registry.models import (
     CuratedOverrideRequest,
@@ -217,6 +217,13 @@ def bind_routes(
         x_p4p_registry_token: str | None = Header(default=None),
     ) -> RegistrySourceImportResponse:
         require_registry_admin_token(authorization, x_p4p_registry_token)
+        if config.registry_url and (
+            normalized_registry_url(payload.registry_url) == normalized_registry_url(config.registry_url)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Registry cannot import its own source snapshot",
+            )
         require_registry_capability(
             config.registry_metadata.capabilities.can_relay_sources,
             detail="This registry is not allowed to relay upstream sources",
