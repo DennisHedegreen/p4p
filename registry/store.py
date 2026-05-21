@@ -91,6 +91,19 @@ class StoredMirrorSource:
     relayed_by_registry_url: str | None = None
 
 
+@dataclass(frozen=True)
+class MirrorSourceStoreDecision:
+    stored: bool
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
+class SourceImportOutcome:
+    response: RegistrySourceImportResponse
+    stored_top_level: bool
+    detail: str | None = None
+
+
 class MirrorSyncState:
     def __init__(self, *, config: RegistryConfig, store: "RegistryStore") -> None:
         self._config = config
@@ -381,36 +394,68 @@ class RegistryStore:
         payload: RegistrySourceResponse,
         *,
         verified_signature: bool,
+        allow_stale_skip: bool = False,
     ) -> RegistrySourceImportResponse:
+        return self.import_source_with_outcome(
+            payload,
+            verified_signature=verified_signature,
+            allow_stale_skip=allow_stale_skip,
+        ).response
+
+    def import_source_with_outcome(
+        self,
+        payload: RegistrySourceResponse,
+        *,
+        verified_signature: bool,
+        allow_stale_skip: bool = False,
+    ) -> SourceImportOutcome:
         with self._lock:
             now = utc_now()
-            self._store_mirror_source(
+            top_level_decision = self._store_mirror_source(
                 payload,
                 verified_signature=verified_signature,
                 imported_at=now,
                 relayed_by_registry_url=None,
-                allow_stale_skip=False,
+                allow_stale_skip=allow_stale_skip,
             )
+            if not top_level_decision.stored:
+                return SourceImportOutcome(
+                    response=RegistrySourceImportResponse(
+                        registry_url=payload.registry_url,
+                        verified_signature=verified_signature,
+                        imported_at=now,
+                        imported_nodes=0,
+                        imported_manifests=0,
+                        imported_relayed_sources=0,
+                        latest_identity_event_id=payload.latest_identity_event_id,
+                    ),
+                    stored_top_level=False,
+                    detail=top_level_decision.detail,
+                )
             imported_relayed_sources = 0
             for mirrored_source in payload.mirrored_sources or []:
-                if self._store_mirror_source(
+                decision = self._store_mirror_source(
                     self._snapshot_to_response(mirrored_source.snapshot),
                     verified_signature=mirrored_source.verified_signature,
                     imported_at=now,
                     relayed_by_registry_url=str(payload.registry_url),
                     allow_stale_skip=True,
-                ):
+                )
+                if decision.stored:
                     imported_relayed_sources += 1
             self._refresh_curated_active_index(now=now)
             self._persist_state()
-            return RegistrySourceImportResponse(
-                registry_url=payload.registry_url,
-                verified_signature=verified_signature,
-                imported_at=now,
-                imported_nodes=len(payload.nodes),
-                imported_manifests=len(payload.manifests),
-                imported_relayed_sources=imported_relayed_sources,
-                latest_identity_event_id=payload.latest_identity_event_id,
+            return SourceImportOutcome(
+                response=RegistrySourceImportResponse(
+                    registry_url=payload.registry_url,
+                    verified_signature=verified_signature,
+                    imported_at=now,
+                    imported_nodes=len(payload.nodes),
+                    imported_manifests=len(payload.manifests),
+                    imported_relayed_sources=imported_relayed_sources,
+                    latest_identity_event_id=payload.latest_identity_event_id,
+                ),
+                stored_top_level=True,
             )
 
     def _store_mirror_source(
@@ -421,7 +466,7 @@ class RegistryStore:
         imported_at: datetime,
         relayed_by_registry_url: str | None,
         allow_stale_skip: bool,
-    ) -> bool:
+    ) -> MirrorSourceStoreDecision:
         payload = self._snapshot_to_response(payload)
         registry_url = normalized_registry_url(payload.registry_url)
         self_registry_url = (
@@ -429,21 +474,82 @@ class RegistryStore:
             if self._config.registry_url
             else None
         )
+        from registry.validation import registry_source_content_hash
+
         if self_registry_url and registry_url == self_registry_url:
             if relayed_by_registry_url is not None or allow_stale_skip:
-                return False
+                return MirrorSourceStoreDecision(
+                    stored=False,
+                    detail="Skipped self mirror source",
+                )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Registry cannot import its own source snapshot",
             )
         existing = self._mirror_sources.get(registry_url)
-        if existing is not None and payload.exported_at <= existing.snapshot.exported_at:
-            if allow_stale_skip:
-                return False
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Imported registry source must be newer than the cached snapshot",
+        if existing is not None:
+            incoming_direct = relayed_by_registry_url is None
+            existing_direct = existing.relayed_by_registry_url is None
+            incoming_content_hash = registry_source_content_hash(payload)
+            existing_content_hash = registry_source_content_hash(existing.snapshot)
+            incoming_provenance_priority = (
+                1 if verified_signature else 0,
+                1 if incoming_direct else 0,
             )
+            existing_provenance_priority = (
+                1 if existing.verified_signature else 0,
+                1 if existing_direct else 0,
+            )
+            incoming_priority = (
+                payload.exported_at,
+                *incoming_provenance_priority,
+            )
+            existing_priority = (
+                existing.snapshot.exported_at,
+                *existing_provenance_priority,
+            )
+            if incoming_content_hash == existing_content_hash:
+                if incoming_provenance_priority < existing_provenance_priority:
+                    if allow_stale_skip:
+                        return MirrorSourceStoreDecision(
+                            stored=False,
+                            detail="Skipped weaker mirror snapshot",
+                        )
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Imported registry source must be newer than the cached snapshot",
+                    )
+                if incoming_provenance_priority == existing_provenance_priority:
+                    if allow_stale_skip:
+                        return MirrorSourceStoreDecision(
+                            stored=False,
+                            detail="Skipped unchanged mirror snapshot",
+                        )
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Imported registry source must be newer than the cached snapshot",
+                    )
+            elif incoming_priority < existing_priority:
+                if allow_stale_skip:
+                    if payload.exported_at < existing.snapshot.exported_at:
+                        detail = "Skipped older mirror snapshot"
+                    else:
+                        detail = "Skipped weaker mirror snapshot"
+                    return MirrorSourceStoreDecision(stored=False, detail=detail)
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Imported registry source must be newer than the cached snapshot",
+                )
+            elif incoming_priority == existing_priority:
+                if allow_stale_skip:
+                    return MirrorSourceStoreDecision(
+                        stored=False,
+                        detail="Skipped weaker mirror snapshot",
+                    )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Imported registry source must be newer than the cached snapshot",
+                )
 
         stored = StoredMirrorSource(
             snapshot=payload,
@@ -452,7 +558,7 @@ class RegistryStore:
             relayed_by_registry_url=relayed_by_registry_url,
         )
         self._mirror_sources[registry_url] = stored
-        return True
+        return MirrorSourceStoreDecision(stored=True)
 
     def _snapshot_to_response(self, payload: RegistrySourceSnapshot) -> RegistrySourceResponse:
         return RegistrySourceResponse(**payload.model_dump(mode="json", exclude_none=True))

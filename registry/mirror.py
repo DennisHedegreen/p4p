@@ -35,14 +35,24 @@ async def sync_registry_source_from_upstream(
         response.raise_for_status()
         snapshot = RegistrySourceResponse(**response.json())
         verified_signature = require_valid_registry_source(snapshot)
-        imported = store.import_source(snapshot, verified_signature=verified_signature)
+        imported = store.import_source_with_outcome(
+            snapshot,
+            verified_signature=verified_signature,
+            allow_stale_skip=True,
+        )
+        if not imported.stored_top_level:
+            return RegistrySyncUpstreamResult(
+                registry_url=upstream.url,
+                status="skipped",
+                detail=imported.detail or "Skipped unchanged mirror snapshot",
+            )
         return RegistrySyncUpstreamResult(
             registry_url=upstream.url,
             status="imported",
-            verified_signature=imported.verified_signature,
-            imported_nodes=imported.imported_nodes,
-            imported_manifests=imported.imported_manifests,
-            latest_identity_event_id=imported.latest_identity_event_id,
+            verified_signature=imported.response.verified_signature,
+            imported_nodes=imported.response.imported_nodes,
+            imported_manifests=imported.response.imported_manifests,
+            latest_identity_event_id=imported.response.latest_identity_event_id,
         )
     except HTTPException as exc:
         return RegistrySyncUpstreamResult(

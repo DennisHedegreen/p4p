@@ -47,6 +47,19 @@ def registry_source_hash(payload: RegistrySourceSnapshot | RegistrySourceRespons
     return hashlib.sha256(raw).hexdigest()
 
 
+def registry_source_content_hash(payload: RegistrySourceSnapshot | RegistrySourceResponse) -> str:
+    raw = json.dumps(
+        payload.model_dump(
+            mode="json",
+            exclude={"mirrored_sources", "exported_at", "signature"},
+            exclude_none=True,
+        ),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
 def heartbeat_payload(payload: HeartbeatRequest) -> dict[str, Any]:
     return payload.model_dump(mode="json", exclude_none=True)
 
