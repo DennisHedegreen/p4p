@@ -1981,6 +1981,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -2036,6 +2038,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -2102,6 +2106,102 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(
             mirror_status_by_url["https://registry-a.pizza4people.com/"].discovery_basis,
             "trusted_upstream",
+        )
+
+    def test_untrusted_direct_import_does_not_clobber_trusted_relay_of_same_snapshot(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        downstream = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
+                "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True}
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+        relay.registry_source_import(
+            source_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+        relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        downstream.registry_source_import(
+            relay_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                source_snapshot,
+                authorization=self.registry_admin_authorization(),
+            )
+
+        discover_result = downstream.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        mirror_status = downstream.registry_mirrors(authorization=self.registry_admin_authorization())
+
+        self.assertEqual(import_error.exception.status_code, 409)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Imported registry source must be newer than the cached snapshot",
+        )
+        self.assertEqual(len(discover_result.nodes), 1)
+        self.assertEqual(discover_result.nodes[0].source_discovery_basis, "trusted_relayed_upstream")
+        self.assertEqual(
+            str(discover_result.nodes[0].source_relay_registry_url),
+            "https://umbrella.protocols4people.com/",
+        )
+        mirror_status_by_url = {str(entry.registry_url): entry for entry in mirror_status.sources}
+        self.assertIn("https://registry-a.pizza4people.com/", mirror_status_by_url)
+        self.assertEqual(
+            str(mirror_status_by_url["https://registry-a.pizza4people.com/"].relayed_by_registry_url),
+            "https://umbrella.protocols4people.com/",
+        )
+        self.assertEqual(
+            mirror_status_by_url["https://registry-a.pizza4people.com/"].discovery_basis,
+            "trusted_relayed_upstream",
         )
 
     def test_older_relayed_copy_does_not_overwrite_fresher_direct_snapshot(self) -> None:

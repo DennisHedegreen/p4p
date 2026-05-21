@@ -488,17 +488,17 @@ class RegistryStore:
             )
         existing = self._mirror_sources.get(registry_url)
         if existing is not None:
-            incoming_direct = relayed_by_registry_url is None
-            existing_direct = existing.relayed_by_registry_url is None
             incoming_content_hash = registry_source_content_hash(payload)
             existing_content_hash = registry_source_content_hash(existing.snapshot)
-            incoming_provenance_priority = (
-                1 if verified_signature else 0,
-                1 if incoming_direct else 0,
+            incoming_provenance_priority = self._mirror_source_provenance_priority(
+                registry_url=payload.registry_url,
+                verified_signature=verified_signature,
+                relayed_by_registry_url=relayed_by_registry_url,
             )
-            existing_provenance_priority = (
-                1 if existing.verified_signature else 0,
-                1 if existing_direct else 0,
+            existing_provenance_priority = self._mirror_source_provenance_priority(
+                registry_url=existing.snapshot.registry_url,
+                verified_signature=existing.verified_signature,
+                relayed_by_registry_url=existing.relayed_by_registry_url,
             )
             incoming_priority = (
                 payload.exported_at,
@@ -559,6 +559,32 @@ class RegistryStore:
         )
         self._mirror_sources[registry_url] = stored
         return MirrorSourceStoreDecision(stored=True)
+
+    def _mirror_source_provenance_priority(
+        self,
+        *,
+        registry_url: str,
+        verified_signature: bool,
+        relayed_by_registry_url: str | None,
+    ) -> tuple[int, int, int]:
+        source_url = normalized_registry_url(registry_url)
+        relay_url = (
+            normalized_registry_url(relayed_by_registry_url)
+            if relayed_by_registry_url
+            else None
+        )
+        discovery_rank = 0
+        if self._config.mirror_discovery_policy == "all_active":
+            discovery_rank = 1
+        if relay_url and relay_url in self._config.trusted_mirror_upstream_urls and verified_signature:
+            discovery_rank = max(discovery_rank, 2)
+        if source_url in self._config.trusted_mirror_upstream_urls:
+            discovery_rank = max(discovery_rank, 3)
+        return (
+            discovery_rank,
+            1 if verified_signature else 0,
+            1 if relayed_by_registry_url is None else 0,
+        )
 
     def _snapshot_to_response(self, payload: RegistrySourceSnapshot) -> RegistrySourceResponse:
         return RegistrySourceResponse(**payload.model_dump(mode="json", exclude_none=True))
