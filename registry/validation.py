@@ -4,6 +4,7 @@ import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException, status
 from pydantic import HttpUrl
@@ -95,6 +96,14 @@ def identity_scope(endpoint: HttpUrl) -> IdentityScope:
 
 def is_loopback_url(url: HttpUrl) -> bool:
     return url.scheme == "http" and url.host in {"127.0.0.1", "localhost"}
+
+
+def is_loopback_registry_url(value: str | object) -> bool:
+    normalized = str(value).strip()
+    if not normalized:
+        return False
+    parts = urlsplit(normalized)
+    return parts.scheme == "http" and parts.hostname in {"127.0.0.1", "localhost"}
 
 
 def require_registry_capability(enabled: bool, *, detail: str) -> None:
@@ -565,6 +574,25 @@ def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
         require_valid_registry_source_snapshot(mirrored_source.snapshot)
 
     return verified_signature
+
+
+def require_allowed_unsigned_registry_source_import(
+    *,
+    verified_signature: bool,
+    config: RegistryConfig,
+) -> None:
+    if verified_signature:
+        return
+    importer_is_local_reference = (
+        config.registry_metadata.registry_type == "local"
+        and (not config.registry_url or is_loopback_registry_url(config.registry_url))
+    )
+    if importer_is_local_reference:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Unsigned loopback registry sources are only allowed for local loopback reference development",
+    )
 
 
 def require_allowed_announcement_update(

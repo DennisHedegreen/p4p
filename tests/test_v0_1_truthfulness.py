@@ -1373,6 +1373,69 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Public registry source import requires registry signature",
         )
 
+    def test_public_registry_rejects_unsigned_loopback_source_import(self) -> None:
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "http://127.0.0.1:8001",
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True}
+                ),
+            },
+        )
+
+        snapshot = source.registry_source(SimpleNamespace(base_url="http://127.0.0.1:8001"))
+
+        with self.assertRaises(HTTPException) as import_error:
+            mirror.registry_source_import(
+                snapshot,
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 403)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Unsigned loopback registry sources are only allowed for local loopback reference development",
+        )
+
+    def test_local_loopback_registry_allows_unsigned_loopback_source_import(self) -> None:
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "http://127.0.0.1:8001",
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "http://127.0.0.1:8010",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True}
+                ),
+            },
+        )
+
+        snapshot = source.registry_source(SimpleNamespace(base_url="http://127.0.0.1:8001"))
+        imported = mirror.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+        mirrors = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
+
+        self.assertFalse(imported.verified_signature)
+        self.assertEqual(imported.imported_nodes, 0)
+        self.assertEqual(len(mirrors.sources), 1)
+        self.assertFalse(mirrors.sources[0].verified_signature)
+        self.assertEqual(str(mirrors.sources[0].registry_url), "http://127.0.0.1:8001/")
+
     def test_registry_rejects_import_of_its_own_source_snapshot(self) -> None:
         identity = load_module("p4p_identity.py")
         registry = load_module(

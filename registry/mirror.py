@@ -12,6 +12,7 @@ from registry.config import RegistryConfig
 from registry.models import RegistrySourceResponse, RegistrySyncResponse, RegistrySyncUpstreamResult
 from registry.store import MirrorSyncState, RegistryStore
 from registry.validation import require_registry_capability, require_valid_registry_source
+from registry.validation import require_allowed_unsigned_registry_source_import
 
 
 async def sync_registry_source_from_upstream(
@@ -35,6 +36,10 @@ async def sync_registry_source_from_upstream(
         response.raise_for_status()
         snapshot = RegistrySourceResponse(**response.json())
         verified_signature = require_valid_registry_source(snapshot)
+        require_allowed_unsigned_registry_source_import(
+            verified_signature=verified_signature,
+            config=config,
+        )
         imported = store.import_source_with_outcome(
             snapshot,
             verified_signature=verified_signature,

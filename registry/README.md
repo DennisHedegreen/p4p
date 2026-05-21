@@ -112,7 +112,7 @@ Then open:
 - `/identity-log` is read-only and contains public signing metadata, not node private keys
 - `/registry-source` is a full registry snapshot surface for later mirroring or umbrella ingestion
 - set `P4P_REGISTRY_KEY_FILE` or `P4P_REGISTRY_PRIVATE_KEY` when the snapshot should carry a registry signature
-- `POST /registry-source/import` requires the registry admin token and still rejects unsigned public source snapshots unless the source registry URL is loopback HTTP for local reference development
+- `POST /registry-source/import` requires the registry admin token and still rejects unsigned public source snapshots; unsigned loopback sources are only accepted when the importing registry is itself running as a local loopback reference environment
 - `POST /registry-source/import` also rejects a registry's own signed snapshot, and relayed trusted snapshots skip nested copies of the importing registry itself, so admin import cannot accidentally create a self-mirror alongside the local source of truth
 - mirrored nodes become discoverable, but local node state still wins on `node_id` collisions
 - discover results now carry provenance fields so clients can distinguish `local` vs `mirrored` nodes and see whether a mirrored result is visible via `trusted_upstream` or the looser `all_active_policy`

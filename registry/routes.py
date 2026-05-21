@@ -37,6 +37,7 @@ from registry.models import (
 )
 from registry.store import MirrorSyncState, RegistryStore
 from registry.validation import (
+    require_allowed_unsigned_registry_source_import,
     require_allowed_announcement_update,
     require_registry_capability,
     require_registry_signing_key,
@@ -229,6 +230,10 @@ def bind_routes(
             detail="This registry is not allowed to relay upstream sources",
         )
         verified_signature = require_valid_registry_source(payload)
+        require_allowed_unsigned_registry_source_import(
+            verified_signature=verified_signature,
+            config=config,
+        )
         return store.import_source(payload, verified_signature=verified_signature)
 
     @app.get("/registry-mirrors", response_model=RegistryMirrorStatusResponse)
