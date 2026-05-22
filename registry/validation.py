@@ -510,6 +510,15 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             )
         seen_node_ids.add(item.node.node_id)
 
+    seen_manifest_node_ids: set[str] = set()
+    for item in payload.manifests:
+        if item.manifest.node_id in seen_manifest_node_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source snapshot must not repeat manifest node_id values",
+            )
+        seen_manifest_node_ids.add(item.manifest.node_id)
+
     exported_at = payload.exported_at.astimezone(timezone.utc)
     require_not_too_far_in_future(exported_at, field_name="exported_at")
 
