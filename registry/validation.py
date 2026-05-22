@@ -519,6 +519,19 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             )
         seen_manifest_node_ids.add(item.manifest.node_id)
 
+    if payload.identity_events:
+        last_event_id = payload.identity_events[-1].event_id
+        if payload.latest_identity_event_id != last_event_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source latest_identity_event_id must match the last identity event_id",
+            )
+    elif payload.latest_identity_event_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registry source latest_identity_event_id must be omitted when identity_events is empty",
+        )
+
     exported_at = payload.exported_at.astimezone(timezone.utc)
     require_not_too_far_in_future(exported_at, field_name="exported_at")
 
