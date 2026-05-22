@@ -532,6 +532,12 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
 def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
     verified_signature = require_valid_registry_source_snapshot(payload)
 
+    if payload.mirrored_sources and not verified_signature:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Re-exported mirrored sources require a verified relay signature",
+        )
+
     if (
         payload.export_scope == "local_plus_trusted_mirrors"
         and not payload.registry_metadata.capabilities.can_reexport_sources

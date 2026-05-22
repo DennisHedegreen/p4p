@@ -1477,6 +1477,62 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertFalse(mirror_status.sources[0].discovery_eligible)
         self.assertEqual(mirror_status.sources[0].discovery_basis, "not_trusted")
 
+    def test_unsigned_loopback_relay_cannot_reexport_nested_sources(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "http://127.0.0.1:8003",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        downstream = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "http://127.0.0.1:8010",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True}
+                ),
+            },
+        )
+
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+        relay.registry_source_import(
+            source_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+        relay_snapshot = relay.registry_source(SimpleNamespace(base_url="http://127.0.0.1:8003"))
+
+        self.assertIsNone(relay_snapshot.registry_public_key)
+        self.assertIsNone(relay_snapshot.signature)
+        self.assertIsNotNone(relay_snapshot.mirrored_sources)
+
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                relay_snapshot,
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 403)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Re-exported mirrored sources require a verified relay signature",
+        )
+
     def test_registry_rejects_import_of_its_own_source_snapshot(self) -> None:
         identity = load_module("p4p_identity.py")
         registry = load_module(
