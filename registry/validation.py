@@ -121,6 +121,15 @@ def require_registry_signing_key(config: RegistryConfig) -> tuple[str, str]:
     return config.registry_private_key, config.registry_public_key
 
 
+def require_canonical_registry_url(config: RegistryConfig, *, detail: str) -> str:
+    if config.registry_url:
+        return config.registry_url
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=detail,
+    )
+
+
 def parse_timestamp(value: str, *, field_name: str) -> datetime:
     normalized = value.strip()
     if normalized.endswith("Z"):
@@ -730,6 +739,7 @@ __all__ = [
     "require_monotonic_signed_event",
     "require_not_too_far_in_future",
     "require_registry_capability",
+    "require_canonical_registry_url",
     "require_registry_signing_key",
     "require_valid_heartbeat_signature",
     "require_valid_manifest_update",

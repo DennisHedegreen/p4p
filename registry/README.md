@@ -112,6 +112,7 @@ Then open:
 - `/identity-log` is read-only and contains public signing metadata, not node private keys
 - `/registry-source` is a full registry snapshot surface for later mirroring or umbrella ingestion
 - set `P4P_REGISTRY_KEY_FILE` or `P4P_REGISTRY_PRIVATE_KEY` when the snapshot should carry a registry signature
+- signed registry-source export requires a canonical `P4P_REGISTRY_URL`; a signing-enabled registry will not fall back to request host headers when producing a signed snapshot
 - `POST /registry-source/import` requires the registry admin token and still rejects unsigned public source snapshots; unsigned loopback sources are only accepted when the importing registry is itself running as a local loopback reference environment
 - even in that loopback-dev exception, unsigned mirrored sources stay raw-only: a trusted upstream URL without a verified source signature does not become `trusted_upstream` in mirror status, health counts, or provenance ranking
 - `POST /registry-source/import` also rejects a registry's own signed snapshot, and relayed trusted snapshots skip nested copies of the importing registry itself, so admin import cannot accidentally create a self-mirror alongside the local source of truth
@@ -140,6 +141,7 @@ Then open:
 - `POST /directory-claims` requires the registry admin token plus `can_moderate_directory` and may annotate or hide discoverable nodes without rewriting source truth
 - `GET /trust-claims` requires the registry admin token and shows signed trust claims currently stored by the registry
 - `POST /trust-claims` requires the registry admin token, `can_issue_trust_claims`, and a configured registry signing key
+- signed trust-claim issuance also requires a canonical `P4P_REGISTRY_URL`, so the issuer URL comes from registry config rather than request-host fallback
 - `POST /trust-claims/import` requires the registry admin token plus `can_moderate_directory` and only imports signed trust claims for moderated-directory projection
 - `can_curate_active_index`, `can_moderate_directory`, and `can_issue_trust_claims` are intentionally separate powers in the runtime metadata
 - mirrored source cache expires from discovery after `P4P_MIRROR_SOURCE_TTL_SECONDS`

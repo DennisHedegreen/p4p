@@ -1286,6 +1286,24 @@ class P4PTruthfulnessTests(unittest.TestCase):
             )
         )
 
+    def test_signed_registry_source_export_requires_configured_registry_url(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+
+        with self.assertRaises(HTTPException) as export_error:
+            registry.registry_source(SimpleNamespace(base_url="https://spoofed.example/"))
+
+        self.assertEqual(export_error.exception.status_code, 503)
+        self.assertEqual(
+            export_error.exception.detail,
+            "Signed registry source export requires P4P_REGISTRY_URL",
+        )
+
     def test_trusted_import_stays_raw_only_without_promotion_policy(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
@@ -3924,6 +3942,51 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(admin_read.json()["detail"], "Invalid registry admin token")
         self.assertEqual(admin_read_ok.status_code, 200)
         self.assertEqual(admin_read_ok.json()["sources"], [])
+
+    def test_registry_http_signed_outputs_require_configured_registry_url(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry_app = load_module(
+            "registry/registry_app.py",
+            {
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                "P4P_REGISTRY_DB_PATH": ":memory:",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_issue_trust_claims": True},
+                ),
+            },
+        )
+
+        with TestClient(registry_app.app) as client:
+            registry_source = client.get(
+                "/registry-source",
+                headers={"Host": "spoofed.example"},
+            )
+            trust_claim_issue = client.post(
+                "/trust-claims",
+                headers={
+                    "Authorization": self.registry_admin_authorization(),
+                    "Host": "spoofed.example",
+                },
+                json={
+                    "node_id": "dk-test-001",
+                    "claims": ["reviewed"],
+                },
+            )
+
+        self.assertEqual(registry_source.status_code, 503)
+        self.assertEqual(
+            registry_source.json()["detail"],
+            "Signed registry source export requires P4P_REGISTRY_URL",
+        )
+        self.assertEqual(trust_claim_issue.status_code, 503)
+        self.assertEqual(
+            trust_claim_issue.json()["detail"],
+            "Signed trust claim issuance requires P4P_REGISTRY_URL",
+        )
 
     def test_registry_app_startup_stays_hermetic_when_mirror_interval_is_zero(self) -> None:
         identity = load_module("p4p_identity.py")

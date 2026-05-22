@@ -39,6 +39,7 @@ from registry.store import MirrorSyncState, RegistryStore
 from registry.validation import (
     require_allowed_unsigned_registry_source_import,
     require_allowed_announcement_update,
+    require_canonical_registry_url,
     require_registry_capability,
     require_registry_signing_key,
     require_valid_heartbeat_signature,
@@ -203,7 +204,13 @@ def bind_routes(
                 config.registry_metadata.capabilities.can_reexport_sources,
                 detail="This registry is not allowed to re-export sources",
             )
-        registry_url = config.registry_url or str(request.base_url).rstrip("/")
+        if config.registry_private_key:
+            registry_url = require_canonical_registry_url(
+                config,
+                detail="Signed registry source export requires P4P_REGISTRY_URL",
+            )
+        else:
+            registry_url = config.registry_url or str(request.base_url).rstrip("/")
         snapshot = store.export_source(registry_url=registry_url)
         payload = snapshot.model_dump(mode="json", exclude_none=True)
         payload["registry_public_key"] = config.registry_public_key
@@ -315,7 +322,10 @@ def bind_routes(
             detail="This registry is not allowed to issue signed trust claims",
         )
         registry_private_key, registry_public_key = require_registry_signing_key(config)
-        issuer_registry_url = config.registry_url or str(request.base_url).rstrip("/")
+        issuer_registry_url = require_canonical_registry_url(
+            config,
+            detail="Signed trust claim issuance requires P4P_REGISTRY_URL",
+        )
         return TrustClaimResponse(
             claim=store.issue_trust_claim(
                 payload,
