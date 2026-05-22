@@ -571,6 +571,11 @@ def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Re-exported mirrored sources must not repeat the same registry_url",
             )
+        if mirrored_source_url == normalized_registry_url(payload.registry_url):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Re-exported mirrored sources must not point back to the relay registry_url itself",
+            )
         seen_mirrored_source_urls.add(mirrored_source_url)
         require_not_too_far_in_future(
             mirrored_source.imported_at,
