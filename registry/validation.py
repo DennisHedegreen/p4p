@@ -559,6 +559,11 @@ def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
             mirrored_source.imported_at,
             field_name="mirrored_sources[].imported_at",
         )
+        if mirrored_source.imported_at < mirrored_source.snapshot.exported_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Re-exported mirrored source imported_at cannot be earlier than nested exported_at",
+            )
         if mirrored_source.imported_at > exported_at:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
