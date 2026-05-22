@@ -578,7 +578,7 @@ class RegistryStore:
             discovery_rank = 1
         if relay_url and relay_url in self._config.trusted_mirror_upstream_urls and verified_signature:
             discovery_rank = max(discovery_rank, 2)
-        if source_url in self._config.trusted_mirror_upstream_urls:
+        if source_url in self._config.trusted_mirror_upstream_urls and verified_signature:
             discovery_rank = max(discovery_rank, 3)
         return (
             discovery_rank,
@@ -1361,7 +1361,7 @@ class RegistryStore:
             return True, True, "all_active_policy"
 
         registry_url = normalized_registry_url(stored.snapshot.registry_url)
-        if registry_url in self._config.trusted_mirror_upstream_urls:
+        if registry_url in self._config.trusted_mirror_upstream_urls and stored.verified_signature:
             return True, True, "trusted_upstream"
         if stored.relayed_by_registry_url:
             relayed_by_registry_url = normalized_registry_url(stored.relayed_by_registry_url)

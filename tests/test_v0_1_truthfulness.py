@@ -1436,6 +1436,47 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertFalse(mirrors.sources[0].verified_signature)
         self.assertEqual(str(mirrors.sources[0].registry_url), "http://127.0.0.1:8001/")
 
+    def test_unsigned_trusted_loopback_source_stays_hidden_in_trusted_only_status(self) -> None:
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "http://127.0.0.1:8001",
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "http://127.0.0.1:8010",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "http://127.0.0.1:8001",
+                "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
+                "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True}
+                ),
+            },
+        )
+
+        snapshot = source.registry_source(SimpleNamespace(base_url="http://127.0.0.1:8001"))
+        imported = mirror.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+        mirror_status = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
+
+        self.assertFalse(imported.verified_signature)
+        self.assertEqual(mirror.health()["mirrored_registries"], 1)
+        self.assertEqual(mirror.health()["discoverable_mirrored_registries"], 0)
+        self.assertEqual(mirror.health()["curated_active_index_entries"], 0)
+        self.assertEqual(len(promotions.records), 1)
+        self.assertEqual(promotions.records[0].decision, "deny")
+        self.assertEqual(promotions.records[0].decision_basis, "unverified_source")
+        self.assertEqual(len(mirror_status.sources), 1)
+        self.assertFalse(mirror_status.sources[0].verified_signature)
+        self.assertFalse(mirror_status.sources[0].discovery_eligible)
+        self.assertEqual(mirror_status.sources[0].discovery_basis, "not_trusted")
+
     def test_registry_rejects_import_of_its_own_source_snapshot(self) -> None:
         identity = load_module("p4p_identity.py")
         registry = load_module(
