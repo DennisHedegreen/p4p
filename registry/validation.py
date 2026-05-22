@@ -531,6 +531,7 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
 
 def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
     verified_signature = require_valid_registry_source_snapshot(payload)
+    exported_at = payload.exported_at.astimezone(timezone.utc)
 
     if payload.mirrored_sources and not verified_signature:
         raise HTTPException(
@@ -554,6 +555,15 @@ def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
         )
 
     for mirrored_source in payload.mirrored_sources or []:
+        require_not_too_far_in_future(
+            mirrored_source.imported_at,
+            field_name="mirrored_sources[].imported_at",
+        )
+        if mirrored_source.imported_at > exported_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Re-exported mirrored source imported_at cannot be later than top-level exported_at",
+            )
         if not mirrored_source.verified_signature:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

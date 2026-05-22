@@ -437,7 +437,7 @@ class RegistryStore:
                 decision = self._store_mirror_source(
                     self._snapshot_to_response(mirrored_source.snapshot),
                     verified_signature=mirrored_source.verified_signature,
-                    imported_at=now,
+                    imported_at=mirrored_source.imported_at,
                     relayed_by_registry_url=str(payload.registry_url),
                     allow_stale_skip=True,
                 )
