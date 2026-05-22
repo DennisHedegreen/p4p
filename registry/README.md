@@ -159,6 +159,7 @@ Then open:
 - `GET /registry-source` still treats local registry state as canonical top-level source; trusted mirrored state is only re-exported as nested upstream snapshots
 - a registry-source snapshot must not repeat the same `node_id` in its top-level `nodes` list; downstream import rejects duplicate node ids instead of letting discoverability depend on payload order
 - a registry-source snapshot must not repeat the same manifest `node_id` in its top-level `manifests` list; downstream import rejects duplicate manifest records instead of letting node visibility depend on which conflicting manifest lands last
+- a registry-source snapshot must not repeat the same `(node_id, node_public_key)` pair in its `identity_records` list; downstream import rejects duplicate identity records instead of letting proof metadata depend on which conflicting record lands last
 - a registry-source snapshot must keep its `identity_events` list strictly increasing by `event_id`, and `latest_identity_event_id` must match that tail; downstream import rejects out-of-order, duplicated, inflated, or stale identity-log pointers instead of letting mirror status misreport the chronology or amount of event evidence
 - `/health` exposes storage mode plus mirrored-source counts, curated active index counts, curated promotion counts, curated override counts, directory claim counts, trust-claim counts, and registry metadata
 - unsigned legacy nodes remain accepted during early `v0.1` development

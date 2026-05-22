@@ -519,6 +519,16 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             )
         seen_manifest_node_ids.add(item.manifest.node_id)
 
+    seen_identity_record_keys: set[tuple[str, str]] = set()
+    for record in payload.identity_records:
+        record_key = (record.node_id, record.node_public_key)
+        if record_key in seen_identity_record_keys:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source snapshot must not repeat identity record keys",
+            )
+        seen_identity_record_keys.add(record_key)
+
     if payload.identity_events:
         previous_event_id = 0
         for event in payload.identity_events:
