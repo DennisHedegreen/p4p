@@ -124,6 +124,7 @@ Then open:
 - `P4P_REGISTRY_METADATA` declares runtime scope and capability metadata such as `local`, `country`, `vertical`, or `umbrella`
 - `P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors` allows the registry to attach trusted mirrored upstream snapshots to `GET /registry-source` without flattening them into the top-level local source
 - imported relay snapshots that claim `export_scope=local_plus_trusted_mirrors` are only accepted when the signed top-level registry metadata also declares `can_reexport_sources`, so downstream import cannot be tricked by a capability-inconsistent re-export payload
+- re-exported mirrored sources must also verify as signed snapshots themselves; a relay cannot mark an unsigned nested loopback payload as `verified_signature=true` and smuggle it through a signed top-level export
 - `POST /registry-sync` requires the registry admin token and triggers one fetch/import cycle for configured upstream registries
 - `GET /registry-sync` requires the registry admin token and exposes last run state for the sync runtime
 - `GET /registry-mirrors` requires the registry admin token and shows whether each cached mirror source is still active, whether it is currently discovery-eligible, and whether it was relayed by another registry
