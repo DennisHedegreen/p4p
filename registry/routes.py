@@ -221,12 +221,16 @@ def bind_routes(
     @app.post("/registry-source/import", response_model=RegistrySourceImportResponse)
     def registry_source_import(
         payload: RegistrySourceResponse,
+        request: Request = None,
         authorization: str | None = Header(default=None),
         x_p4p_registry_token: str | None = Header(default=None),
     ) -> RegistrySourceImportResponse:
         require_registry_admin_token(authorization, x_p4p_registry_token)
-        if config.registry_url and (
-            normalized_registry_url(payload.registry_url) == normalized_registry_url(config.registry_url)
+        local_registry_url = config.registry_url
+        if not local_registry_url and request is not None:
+            local_registry_url = str(request.base_url).rstrip("/")
+        if local_registry_url and (
+            normalized_registry_url(payload.registry_url) == normalized_registry_url(local_registry_url)
         ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

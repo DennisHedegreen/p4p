@@ -1454,6 +1454,32 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertFalse(mirrors.sources[0].verified_signature)
         self.assertEqual(str(mirrors.sources[0].registry_url), "http://127.0.0.1:8001/")
 
+    def test_local_loopback_registry_rejects_its_own_unsigned_snapshot_without_canonical_url(self) -> None:
+        registry = load_module(
+            "registry/main.py",
+            {
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True}
+                ),
+            },
+        )
+
+        snapshot = registry.registry_source(SimpleNamespace(base_url="http://127.0.0.1:8001/"))
+
+        with self.assertRaises(HTTPException) as import_error:
+            registry.registry_source_import(
+                snapshot,
+                SimpleNamespace(base_url="http://127.0.0.1:8001/"),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 409)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry cannot import its own source snapshot",
+        )
+
     def test_unsigned_trusted_loopback_source_stays_hidden_in_trusted_only_status(self) -> None:
         source = load_module(
             "registry/main.py",
@@ -3986,6 +4012,42 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(
             trust_claim_issue.json()["detail"],
             "Signed trust claim issuance requires P4P_REGISTRY_URL",
+        )
+
+    def test_registry_http_loopback_self_import_is_rejected_without_canonical_url(self) -> None:
+        registry_app = load_module(
+            "registry/registry_app.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                "P4P_REGISTRY_DB_PATH": ":memory:",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True},
+                ),
+            },
+        )
+
+        with TestClient(registry_app.app) as client:
+            registry_source = client.get(
+                "/registry-source",
+                headers={"Host": "127.0.0.1:8001"},
+            )
+            self_import = client.post(
+                "/registry-source/import",
+                headers={
+                    "Authorization": self.registry_admin_authorization(),
+                    "Host": "127.0.0.1:8001",
+                },
+                json=registry_source.json(),
+            )
+
+        self.assertEqual(registry_source.status_code, 200)
+        self.assertEqual(self_import.status_code, 409)
+        self.assertEqual(
+            self_import.json()["detail"],
+            "Registry cannot import its own source snapshot",
         )
 
     def test_registry_app_startup_stays_hermetic_when_mirror_interval_is_zero(self) -> None:
