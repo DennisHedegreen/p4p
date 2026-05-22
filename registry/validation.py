@@ -529,6 +529,18 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             )
         seen_identity_record_keys.add(record_key)
 
+    identity_event_counts: dict[tuple[str, str], int] = {}
+    for event in payload.identity_events:
+        event_key = (event.node_id, event.node_public_key)
+        identity_event_counts[event_key] = identity_event_counts.get(event_key, 0) + 1
+    for record in payload.identity_records:
+        record_key = (record.node_id, record.node_public_key)
+        if record.event_count != identity_event_counts.get(record_key, 0):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source identity_records event_count must match identity_events",
+            )
+
     if payload.identity_events:
         previous_event_id = 0
         for event in payload.identity_events:
