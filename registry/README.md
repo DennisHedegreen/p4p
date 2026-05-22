@@ -113,6 +113,7 @@ Then open:
 - `/registry-source` is a full registry snapshot surface for later mirroring or umbrella ingestion
 - set `P4P_REGISTRY_KEY_FILE` or `P4P_REGISTRY_PRIVATE_KEY` when the snapshot should carry a registry signature
 - signed registry-source export requires a canonical `P4P_REGISTRY_URL`; a signing-enabled registry will not fall back to request host headers when producing a signed snapshot
+- unsigned registry-source export may still fall back to request base when `P4P_REGISTRY_URL` is absent, but only for loopback-local request bases; public-looking host fallback is rejected
 - `POST /registry-source/import` requires the registry admin token and still rejects unsigned public source snapshots; unsigned loopback sources are only accepted when the importing registry is itself running as a local loopback reference environment
 - that same self-import guard also applies in loopback-dev without a canonical `P4P_REGISTRY_URL`: a local reference registry still cannot import its own unsigned snapshot back into mirror cache just because the payload URL came from request-base fallback
 - even in that loopback-dev exception, unsigned mirrored sources stay raw-only: a trusted upstream URL without a verified source signature does not become `trusted_upstream` in mirror status, health counts, or provenance ranking

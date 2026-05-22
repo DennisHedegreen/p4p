@@ -1304,6 +1304,18 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Signed registry source export requires P4P_REGISTRY_URL",
         )
 
+    def test_unsigned_registry_source_export_without_configured_url_requires_loopback_base(self) -> None:
+        registry = load_module("registry/main.py")
+
+        with self.assertRaises(HTTPException) as export_error:
+            registry.registry_source(SimpleNamespace(base_url="https://spoofed.example/"))
+
+        self.assertEqual(export_error.exception.status_code, 503)
+        self.assertEqual(
+            export_error.exception.detail,
+            "Unsigned registry source export without P4P_REGISTRY_URL requires a loopback request base",
+        )
+
     def test_trusted_import_stays_raw_only_without_promotion_policy(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
@@ -4012,6 +4024,29 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(
             trust_claim_issue.json()["detail"],
             "Signed trust claim issuance requires P4P_REGISTRY_URL",
+        )
+
+    def test_registry_http_unsigned_registry_source_export_rejects_public_host_fallback(self) -> None:
+        registry_app = load_module(
+            "registry/registry_app.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                "P4P_REGISTRY_DB_PATH": ":memory:",
+            },
+        )
+
+        with TestClient(registry_app.app) as client:
+            registry_source = client.get(
+                "/registry-source",
+                headers={"Host": "spoofed.example"},
+            )
+
+        self.assertEqual(registry_source.status_code, 503)
+        self.assertEqual(
+            registry_source.json()["detail"],
+            "Unsigned registry source export without P4P_REGISTRY_URL requires a loopback request base",
         )
 
     def test_registry_http_loopback_self_import_is_rejected_without_canonical_url(self) -> None:

@@ -45,6 +45,7 @@ from registry.validation import (
     require_valid_heartbeat_signature,
     require_valid_manifest_update,
     require_valid_registry_source,
+    is_loopback_registry_url,
 )
 
 
@@ -211,6 +212,11 @@ def bind_routes(
             )
         else:
             registry_url = config.registry_url or str(request.base_url).rstrip("/")
+            if not config.registry_url and not is_loopback_registry_url(registry_url):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Unsigned registry source export without P4P_REGISTRY_URL requires a loopback request base",
+                )
         snapshot = store.export_source(registry_url=registry_url)
         payload = snapshot.model_dump(mode="json", exclude_none=True)
         payload["registry_public_key"] = config.registry_public_key
