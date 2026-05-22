@@ -41,7 +41,7 @@ def announcement_hash(node: Node) -> str:
 
 def registry_source_hash(payload: RegistrySourceSnapshot | RegistrySourceResponse) -> str:
     raw = json.dumps(
-        payload.model_dump(mode="json", exclude={"mirrored_sources"}, exclude_none=True),
+        payload.model_dump(mode="json", exclude_none=True),
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
@@ -52,7 +52,7 @@ def registry_source_content_hash(payload: RegistrySourceSnapshot | RegistrySourc
     raw = json.dumps(
         payload.model_dump(
             mode="json",
-            exclude={"mirrored_sources", "exported_at", "signature"},
+            exclude={"exported_at", "signature"},
             exclude_none=True,
         ),
         sort_keys=True,

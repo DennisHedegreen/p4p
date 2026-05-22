@@ -1702,6 +1702,94 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         self.assertEqual(promotions.records[0].decision_basis, "trusted_relayed_upstream")
 
+    def test_relay_snapshot_with_changed_nested_source_is_not_treated_as_unchanged(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        downstream = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
+                "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True}
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        relay.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+        first_relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+        downstream.registry_source_import(
+            first_relay_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+
+        closed_heartbeat = self.make_signed_heartbeat_payload(demo, open=False)
+        source.heartbeat(source.HeartbeatRequest(**closed_heartbeat))
+        relay.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+        second_relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        second_import = downstream.registry_source_import(
+            second_relay_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+        discover_result = downstream.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        mirror_status = downstream.registry_mirrors(authorization=self.registry_admin_authorization())
+
+        self.assertEqual(second_import.imported_relayed_sources, 1)
+        self.assertEqual(discover_result.nodes, [])
+        mirror_status_by_url = {str(entry.registry_url): entry for entry in mirror_status.sources}
+        self.assertIn("https://registry-a.pizza4people.com/", mirror_status_by_url)
+        self.assertEqual(
+            str(mirror_status_by_url["https://registry-a.pizza4people.com/"].relayed_by_registry_url),
+            "https://umbrella.protocols4people.com/",
+        )
+
     def test_registry_rejects_import_of_its_own_source_snapshot(self) -> None:
         identity = load_module("p4p_identity.py")
         registry = load_module(
