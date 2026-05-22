@@ -520,6 +520,14 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
         seen_manifest_node_ids.add(item.manifest.node_id)
 
     if payload.identity_events:
+        previous_event_id = 0
+        for event in payload.identity_events:
+            if event.event_id <= previous_event_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registry source identity_events must be strictly increasing by event_id",
+                )
+            previous_event_id = event.event_id
         last_event_id = payload.identity_events[-1].event_id
         if payload.latest_identity_event_id != last_event_id:
             raise HTTPException(
