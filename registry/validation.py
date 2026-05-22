@@ -541,6 +541,7 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
 def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
     verified_signature = require_valid_registry_source_snapshot(payload)
     exported_at = payload.exported_at.astimezone(timezone.utc)
+    seen_mirrored_source_urls: set[str] = set()
 
     if payload.mirrored_sources and not verified_signature:
         raise HTTPException(
@@ -564,6 +565,13 @@ def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
         )
 
     for mirrored_source in payload.mirrored_sources or []:
+        mirrored_source_url = normalized_registry_url(mirrored_source.snapshot.registry_url)
+        if mirrored_source_url in seen_mirrored_source_urls:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Re-exported mirrored sources must not repeat the same registry_url",
+            )
+        seen_mirrored_source_urls.add(mirrored_source_url)
         require_not_too_far_in_future(
             mirrored_source.imported_at,
             field_name="mirrored_sources[].imported_at",
