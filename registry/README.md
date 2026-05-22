@@ -157,6 +157,7 @@ Then open:
 - signed trust claims sit above the moderated directory as transportable positive annotations and do not change node identity or `GET /discover`
 - stale or revoked upstream evidence is de-promoted out of the curated active index during sync/import and guarded again at read time
 - `GET /registry-source` still treats local registry state as canonical top-level source; trusted mirrored state is only re-exported as nested upstream snapshots
+- a registry-source snapshot must not repeat the same `node_id` in its top-level `nodes` list; downstream import rejects duplicate node ids instead of letting discoverability depend on payload order
 - `/health` exposes storage mode plus mirrored-source counts, curated active index counts, curated promotion counts, curated override counts, directory claim counts, trust-claim counts, and registry metadata
 - unsigned legacy nodes remain accepted during early `v0.1` development
 - if `P4P_BACKUP_REGISTRIES` is omitted, `/registry-info` falls back to the current registry only
