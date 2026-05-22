@@ -576,9 +576,10 @@ class RegistryStore:
         discovery_rank = 0
         if self._config.mirror_discovery_policy == "all_active":
             discovery_rank = 1
-        if relay_url and relay_url in self._config.trusted_mirror_upstream_urls and verified_signature:
-            discovery_rank = max(discovery_rank, 2)
-        if source_url in self._config.trusted_mirror_upstream_urls and verified_signature:
+        if relay_url is not None:
+            if relay_url in self._config.trusted_mirror_upstream_urls and verified_signature:
+                discovery_rank = max(discovery_rank, 2)
+        elif source_url in self._config.trusted_mirror_upstream_urls and verified_signature:
             discovery_rank = max(discovery_rank, 3)
         return (
             discovery_rank,
@@ -1361,8 +1362,6 @@ class RegistryStore:
             return True, True, "all_active_policy"
 
         registry_url = normalized_registry_url(stored.snapshot.registry_url)
-        if registry_url in self._config.trusted_mirror_upstream_urls and stored.verified_signature:
-            return True, True, "trusted_upstream"
         if stored.relayed_by_registry_url:
             relayed_by_registry_url = normalized_registry_url(stored.relayed_by_registry_url)
             if (
@@ -1370,6 +1369,9 @@ class RegistryStore:
                 and stored.verified_signature
             ):
                 return True, True, "trusted_relayed_upstream"
+            return True, False, "not_trusted"
+        if registry_url in self._config.trusted_mirror_upstream_urls and stored.verified_signature:
+            return True, True, "trusted_upstream"
         return True, False, "not_trusted"
 
     def _build_discover_view(

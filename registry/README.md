@@ -128,6 +128,7 @@ Then open:
 - relay payloads that carry nested mirrored sources must themselves verify as signed snapshots; an unsigned loopback relay cannot piggyback signed upstream evidence through the re-export lane
 - re-exported mirrored sources must also verify as signed snapshots themselves; a relay cannot mark an unsigned nested loopback payload as `verified_signature=true` and smuggle it through a signed top-level export
 - downstream import now preserves each nested mirrored source's own `imported_at` when evaluating freshness, so a relay cannot silently reset a stale upstream source into a fresh downstream mirror just by re-exporting it later
+- a cached source that arrived through a relay stays classified as relayed in mirror status and provenance; trusting the original source URL does not retroactively turn a relayed path into `trusted_upstream`
 - `POST /registry-sync` requires the registry admin token and triggers one fetch/import cycle for configured upstream registries
 - `GET /registry-sync` requires the registry admin token and exposes last run state for the sync runtime
 - `GET /registry-mirrors` requires the registry admin token and shows whether each cached mirror source is still active, whether it is currently discovery-eligible, and whether it was relayed by another registry
