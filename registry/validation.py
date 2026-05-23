@@ -637,6 +637,10 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
         previous_recorded_at: datetime | None = None
         for event in payload.identity_events:
             event_recorded_at = event.recorded_at.astimezone(timezone.utc)
+            event_signed_at = parse_timestamp(
+                event.signed_at,
+                field_name="identity_events[].signed_at",
+            )
             require_not_too_far_in_future(
                 event_recorded_at,
                 field_name="identity_events[].recorded_at",
@@ -645,6 +649,11 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Registry source identity_events recorded_at cannot be later than exported_at",
+                )
+            if event_signed_at > event_recorded_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registry source identity_events signed_at cannot be later than recorded_at",
                 )
             if event.event_id <= previous_event_id:
                 raise HTTPException(

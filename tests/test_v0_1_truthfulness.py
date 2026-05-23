@@ -1655,6 +1655,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         for event in stale_payload["mirrored_sources"][0]["snapshot"]["identity_events"]:
             event["recorded_at"] = nested_exported_at.isoformat()
+            event["signed_at"] = nested_exported_at.isoformat()
         for record in stale_payload["mirrored_sources"][0]["snapshot"]["identity_records"]:
             record["first_seen"] = nested_exported_at.isoformat()
             record["last_seen"] = nested_exported_at.isoformat()
@@ -2928,6 +2929,55 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Registry source identity_events recorded_at cannot be later than exported_at",
         )
 
+    def test_registry_source_import_rejects_identity_event_signed_at_later_than_recorded_at(
+        self,
+    ) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        invalid_payload = source_snapshot.model_dump(mode="json", exclude_none=True)
+        invalid_payload["identity_events"][0]["signed_at"] = (
+            source_snapshot.exported_at + source.timedelta(seconds=1)
+        ).isoformat()
+        invalid_payload.pop("signature", None)
+        canonical_payload = source.RegistrySourceResponse(**invalid_payload)
+        invalid_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            source.REGISTRY_PRIVATE_KEY,
+        )
+
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                source.RegistrySourceResponse(**invalid_payload),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 400)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry source identity_events signed_at cannot be later than recorded_at",
+        )
+
     def test_registry_source_import_rejects_mismatched_latest_identity_event_id(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
@@ -3373,6 +3423,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         early_recorded_at = "2025-01-01T00:00:00+00:00"
         invalid_payload["identity_events"][0]["recorded_at"] = late_recorded_at
         invalid_payload["identity_events"][1]["recorded_at"] = early_recorded_at
+        invalid_payload["identity_events"][1]["signed_at"] = early_recorded_at
         invalid_payload["identity_records"][0]["first_seen"] = early_recorded_at
         invalid_payload["identity_records"][0]["last_seen"] = late_recorded_at
         invalid_payload.pop("signature", None)
