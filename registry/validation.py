@@ -661,6 +661,15 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 detail="Registry source identity_events must have matching identity_records",
             )
 
+    for item in payload.nodes:
+        if not has_node_signature_fields(item.node) or not item.node.node_public_key:
+            continue
+        if (item.node.node_id, item.node.node_public_key) not in seen_identity_record_keys:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source signed nodes must have matching identity_records",
+            )
+
     if payload.identity_events:
         previous_event_id = 0
         previous_recorded_at: datetime | None = None
