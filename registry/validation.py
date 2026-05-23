@@ -530,15 +530,45 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
         seen_identity_record_keys.add(record_key)
 
     identity_event_counts: dict[tuple[str, str], int] = {}
+    identity_first_seen: dict[tuple[str, str], datetime] = {}
+    identity_last_seen: dict[tuple[str, str], datetime] = {}
+    identity_last_scope: dict[tuple[str, str], str] = {}
     for event in payload.identity_events:
         event_key = (event.node_id, event.node_public_key)
         identity_event_counts[event_key] = identity_event_counts.get(event_key, 0) + 1
+        recorded_at = event.recorded_at.astimezone(timezone.utc)
+        identity_first_seen[event_key] = min(
+            recorded_at,
+            identity_first_seen.get(event_key, recorded_at),
+        )
+        identity_last_seen[event_key] = max(
+            recorded_at,
+            identity_last_seen.get(event_key, recorded_at),
+        )
+        identity_last_scope[event_key] = event.scope
     for record in payload.identity_records:
         record_key = (record.node_id, record.node_public_key)
         if record.event_count != identity_event_counts.get(record_key, 0):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registry source identity_records event_count must match identity_events",
+            )
+        record_first_seen = record.first_seen.astimezone(timezone.utc)
+        record_last_seen = record.last_seen.astimezone(timezone.utc)
+        if record_first_seen != identity_first_seen.get(record_key):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source identity_records first_seen must match identity_events",
+            )
+        if record_last_seen != identity_last_seen.get(record_key):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source identity_records last_seen must match identity_events",
+            )
+        if record.scope != identity_last_scope.get(record_key):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source identity_records scope must match the latest identity event",
             )
 
     if payload.identity_events:
