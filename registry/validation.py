@@ -509,6 +509,21 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 detail="Registry source snapshot must not repeat node_id values",
             )
         seen_node_ids.add(item.node.node_id)
+        if item.last_signed_event_at is not None:
+            require_not_too_far_in_future(
+                item.last_signed_event_at.astimezone(timezone.utc),
+                field_name="nodes[].last_signed_event_at",
+            )
+            if item.node.signed_at:
+                node_signed_at = parse_timestamp(
+                    item.node.signed_at,
+                    field_name="nodes[].node.signed_at",
+                )
+                if item.last_signed_event_at.astimezone(timezone.utc) < node_signed_at:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Registry source nodes last_signed_event_at must not be earlier than node.signed_at",
+                    )
 
     seen_manifest_node_ids: set[str] = set()
     manifests_by_node_id: dict[str, Any] = {}
