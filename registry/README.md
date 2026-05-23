@@ -159,6 +159,8 @@ Then open:
 - `GET /registry-source` still treats local registry state as canonical top-level source; trusted mirrored state is only re-exported as nested upstream snapshots
 - a registry-source snapshot must not repeat the same `node_id` in its top-level `nodes` list; downstream import rejects duplicate node ids instead of letting discoverability depend on payload order
 - a registry-source snapshot must keep each top-level node's `last_signed_event_at` sane: it cannot jump too far into the future or run earlier than that node's own signed announcement timestamp
+- a registry-source snapshot must keep each top-level node's `last_seen` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
+- a registry-source snapshot must keep each top-level manifest `stored_at` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must not repeat the same manifest `node_id` in its top-level `manifests` list; downstream import rejects duplicate manifest records instead of letting node visibility depend on which conflicting manifest lands last
 - a registry-source snapshot must not repeat the same `(node_id, node_public_key)` pair in its `identity_records` list; downstream import rejects duplicate identity records instead of letting proof metadata depend on which conflicting record lands last
 - a registry-source snapshot must keep `identity_records` and `identity_events` aligned on key membership; downstream import rejects snapshots where a key has signed events but no corresponding identity record summary

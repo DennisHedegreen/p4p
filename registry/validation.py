@@ -500,6 +500,8 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported registry_version: {payload.registry_version}",
         )
+    exported_at = payload.exported_at.astimezone(timezone.utc)
+    require_not_too_far_in_future(exported_at, field_name="exported_at")
 
     seen_node_ids: set[str] = set()
     for item in payload.nodes:
@@ -509,6 +511,16 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 detail="Registry source snapshot must not repeat node_id values",
             )
         seen_node_ids.add(item.node.node_id)
+        node_last_seen = item.last_seen.astimezone(timezone.utc)
+        require_not_too_far_in_future(
+            node_last_seen,
+            field_name="nodes[].last_seen",
+        )
+        if node_last_seen > exported_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source nodes last_seen cannot be later than exported_at",
+            )
         if item.last_signed_event_at is not None:
             require_not_too_far_in_future(
                 item.last_signed_event_at.astimezone(timezone.utc),
@@ -534,6 +546,16 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 detail="Registry source snapshot must not repeat manifest node_id values",
             )
         seen_manifest_node_ids.add(item.manifest.node_id)
+        manifest_stored_at = item.stored_at.astimezone(timezone.utc)
+        require_not_too_far_in_future(
+            manifest_stored_at,
+            field_name="manifests[].stored_at",
+        )
+        if manifest_stored_at > exported_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source manifests stored_at cannot be later than exported_at",
+            )
         manifests_by_node_id[item.manifest.node_id] = item.manifest
 
     seen_identity_record_keys: set[tuple[str, str]] = set()
@@ -641,9 +663,6 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Registry source latest_identity_event_id must be omitted when identity_events is empty",
         )
-
-    exported_at = payload.exported_at.astimezone(timezone.utc)
-    require_not_too_far_in_future(exported_at, field_name="exported_at")
 
     has_public_key = payload.registry_public_key is not None
     has_signature = payload.signature is not None
