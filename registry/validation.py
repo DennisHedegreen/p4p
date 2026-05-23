@@ -511,6 +511,7 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
         seen_node_ids.add(item.node.node_id)
 
     seen_manifest_node_ids: set[str] = set()
+    manifests_by_node_id: dict[str, Any] = {}
     for item in payload.manifests:
         if item.manifest.node_id in seen_manifest_node_ids:
             raise HTTPException(
@@ -518,6 +519,7 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 detail="Registry source snapshot must not repeat manifest node_id values",
             )
         seen_manifest_node_ids.add(item.manifest.node_id)
+        manifests_by_node_id[item.manifest.node_id] = item.manifest
 
     seen_identity_record_keys: set[tuple[str, str]] = set()
     for record in payload.identity_records:
@@ -570,6 +572,21 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registry source identity_records scope must match the latest identity event",
             )
+        manifest = manifests_by_node_id.get(record.node_id)
+        if manifest is not None:
+            key_status_by_public_key = {entry.node_public_key: entry.status for entry in manifest.keys}
+            if record.node_public_key in key_status_by_public_key:
+                expected_status = "active" if key_status_by_public_key[record.node_public_key] == "active" else "revoked"
+                if record.status != expected_status:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Registry source identity_records status must match current manifest key status",
+                    )
+            elif record.status == "active":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registry source identity_records active status requires a current manifest key",
+                )
 
     if payload.identity_events:
         previous_event_id = 0
