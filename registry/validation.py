@@ -692,6 +692,12 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 )
             previous_event_id = event.event_id
             previous_recorded_at = event_recorded_at
+        for expected_event_id, event in enumerate(payload.identity_events, start=1):
+            if event.event_id != expected_event_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registry source identity_events must be contiguous by event_id",
+                )
         last_event_id = payload.identity_events[-1].event_id
         if payload.latest_identity_event_id != last_event_id:
             raise HTTPException(
