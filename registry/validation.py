@@ -557,6 +557,10 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 detail="Registry source snapshot must not repeat manifest node_id values",
             )
         seen_manifest_node_ids.add(item.manifest.node_id)
+        require_valid_manifest_update(
+            NodeManifestRequest(manifest=item.manifest),
+            existing=None,
+        )
         manifest_stored_at = item.stored_at.astimezone(timezone.utc)
         require_not_too_far_in_future(
             manifest_stored_at,
