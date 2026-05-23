@@ -597,13 +597,24 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
 
     if payload.identity_events:
         previous_event_id = 0
+        previous_recorded_at: datetime | None = None
         for event in payload.identity_events:
+            require_not_too_far_in_future(
+                event.recorded_at.astimezone(timezone.utc),
+                field_name="identity_events[].recorded_at",
+            )
             if event.event_id <= previous_event_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Registry source identity_events must be strictly increasing by event_id",
                 )
+            if previous_recorded_at is not None and event.recorded_at.astimezone(timezone.utc) < previous_recorded_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registry source identity_events recorded_at must be nondecreasing by event_id",
+                )
             previous_event_id = event.event_id
+            previous_recorded_at = event.recorded_at.astimezone(timezone.utc)
         last_event_id = payload.identity_events[-1].event_id
         if payload.latest_identity_event_id != last_event_id:
             raise HTTPException(
