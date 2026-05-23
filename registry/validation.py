@@ -509,7 +509,7 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registry source snapshot must not repeat node_id values",
-            )
+        )
         seen_node_ids.add(item.node.node_id)
         node_last_seen = item.last_seen.astimezone(timezone.utc)
         require_not_too_far_in_future(
@@ -520,6 +520,11 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registry source nodes last_seen cannot be later than exported_at",
+            )
+        if has_node_signature_fields(item.node) and item.last_signed_event_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source signed nodes must include last_signed_event_at",
             )
         if item.last_signed_event_at is not None:
             node_last_signed_event_at = item.last_signed_event_at.astimezone(timezone.utc)
