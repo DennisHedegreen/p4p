@@ -1659,6 +1659,19 @@ class P4PTruthfulnessTests(unittest.TestCase):
         stale_payload["mirrored_sources"][0]["snapshot"]["manifests"][0]["stored_at"] = (
             nested_exported_at.isoformat()
         )
+        stale_payload["mirrored_sources"][0]["snapshot"]["manifests"][0]["manifest"]["issued_at"] = (
+            nested_exported_at.isoformat()
+        )
+        stale_payload["mirrored_sources"][0]["snapshot"]["manifests"][0]["manifest"]["signature"] = (
+            identity.sign_payload(
+                source.manifest_payload(
+                    source.NodeManifest(
+                        **stale_payload["mirrored_sources"][0]["snapshot"]["manifests"][0]["manifest"]
+                    )
+                ),
+                demo.ROOT_PRIVATE_KEY,
+            )
+        )
         for event in stale_payload["mirrored_sources"][0]["snapshot"]["identity_events"]:
             event["recorded_at"] = nested_exported_at.isoformat()
             event["signed_at"] = nested_exported_at.isoformat()
@@ -3020,6 +3033,56 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
         self.assertEqual(import_error.exception.status_code, 400)
         self.assertEqual(import_error.exception.detail, "Invalid node manifest signature")
+
+    def test_registry_source_import_rejects_manifest_issued_at_later_than_stored_at(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        invalid_payload = source_snapshot.model_dump(mode="json", exclude_none=True)
+        later_than_stored = (source_snapshot.exported_at + source.timedelta(seconds=1)).isoformat()
+        invalid_payload["manifests"][0]["manifest"]["issued_at"] = later_than_stored
+        invalid_payload["manifests"][0]["manifest"]["signature"] = identity.sign_payload(
+            source.manifest_payload(source.NodeManifest(**invalid_payload["manifests"][0]["manifest"])),
+            demo.ROOT_PRIVATE_KEY,
+        )
+        invalid_payload.pop("signature", None)
+        canonical_payload = source.RegistrySourceResponse(**invalid_payload)
+        invalid_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            source.REGISTRY_PRIVATE_KEY,
+        )
+
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                source.RegistrySourceResponse(**invalid_payload),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 400)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry source manifests stored_at cannot be earlier than manifest.issued_at",
+        )
 
     def test_registry_source_import_rejects_identity_event_recorded_at_later_than_exported_at(
         self,
@@ -4487,7 +4550,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 **self.make_node_manifest_request(
                     demo,
                     manifest_version=2,
-                    issued_at=(demo.utc_now() + demo.timedelta(seconds=1)).isoformat(),
+                    issued_at=source.utc_now().isoformat(),
                     key_status="revoked",
                 )
             )
@@ -4694,7 +4757,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 **self.make_node_manifest_request(
                     demo,
                     manifest_version=2,
-                    issued_at=(demo.utc_now() + demo.timedelta(seconds=1)).isoformat(),
+                    issued_at=source.utc_now().isoformat(),
                     key_status="revoked",
                 )
             )

@@ -163,6 +163,7 @@ Then open:
 - a registry-source snapshot must keep each top-level node's `last_seen` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each top-level manifest `stored_at` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each embedded top-level manifest internally valid: mutating a manifest without a matching manifest signature must still be rejected even if the outer registry envelope is re-signed
+- a registry-source snapshot must keep each embedded manifest timeline sane: `manifest.issued_at` cannot run later than that manifest's `stored_at` or later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each `identity_events[].recorded_at` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each `identity_events[].signed_at` sane: it must parse as a real timestamp and cannot run later than that event's own `recorded_at`
 - a registry-source snapshot must not replay the same signed identity event multiple times with different `event_id` values

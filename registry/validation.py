@@ -561,15 +561,29 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             NodeManifestRequest(manifest=item.manifest),
             existing=None,
         )
+        manifest_issued_at = parse_timestamp(
+            item.manifest.issued_at,
+            field_name="manifests[].manifest.issued_at",
+        )
         manifest_stored_at = item.stored_at.astimezone(timezone.utc)
         require_not_too_far_in_future(
             manifest_stored_at,
             field_name="manifests[].stored_at",
         )
+        if manifest_issued_at > manifest_stored_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source manifests stored_at cannot be earlier than manifest.issued_at",
+            )
         if manifest_stored_at > exported_at:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registry source manifests stored_at cannot be later than exported_at",
+            )
+        if manifest_issued_at > exported_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source manifests issued_at cannot be later than exported_at",
             )
         manifests_by_node_id[item.manifest.node_id] = item.manifest
 
