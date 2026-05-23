@@ -164,6 +164,7 @@ Then open:
 - a registry-source snapshot must keep each top-level manifest `stored_at` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each `identity_events[].recorded_at` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each `identity_events[].signed_at` sane: it must parse as a real timestamp and cannot run later than that event's own `recorded_at`
+- a registry-source snapshot must not replay the same signed identity event multiple times with different `event_id` values
 - a registry-source snapshot must not repeat the same manifest `node_id` in its top-level `manifests` list; downstream import rejects duplicate manifest records instead of letting node visibility depend on which conflicting manifest lands last
 - a registry-source snapshot must not repeat the same `(node_id, node_public_key)` pair in its `identity_records` list; downstream import rejects duplicate identity records instead of letting proof metadata depend on which conflicting record lands last
 - a registry-source snapshot must keep `identity_records` and `identity_events` aligned on key membership; downstream import rejects snapshots where a key has signed events but no corresponding identity record summary

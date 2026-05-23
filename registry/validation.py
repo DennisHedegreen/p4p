@@ -509,7 +509,7 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registry source snapshot must not repeat node_id values",
-        )
+            )
         seen_node_ids.add(item.node.node_id)
         node_last_seen = item.last_seen.astimezone(timezone.utc)
         require_not_too_far_in_future(
@@ -646,12 +646,26 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
     if payload.identity_events:
         previous_event_id = 0
         previous_recorded_at: datetime | None = None
+        seen_identity_event_fingerprints: set[tuple[str, str, str, str, str]] = set()
         for event in payload.identity_events:
             event_recorded_at = event.recorded_at.astimezone(timezone.utc)
             event_signed_at = parse_timestamp(
                 event.signed_at,
                 field_name="identity_events[].signed_at",
             )
+            event_fingerprint = (
+                event.node_id,
+                event.node_public_key,
+                event.signed_at,
+                event.announcement_signature,
+                event.announcement_hash,
+            )
+            if event_fingerprint in seen_identity_event_fingerprints:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registry source identity_events must not repeat the same signed event",
+                )
+            seen_identity_event_fingerprints.add(event_fingerprint)
             require_not_too_far_in_future(
                 event_recorded_at,
                 field_name="identity_events[].recorded_at",
