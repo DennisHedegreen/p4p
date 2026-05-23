@@ -3000,6 +3000,102 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Registry source identity_records status must match current manifest key status",
         )
 
+    def test_registry_source_import_rejects_missing_identity_records_for_events(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        source.announce(source.Node(**self.make_signed_node_payload(demo, name="Second signed name")))
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        invalid_payload = source_snapshot.model_dump(mode="json", exclude_none=True)
+        invalid_payload["identity_records"] = []
+        invalid_payload.pop("signature", None)
+        canonical_payload = source.RegistrySourceResponse(**invalid_payload)
+        invalid_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            source.REGISTRY_PRIVATE_KEY,
+        )
+
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                source.RegistrySourceResponse(**invalid_payload),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 400)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry source identity_events must have matching identity_records",
+        )
+
+    def test_registry_source_import_rejects_event_key_without_matching_identity_record(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        source.announce(source.Node(**self.make_signed_node_payload(demo, name="Second signed name")))
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        invalid_payload = source_snapshot.model_dump(mode="json", exclude_none=True)
+        extra_event = copy.deepcopy(invalid_payload["identity_events"][0])
+        extra_event["event_id"] = invalid_payload["latest_identity_event_id"] + 1
+        extra_event["node_public_key"] = "ed25519:" + ("a" * 64)
+        invalid_payload["identity_events"].append(extra_event)
+        invalid_payload["latest_identity_event_id"] = extra_event["event_id"]
+        invalid_payload.pop("signature", None)
+        canonical_payload = source.RegistrySourceResponse(**invalid_payload)
+        invalid_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            source.REGISTRY_PRIVATE_KEY,
+        )
+
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                source.RegistrySourceResponse(**invalid_payload),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 400)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry source identity_events must have matching identity_records",
+        )
+
     def test_registry_source_import_rejects_active_identity_record_when_manifest_revokes_key(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(

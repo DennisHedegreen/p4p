@@ -588,6 +588,13 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                     detail="Registry source identity_records active status requires a current manifest key",
                 )
 
+    for event_key in identity_event_counts:
+        if event_key not in seen_identity_record_keys:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source identity_events must have matching identity_records",
+            )
+
     if payload.identity_events:
         previous_event_id = 0
         for event in payload.identity_events:
