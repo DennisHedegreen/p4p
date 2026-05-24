@@ -3348,7 +3348,63 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(import_error.exception.status_code, 400)
         self.assertEqual(
             import_error.exception.detail,
-            "Registry source signed nodes must carry a valid current announcement signature",
+            "Registry source signed nodes must carry a valid current announcement signature or later signed open-state drift",
+        )
+
+    def test_registry_source_import_rejects_forged_current_announcement_after_signed_heartbeat(
+        self,
+    ) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        source.heartbeat(
+            source.HeartbeatRequest(
+                **self.make_signed_heartbeat_payload(
+                    demo,
+                    open=False,
+                    signed_at=source.utc_now().isoformat(),
+                )
+            )
+        )
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        invalid_payload = source_snapshot.model_dump(mode="json", exclude_none=True)
+        invalid_payload["nodes"][0]["node"]["name"] = "Forged after heartbeat"
+        invalid_payload.pop("signature", None)
+        canonical_payload = source.RegistrySourceResponse(**invalid_payload)
+        invalid_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            source.REGISTRY_PRIVATE_KEY,
+        )
+
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                source.RegistrySourceResponse(**invalid_payload),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 400)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry source signed nodes must carry a valid current announcement signature or later signed open-state drift",
         )
 
     def test_registry_source_import_rejects_signed_node_last_seen_earlier_than_last_signed_event_at(

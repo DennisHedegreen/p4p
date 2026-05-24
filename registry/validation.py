@@ -691,19 +691,26 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registry source signed nodes must have matching identity_records",
             )
-        if item.node.signed_at and item.last_signed_event_at == parse_timestamp(
+        node_signed_at = parse_timestamp(
             item.node.signed_at,
             field_name="nodes[].node.signed_at",
-        ):
-            try:
-                valid = verify_payload(node_payload(item.node), item.node.node_public_key, item.node.signature)
-            except ValueError as exc:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-            if not valid:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Registry source signed nodes must carry a valid current announcement signature",
-                )
+        )
+        try:
+            valid = verify_payload(node_payload(item.node), item.node.node_public_key, item.node.signature)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        if not valid and item.last_signed_event_at > node_signed_at:
+            announcement_candidate = item.node.model_copy(update={"open": not item.node.open})
+            valid = verify_payload(
+                node_payload(announcement_candidate),
+                item.node.node_public_key,
+                item.node.signature,
+            )
+        if not valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source signed nodes must carry a valid current announcement signature or later signed open-state drift",
+            )
 
     if payload.identity_events:
         previous_event_id = 0

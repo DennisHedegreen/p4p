@@ -164,7 +164,7 @@ Then open:
 - a registry-source snapshot must not omit `last_signed_event_at` for a signed top-level node
 - a registry-source snapshot must keep each top-level node's `last_seen` sane: it cannot jump into the future, run later than the snapshot's own `exported_at`, or fall earlier than that node's own `last_signed_event_at`
 - a registry-source snapshot must not present an unsigned top-level node under a `node_id` that also carries a current manifest; manifest-protected top-level nodes must stay signed
-- a registry-source snapshot must keep each signed top-level node internally honest: when `last_signed_event_at` still equals the node's own `signed_at`, the current top-level node announcement must still verify under its own `node_public_key`
+- a registry-source snapshot must keep each signed top-level node internally honest at all times: the current top-level node must still verify as the signed announcement itself, except for the one allowed runtime drift from a later signed heartbeat, namely a changed `open` state
 - a registry-source snapshot must keep each top-level manifest `stored_at` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each embedded top-level manifest internally valid: mutating a manifest without a matching manifest signature must still be rejected even if the outer registry envelope is re-signed
 - a registry-source snapshot must keep each embedded manifest timeline sane: `manifest.issued_at` cannot run later than that manifest's `stored_at` or later than the snapshot's own `exported_at`
