@@ -667,9 +667,14 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
             )
 
     for item in payload.nodes:
+        manifest = manifests_by_node_id.get(item.node.node_id)
+        if manifest is not None and not has_node_signature_fields(item.node):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source manifest-protected nodes must be signed",
+            )
         if not has_node_signature_fields(item.node) or not item.node.node_public_key:
             continue
-        manifest = manifests_by_node_id.get(item.node.node_id)
         if manifest is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
