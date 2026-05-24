@@ -537,6 +537,11 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Registry source nodes last_signed_event_at cannot be later than exported_at",
                 )
+            if node_last_seen < node_last_signed_event_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Registry source nodes last_seen must not be earlier than last_signed_event_at",
+                )
             if item.node.signed_at:
                 node_signed_at = parse_timestamp(
                     item.node.signed_at,

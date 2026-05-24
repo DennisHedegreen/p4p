@@ -161,7 +161,7 @@ Then open:
 - a registry-source snapshot must not repeat the same `node_id` in its top-level `nodes` list; downstream import rejects duplicate node ids instead of letting discoverability depend on payload order
 - a registry-source snapshot must keep each top-level node's `last_signed_event_at` sane: it cannot jump too far into the future, cannot run later than the snapshot's own `exported_at`, and cannot run earlier than that node's own signed announcement timestamp
 - a registry-source snapshot must not omit `last_signed_event_at` for a signed top-level node
-- a registry-source snapshot must keep each top-level node's `last_seen` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
+- a registry-source snapshot must keep each top-level node's `last_seen` sane: it cannot jump into the future, run later than the snapshot's own `exported_at`, or fall earlier than that node's own `last_signed_event_at`
 - a registry-source snapshot must keep each top-level manifest `stored_at` sane: it cannot jump into the future or run later than the snapshot's own `exported_at`
 - a registry-source snapshot must keep each embedded top-level manifest internally valid: mutating a manifest without a matching manifest signature must still be rejected even if the outer registry envelope is re-signed
 - a registry-source snapshot must keep each embedded manifest timeline sane: `manifest.issued_at` cannot run later than that manifest's `stored_at` or later than the snapshot's own `exported_at`
