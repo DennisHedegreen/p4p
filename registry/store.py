@@ -1294,8 +1294,8 @@ class RegistryStore:
             events = list(self._identity_events)
             mirrored_sources: list[RegistrySourceMirrorExport] = []
             if self._config.registry_source_reexport_policy == "local_plus_trusted_mirrors":
-                for stored, discovery_basis in self._discoverable_mirror_sources(now=now).values():
-                    if discovery_basis != "trusted_upstream" or not stored.verified_signature:
+                for stored, discovery_basis in self._reexportable_mirror_sources(now=now).values():
+                    if not stored.verified_signature:
                         continue
                     mirrored_sources.append(
                         RegistrySourceMirrorExport(
@@ -1349,6 +1349,23 @@ class RegistryStore:
                 discoverable[registry_url] = (stored, discovery_basis)
         return discoverable
 
+    def _reexportable_mirror_sources(
+        self,
+        *,
+        now: datetime,
+    ) -> dict[str, tuple[StoredMirrorSource, str]]:
+        reexportable: dict[str, tuple[StoredMirrorSource, str]] = {}
+        for registry_url, stored in self._active_mirror_sources(now=now).items():
+            source_registry_url = normalized_registry_url(stored.snapshot.registry_url)
+            if stored.relayed_by_registry_url:
+                continue
+            if (
+                source_registry_url in self._config.trusted_mirror_upstream_urls
+                and stored.verified_signature
+            ):
+                reexportable[registry_url] = (stored, "trusted_upstream")
+        return reexportable
+
     def _mirror_source_discovery_status(
         self,
         stored: StoredMirrorSource,
@@ -1359,7 +1376,11 @@ class RegistryStore:
         if not active:
             return False, False, "expired"
 
+        visible_nodes = self._visible_mirror_nodes(stored)
+
         if self._config.mirror_discovery_policy == "all_active":
+            if not visible_nodes:
+                return True, False, "no_visible_nodes"
             return True, True, "all_active_policy"
 
         registry_url = normalized_registry_url(stored.snapshot.registry_url)
@@ -1369,9 +1390,13 @@ class RegistryStore:
                 relayed_by_registry_url in self._config.trusted_mirror_upstream_urls
                 and stored.verified_signature
             ):
+                if not visible_nodes:
+                    return True, False, "no_visible_nodes"
                 return True, True, "trusted_relayed_upstream"
             return True, False, "not_trusted"
         if registry_url in self._config.trusted_mirror_upstream_urls and stored.verified_signature:
+            if not visible_nodes:
+                return True, False, "no_visible_nodes"
             return True, True, "trusted_upstream"
         return True, False, "not_trusted"
 

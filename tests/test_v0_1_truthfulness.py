@@ -4709,8 +4709,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             category="pizza",
             country="DK",
         )
+        mirror_status = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
 
         self.assertEqual(discover_result.nodes, [])
+        self.assertEqual(mirror.health()["discoverable_mirrored_registries"], 0)
         self.assertEqual(mirror.health()["curated_active_index_entries"], 0)
         self.assertEqual(
             mirror.curated_promotions(authorization=self.registry_admin_authorization()).records[0].decision,
@@ -4724,6 +4726,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             mirror.curated_promotions(authorization=self.registry_admin_authorization()).records[0].promoted_node_ids,
             [],
         )
+        self.assertFalse(mirror_status.sources[0].discovery_eligible)
+        self.assertEqual(mirror_status.sources[0].discovery_basis, "no_visible_nodes")
 
     def test_expired_mirror_source_is_hidden_from_discovery(self) -> None:
         identity = load_module("p4p_identity.py")

@@ -156,6 +156,7 @@ Then open:
 - moderated directory claims sit above `GET /discover` and do not change raw evidence, curated promotion, or curated override history
 - signed trust claims sit above the moderated directory as transportable positive annotations and do not change node identity or `GET /discover`
 - stale or revoked upstream evidence is de-promoted out of the curated active index during sync/import and guarded again at read time
+- a mirrored source only counts as `discovery_eligible` when it is fresh/trusted under the current policy and still has at least one manifest-valid visible node; trusted raw source snapshots with `no_visible_nodes` stay cached for proof and downstream sync, but do not count as discoverable
 - `GET /registry-source` still treats local registry state as canonical top-level source; trusted mirrored state is only re-exported as nested upstream snapshots
 - a registry-source snapshot must not repeat the same `node_id` in its top-level `nodes` list; downstream import rejects duplicate node ids instead of letting discoverability depend on payload order
 - a registry-source snapshot must keep each top-level node's `last_signed_event_at` sane: it cannot jump too far into the future, cannot run later than the snapshot's own `exported_at`, and cannot run earlier than that node's own signed announcement timestamp
