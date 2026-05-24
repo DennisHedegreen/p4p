@@ -158,6 +158,7 @@ Then open:
 - stale or revoked upstream evidence is de-promoted out of the curated active index during sync/import and guarded again at read time
 - a mirrored source only counts as `discovery_eligible` when it is fresh/trusted under the current policy and still has at least one manifest-valid visible node; trusted raw source snapshots with `no_visible_nodes` stay cached for proof and downstream sync, but do not count as discoverable
 - `GET /registry-source` still treats local registry state as canonical top-level source; trusted mirrored state is only re-exported as nested upstream snapshots
+- `GET /registry-source` does not export signed top-level nodes before they have a current manifest; unsigned local proof metadata may still exist, but manifest-less signed nodes do not get presented as canonical top-level source truth
 - a registry-source snapshot must not repeat the same `node_id` in its top-level `nodes` list; downstream import rejects duplicate node ids instead of letting discoverability depend on payload order
 - a registry-source snapshot must keep each top-level node's `last_signed_event_at` sane: it cannot jump too far into the future, cannot run later than the snapshot's own `exported_at`, and cannot run earlier than that node's own signed announcement timestamp
 - a registry-source snapshot must not omit `last_signed_event_at` for a signed top-level node

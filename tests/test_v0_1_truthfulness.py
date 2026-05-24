@@ -1304,6 +1304,31 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Signed registry source export requires P4P_REGISTRY_URL",
         )
 
+    def test_registry_source_export_hides_signed_node_without_current_manifest(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.announce(registry.Node(**demo.sign_node_announcement()))
+
+        snapshot = registry.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        self.assertEqual(snapshot.nodes, [])
+        self.assertEqual(len(snapshot.identity_records), 1)
+        self.assertEqual(len(snapshot.identity_events), 1)
+
     def test_unsigned_registry_source_export_without_configured_url_requires_loopback_base(self) -> None:
         registry = load_module("registry/main.py")
 

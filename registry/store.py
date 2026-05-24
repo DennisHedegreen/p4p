@@ -1281,7 +1281,7 @@ class RegistryStore:
                     last_signed_event_at=stored.last_signed_event_at,
                 )
                 for _, stored in sorted(self._nodes.items(), key=lambda item: item[0])
-                if self._node_is_manifest_visible(stored.node)
+                if self._node_is_source_export_visible(stored.node)
             ]
             manifests = [
                 RegistrySourceManifest(manifest=stored.manifest, stored_at=stored.stored_at)
@@ -1529,6 +1529,11 @@ class RegistryStore:
         if entry is None:
             return False
         return manifest_key_is_currently_active(entry)
+
+    def _node_is_source_export_visible(self, node: Node) -> bool:
+        if node.node_public_key and self._node_manifests.get(node.node_id) is None:
+            return False
+        return self._node_is_manifest_visible(node)
 
     def _mirror_node_is_manifest_visible(
         self,
