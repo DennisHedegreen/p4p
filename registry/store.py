@@ -1281,6 +1281,7 @@ class RegistryStore:
                     last_signed_event_at=stored.last_signed_event_at,
                 )
                 for _, stored in sorted(self._nodes.items(), key=lambda item: item[0])
+                if self._node_is_manifest_visible(stored.node)
             ]
             manifests = [
                 RegistrySourceManifest(manifest=stored.manifest, stored_at=stored.stored_at)

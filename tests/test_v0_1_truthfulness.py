@@ -3131,6 +3131,101 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Registry source signed nodes must have matching identity_records",
         )
 
+    def test_registry_source_export_hides_revoked_signed_node_from_top_level_nodes(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        registry.announce(registry.Node(**demo.sign_node_announcement()))
+        registry.node_manifest(
+            registry.NodeManifestRequest(
+                **self.make_node_manifest_request(
+                    demo,
+                    manifest_version=2,
+                    issued_at=registry.utc_now().isoformat(),
+                    key_status="revoked",
+                )
+            )
+        )
+
+        source_snapshot = registry.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        self.assertEqual(source_snapshot.nodes, [])
+        self.assertEqual(len(source_snapshot.manifests), 1)
+        self.assertEqual(source_snapshot.manifests[0].manifest.keys[0].status, "revoked")
+
+    def test_registry_source_import_rejects_signed_node_hidden_by_current_manifest(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        visible_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        source.node_manifest(
+            source.NodeManifestRequest(
+                **self.make_node_manifest_request(
+                    demo,
+                    manifest_version=2,
+                    issued_at=source.utc_now().isoformat(),
+                    key_status="revoked",
+                )
+            )
+        )
+        revoked_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        invalid_payload = revoked_snapshot.model_dump(mode="json", exclude_none=True)
+        invalid_payload["nodes"] = [visible_snapshot.nodes[0].model_dump(mode="json", exclude_none=True)]
+        invalid_payload.pop("signature", None)
+        canonical_payload = source.RegistrySourceResponse(**invalid_payload)
+        invalid_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            source.REGISTRY_PRIVATE_KEY,
+        )
+
+        with self.assertRaises(HTTPException) as import_error:
+            downstream.registry_source_import(
+                source.RegistrySourceResponse(**invalid_payload),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(import_error.exception.status_code, 400)
+        self.assertEqual(
+            import_error.exception.detail,
+            "Registry source signed nodes must be current-manifest-visible",
+        )
+
     def test_registry_source_import_rejects_identity_event_recorded_at_later_than_exported_at(
         self,
     ) -> None:

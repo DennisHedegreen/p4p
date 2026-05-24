@@ -664,6 +664,18 @@ def require_valid_registry_source_snapshot(payload: RegistrySourceSnapshot) -> b
     for item in payload.nodes:
         if not has_node_signature_fields(item.node) or not item.node.node_public_key:
             continue
+        manifest = manifests_by_node_id.get(item.node.node_id)
+        if manifest is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source signed nodes must have a current manifest",
+            )
+        manifest_entry = manifest_key_for_node(manifest=manifest, node=item.node)
+        if manifest_entry is None or not manifest_key_is_currently_active(manifest_entry):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Registry source signed nodes must be current-manifest-visible",
+            )
         if (item.node.node_id, item.node.node_public_key) not in seen_identity_record_keys:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
