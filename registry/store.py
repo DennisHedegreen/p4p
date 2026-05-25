@@ -1531,9 +1531,9 @@ class RegistryStore:
     def _node_is_manifest_visible(self, node: Node) -> bool:
         from registry.validation import manifest_key_for_node, manifest_key_is_currently_active
 
-        if not node.node_public_key:
-            return True
         stored_manifest = self._node_manifests.get(node.node_id)
+        if not node.node_public_key:
+            return stored_manifest is None
         if stored_manifest is None:
             return True
         entry = manifest_key_for_node(manifest=stored_manifest.manifest, node=node)
@@ -1554,9 +1554,9 @@ class RegistryStore:
     ) -> bool:
         from registry.validation import manifest_key_for_node, manifest_key_is_currently_active
 
-        if not node.node_public_key:
-            return True
         manifest = manifests_by_node_id.get(node.node_id)
+        if not node.node_public_key:
+            return manifest is None
         if manifest is None:
             return True
         entry = manifest_key_for_node(manifest=manifest, node=node)

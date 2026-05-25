@@ -963,6 +963,12 @@ def require_allowed_announcement_update(
 ) -> None:
     stored_manifest = store.get_manifest(node.node_id)
 
+    if stored_manifest is not None and not has_node_signature_fields(node) and not node.delegation:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This node_id is protected by a current node manifest",
+        )
+
     if node.delegation and not has_node_signature_fields(node):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1007,6 +1013,11 @@ def require_valid_heartbeat_signature(
     stored_manifest: StoredManifest | None,
 ) -> None:
     public_key = stored.node.node_public_key
+    if stored_manifest is not None and not public_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Current node manifest requires signed heartbeat updates",
+        )
     if not public_key:
         return
     if not payload.signed_at or not payload.signature:

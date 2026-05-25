@@ -108,6 +108,7 @@ Then open:
 - signed node ids are protected from unsigned, tampered, or older signed metadata updates once a newer signed event has been accepted
 - delegated node ids may also carry a root-signed authorization for an operational node key
 - root-managed node ids may also carry a separate root-signed manifest so revoked keys disappear from discovery and heartbeat acceptance
+- once a current root manifest exists for a node id, unsigned local announcements and unsigned local heartbeats are no longer accepted for that node id, and stale unsigned legacy state is hidden from discovery and source export
 - root key changes for an existing root-managed node id require a previous-root rotation proof
 - `/identity-log` is read-only and contains public signing metadata, not node private keys
 - `/registry-source` is a full registry snapshot surface for later mirroring or umbrella ingestion

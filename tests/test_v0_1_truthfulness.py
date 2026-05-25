@@ -601,6 +601,85 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "node_public_key has been revoked in current node manifest",
         )
 
+    def test_manifest_protected_unsigned_node_is_rejected_locally(self) -> None:
+        registry = load_module("registry/main.py")
+        identity = load_module("p4p_identity.py")
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        unsigned_payload = demo.NODE.model_dump(mode="json", exclude_none=True)
+        unsigned_payload.pop("node_public_key", None)
+        unsigned_payload.pop("signed_at", None)
+        unsigned_payload.pop("signature", None)
+        unsigned_payload.pop("delegation", None)
+
+        with self.assertRaises(HTTPException) as announce_error:
+            registry.announce(registry.Node(**unsigned_payload))
+
+        self.assertEqual(announce_error.exception.status_code, 403)
+        self.assertEqual(
+            announce_error.exception.detail,
+            "This node_id is protected by a current node manifest",
+        )
+
+    def test_manifest_protected_unsigned_legacy_state_is_hidden_and_cannot_heartbeat(self) -> None:
+        registry = load_module("registry/main.py")
+        identity = load_module("p4p_identity.py")
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        unsigned_payload = demo.NODE.model_dump(mode="json", exclude_none=True)
+        unsigned_payload.pop("node_public_key", None)
+        unsigned_payload.pop("signed_at", None)
+        unsigned_payload.pop("signature", None)
+        unsigned_payload.pop("delegation", None)
+        registry.store._nodes[demo.NODE.node_id] = registry.StoredNode(
+            node=registry.Node(**unsigned_payload),
+            last_seen=registry.utc_now(),
+            last_signed_event_at=None,
+        )
+
+        discover_result = registry.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        source_snapshot = registry.registry_source(SimpleNamespace(base_url="http://127.0.0.1:8001/"))
+
+        with self.assertRaises(HTTPException) as heartbeat_error:
+            registry.heartbeat(
+                registry.HeartbeatRequest(
+                    node_id=demo.NODE.node_id,
+                    open=False,
+                )
+            )
+
+        self.assertEqual(discover_result.nodes, [])
+        self.assertEqual(source_snapshot.nodes, [])
+        self.assertEqual(heartbeat_error.exception.status_code, 403)
+        self.assertEqual(
+            heartbeat_error.exception.detail,
+            "Current node manifest requires signed heartbeat updates",
+        )
+
     def test_root_rotation_allows_new_root_manifest_and_delegation(self) -> None:
         registry = load_module("registry/main.py")
         identity = load_module("p4p_identity.py")
