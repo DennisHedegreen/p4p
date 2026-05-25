@@ -1624,6 +1624,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         mirror_status = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
         promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
         self.assertFalse(imported.verified_signature)
         self.assertEqual(mirror.health()["mirrored_registries"], 1)
@@ -5076,6 +5077,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             country="DK",
         )
         mirror_status = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
         sync_status = mirror.registry_sync_status(authorization=self.registry_admin_authorization())
         promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
 
@@ -5311,6 +5313,78 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(promotions.records[0].promoted_node_ids, [])
         self.assertFalse(mirror_status.sources[0].discovery_eligible)
         self.assertEqual(mirror_status.sources[0].discovery_basis, "no_visible_nodes")
+
+    def test_health_discoverable_mirrored_nodes_counts_only_visible_nodes(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True}
+                ),
+            },
+        )
+        demo_a = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ID": "dk-brondby-alpha-001",
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8101",
+            },
+        )
+        demo_b = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ID": "dk-brondby-beta-001",
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8102",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo_a, manifest_version=1))
+        )
+        source.announce(source.Node(**demo_a.sign_node_announcement()))
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo_b, manifest_version=1))
+        )
+        source.announce(source.Node(**demo_b.sign_node_announcement()))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+
+        stored = next(iter(mirror.store._mirror_sources.values()))
+        stale_node = next(item for item in stored.snapshot.nodes if item.node.node_id == demo_b.NODE.node_id)
+        stale_node.last_seen = mirror.utc_now() - mirror.timedelta(seconds=181)
+
+        discover_result = mirror.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        mirror_status = mirror.registry_mirrors(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
+
+        self.assertEqual([item.node_id for item in discover_result.nodes], [demo_a.NODE.node_id])
+        self.assertEqual(mirror.health()["mirrored_nodes"], 2)
+        self.assertEqual(mirror.health()["discoverable_mirrored_registries"], 1)
+        self.assertEqual(mirror.health()["discoverable_mirrored_nodes"], 1)
+        self.assertTrue(mirror_status.sources[0].discovery_eligible)
+        self.assertEqual(promotions.records[0].promoted_node_ids, [demo_a.NODE.node_id])
 
     def test_manual_allow_override_does_not_bypass_stale_source(self) -> None:
         identity = load_module("p4p_identity.py")

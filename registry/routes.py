@@ -86,6 +86,10 @@ def bind_routes(
         now = utc_now()
         active_mirrors = store._active_mirror_sources(now=now)
         discoverable_mirrors = store._discoverable_mirror_sources(now=now)
+        discoverable_mirror_node_count = sum(
+            len(store._visible_mirror_nodes(stored, now=now))
+            for stored, _ in discoverable_mirrors.values()
+        )
         store._refresh_curated_active_index(now=now)
         promotion_counts = store.curated_promotion_counts()
         override_counts = store.curated_override_counts()
@@ -103,9 +107,7 @@ def bind_routes(
             "mirrored_registries": len(active_mirrors),
             "mirrored_nodes": sum(len(stored.snapshot.nodes) for stored in active_mirrors.values()),
             "discoverable_mirrored_registries": len(discoverable_mirrors),
-            "discoverable_mirrored_nodes": sum(
-                len(stored.snapshot.nodes) for stored, _ in discoverable_mirrors.values()
-            ),
+            "discoverable_mirrored_nodes": discoverable_mirror_node_count,
             "configured_mirror_upstreams": len(config.mirror_upstreams),
             "trusted_mirror_upstreams": len(config.mirror_trusted_upstreams),
             "mirror_discovery_policy": config.mirror_discovery_policy,
