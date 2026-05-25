@@ -41,7 +41,7 @@ def announcement_hash(node: Node) -> str:
 
 def registry_source_hash(payload: RegistrySourceSnapshot | RegistrySourceResponse) -> str:
     raw = json.dumps(
-        payload.model_dump(mode="json", exclude_none=True),
+        canonical_registry_source_payload(payload),
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
@@ -50,15 +50,32 @@ def registry_source_hash(payload: RegistrySourceSnapshot | RegistrySourceRespons
 
 def registry_source_content_hash(payload: RegistrySourceSnapshot | RegistrySourceResponse) -> str:
     raw = json.dumps(
-        payload.model_dump(
-            mode="json",
+        canonical_registry_source_payload(
+            payload,
             exclude={"exported_at", "signature"},
-            exclude_none=True,
         ),
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+def canonical_registry_source_payload(
+    payload: RegistrySourceSnapshot | RegistrySourceResponse,
+    *,
+    exclude: set[str] | None = None,
+) -> dict[str, Any]:
+    content = payload.model_dump(
+        mode="json",
+        exclude=exclude or set(),
+        exclude_none=True,
+    )
+    mirrored_sources = content.get("mirrored_sources")
+    if isinstance(mirrored_sources, list):
+        mirrored_sources.sort(
+            key=lambda item: normalized_registry_url(item["snapshot"]["registry_url"])
+        )
+    return content
 
 
 def heartbeat_payload(payload: HeartbeatRequest) -> dict[str, Any]:

@@ -1307,6 +1307,9 @@ class RegistryStore:
                             relayed_by_registry_url=registry_url,
                         )
                     )
+                mirrored_sources.sort(
+                    key=lambda item: normalized_registry_url(item.snapshot.registry_url)
+                )
             return RegistrySourceResponse(
                 registry_url=registry_url,
                 registry_metadata=self._config.registry_metadata,

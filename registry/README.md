@@ -128,6 +128,7 @@ Then open:
 - `P4P_REGISTRY_METADATA` declares runtime scope and capability metadata such as `local`, `country`, `vertical`, or `umbrella`
 - `P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors` allows the registry to attach trusted mirrored upstream snapshots to `GET /registry-source` without flattening them into the top-level local source
 - imported relay snapshots that claim `export_scope=local_plus_trusted_mirrors` are only accepted when the signed top-level registry metadata also declares `can_reexport_sources`, so downstream import cannot be tricked by a capability-inconsistent re-export payload
+- re-exported `mirrored_sources` are treated as a canonical set keyed by nested `registry_url`, not as an order-sensitive list; pure reorderings do not create fake upstream changes
 - relay payloads that carry nested mirrored sources must themselves verify as signed snapshots; an unsigned loopback relay cannot piggyback signed upstream evidence through the re-export lane
 - re-exported mirrored sources must also verify as signed snapshots themselves; a relay cannot mark an unsigned nested loopback payload as `verified_signature=true` and smuggle it through a signed top-level export
 - re-exported mirrored sources must also be unique by nested `registry_url`; a relay envelope cannot carry two competing nested snapshots for the same upstream source and leave downstream import order-dependent

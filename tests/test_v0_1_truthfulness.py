@@ -2403,6 +2403,90 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "https://umbrella.protocols4people.com/",
         )
 
+    def test_registry_source_import_skips_reordered_mirrored_sources_as_unchanged(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source_a = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        source_b = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-b.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": (
+                    "https://registry-a.pizza4people.com,https://registry-b.pizza4people.com"
+                ),
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+
+        relay.registry_source_import(
+            source_b.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+        relay.registry_source_import(
+            source_a.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+
+        relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+        self.assertEqual(
+            [
+                str(item.snapshot.registry_url)
+                for item in relay_snapshot.mirrored_sources
+            ],
+            [
+                "https://registry-a.pizza4people.com/",
+                "https://registry-b.pizza4people.com/",
+            ],
+        )
+
+        downstream.registry_source_import(
+            relay_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+
+        reordered_payload = relay_snapshot.model_dump(mode="json", exclude_none=True)
+        reordered_payload["exported_at"] = (
+            relay_snapshot.exported_at + relay.timedelta(seconds=1)
+        ).isoformat()
+        reordered_payload["mirrored_sources"] = list(reversed(reordered_payload["mirrored_sources"]))
+        reordered_payload.pop("signature", None)
+        canonical_payload = relay.RegistrySourceResponse(**reordered_payload)
+        reordered_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            relay.REGISTRY_PRIVATE_KEY,
+        )
+        reordered_snapshot = downstream.RegistrySourceResponse(**reordered_payload)
+
+        verified_signature = downstream.require_valid_registry_source(reordered_snapshot)
+        outcome = downstream.store.import_source_with_outcome(
+            reordered_snapshot,
+            verified_signature=verified_signature,
+            allow_stale_skip=True,
+        )
+
+        self.assertFalse(outcome.stored_top_level)
+        self.assertEqual(outcome.detail, "Skipped unchanged mirror snapshot")
+
     def test_registry_source_import_rejects_reexport_snapshot_without_reexport_capability(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
