@@ -658,13 +658,21 @@ class RegistryStore:
             return False
         return True
 
-    def _visible_mirror_nodes(self, stored: StoredMirrorSource) -> list[RegistrySourceNode]:
+    def _visible_mirror_nodes(
+        self,
+        stored: StoredMirrorSource,
+        *,
+        now: datetime,
+    ) -> list[RegistrySourceNode]:
         manifests_by_node_id = {
             item.manifest.node_id: item.manifest for item in stored.snapshot.manifests
         }
+        cutoff = now - timedelta(seconds=HEARTBEAT_TTL_SECONDS)
         visible_nodes: list[RegistrySourceNode] = []
         for mirrored in stored.snapshot.nodes:
             if not mirrored.node.open:
+                continue
+            if mirrored.last_seen < cutoff:
                 continue
             if not self._mirror_node_is_manifest_visible(
                 mirrored.node,
@@ -686,7 +694,7 @@ class RegistryStore:
         source_registry_url = stored.snapshot.registry_url
         source_relay_registry_url = stored.relayed_by_registry_url
         source_snapshot_hash = registry_source_hash(stored.snapshot)
-        visible_nodes = self._visible_mirror_nodes(stored) if active else []
+        visible_nodes = self._visible_mirror_nodes(stored, now=now) if active else []
         promoted_node_ids = [item.node.node_id for item in visible_nodes]
         freshness_state: FreshnessState = "fresh" if active else "stale"
 
@@ -1379,7 +1387,7 @@ class RegistryStore:
         if not active:
             return False, False, "expired"
 
-        visible_nodes = self._visible_mirror_nodes(stored)
+        visible_nodes = self._visible_mirror_nodes(stored, now=now)
 
         if self._config.mirror_discovery_policy == "all_active":
             if not visible_nodes:
