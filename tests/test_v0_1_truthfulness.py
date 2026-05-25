@@ -674,6 +674,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
         self.assertEqual(discover_result.nodes, [])
         self.assertEqual(source_snapshot.nodes, [])
+        self.assertEqual(registry.health()["registered_nodes"], 0)
         self.assertEqual(heartbeat_error.exception.status_code, 403)
         self.assertEqual(
             heartbeat_error.exception.detail,

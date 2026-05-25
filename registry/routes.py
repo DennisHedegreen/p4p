@@ -86,6 +86,11 @@ def bind_routes(
         now = utc_now()
         active_mirrors = store._active_mirror_sources(now=now)
         discoverable_mirrors = store._discoverable_mirror_sources(now=now)
+        registered_node_count = sum(
+            1
+            for stored in store._nodes.values()
+            if store._node_is_source_export_visible(stored.node)
+        )
         discoverable_mirror_node_count = sum(
             len(store._visible_mirror_nodes(stored, now=now))
             for stored, _ in discoverable_mirrors.values()
@@ -103,7 +108,7 @@ def bind_routes(
         return {
             "status": "ok",
             "protocol_version": PROTOCOL_VERSION,
-            "registered_nodes": len(store._nodes),
+            "registered_nodes": registered_node_count,
             "mirrored_registries": len(active_mirrors),
             "mirrored_nodes": sum(len(stored.snapshot.nodes) for stored in active_mirrors.values()),
             "discoverable_mirrored_registries": len(discoverable_mirrors),
