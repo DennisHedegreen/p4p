@@ -70,12 +70,32 @@ def canonical_registry_source_payload(
         exclude=exclude or set(),
         exclude_none=True,
     )
+    _canonicalize_registry_source_dict(content)
+    return content
+
+
+def _canonicalize_registry_source_dict(content: dict[str, Any]) -> None:
+    nodes = content.get("nodes")
+    if isinstance(nodes, list):
+        nodes.sort(key=lambda item: item["node"]["node_id"])
+
+    manifests = content.get("manifests")
+    if isinstance(manifests, list):
+        manifests.sort(key=lambda item: item["manifest"]["node_id"])
+
+    identity_records = content.get("identity_records")
+    if isinstance(identity_records, list):
+        identity_records.sort(key=lambda item: (item["node_id"], item["node_public_key"]))
+
     mirrored_sources = content.get("mirrored_sources")
     if isinstance(mirrored_sources, list):
+        for item in mirrored_sources:
+            snapshot = item.get("snapshot")
+            if isinstance(snapshot, dict):
+                _canonicalize_registry_source_dict(snapshot)
         mirrored_sources.sort(
             key=lambda item: normalized_registry_url(item["snapshot"]["registry_url"])
         )
-    return content
 
 
 def heartbeat_payload(payload: HeartbeatRequest) -> dict[str, Any]:

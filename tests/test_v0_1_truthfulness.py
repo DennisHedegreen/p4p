@@ -2487,6 +2487,73 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertFalse(outcome.stored_top_level)
         self.assertEqual(outcome.detail, "Skipped unchanged mirror snapshot")
 
+    def test_registry_source_import_skips_reordered_top_level_sets_as_unchanged(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
+        demo_a = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ID": "dk-brondby-alpha-001",
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8101",
+            },
+        )
+        demo_b = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ID": "dk-brondby-beta-001",
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8102",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo_a, manifest_version=1))
+        )
+        source.announce(source.Node(**demo_a.sign_node_announcement()))
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo_b, manifest_version=1))
+        )
+        source.announce(source.Node(**demo_b.sign_node_announcement()))
+
+        source_snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+        downstream.registry_source_import(
+            source_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+
+        reordered_payload = source_snapshot.model_dump(mode="json", exclude_none=True)
+        reordered_payload["exported_at"] = (
+            source_snapshot.exported_at + source.timedelta(seconds=1)
+        ).isoformat()
+        reordered_payload["nodes"] = list(reversed(reordered_payload["nodes"]))
+        reordered_payload["manifests"] = list(reversed(reordered_payload["manifests"]))
+        reordered_payload["identity_records"] = list(reversed(reordered_payload["identity_records"]))
+        reordered_payload.pop("signature", None)
+        canonical_payload = source.RegistrySourceResponse(**reordered_payload)
+        reordered_payload["signature"] = identity.sign_payload(
+            canonical_payload.model_dump(mode="json", exclude_none=True),
+            source.REGISTRY_PRIVATE_KEY,
+        )
+        reordered_snapshot = downstream.RegistrySourceResponse(**reordered_payload)
+
+        verified_signature = downstream.require_valid_registry_source(reordered_snapshot)
+        outcome = downstream.store.import_source_with_outcome(
+            reordered_snapshot,
+            verified_signature=verified_signature,
+            allow_stale_skip=True,
+        )
+
+        self.assertFalse(outcome.stored_top_level)
+        self.assertEqual(outcome.detail, "Skipped unchanged mirror snapshot")
+
     def test_registry_source_import_rejects_reexport_snapshot_without_reexport_capability(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
