@@ -112,6 +112,7 @@ Then open:
 - directory claims and locally issued trust claims only target node ids that are still current local or promoted node truth; hidden legacy state and history-only identity records are not enough
 - imported trust claims follow the same moderation boundary; a signed external claim still needs a current local or promoted target node before it is cached locally
 - health-level `active_directory_claims` and `active_trust_claims` follow the same current moderation truth instead of counting orphaned or now-hidden records as still active
+- those active moderation counts also follow current *effect*, not just existence: closed or heartbeat-stale local nodes do not keep claims “active” in health while they are absent from `directory()`
 - root key changes for an existing root-managed node id require a previous-root rotation proof
 - `/identity-log` is read-only and contains public signing metadata, not node private keys
 - `/registry-source` is a full registry snapshot surface for later mirroring or umbrella ingestion

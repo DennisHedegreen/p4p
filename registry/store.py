@@ -976,6 +976,19 @@ class RegistryStore:
             return True
         return False
 
+    def _node_has_current_moderation_effect(self, node_id: str, *, now: datetime) -> bool:
+        self._refresh_curated_active_index(now=now)
+        stored = self._nodes.get(node_id)
+        if stored is not None:
+            cutoff = now - timedelta(seconds=HEARTBEAT_TTL_SECONDS)
+            if (
+                stored.node.open
+                and stored.last_seen >= cutoff
+                and self._node_is_manifest_visible(stored.node)
+            ):
+                return True
+        return node_id in self._curated_active_index
+
     def _build_directory_node_view(
         self,
         *,
@@ -1020,7 +1033,7 @@ class RegistryStore:
                 1
                 for record in self._directory_claims.values()
                 if (record.expires_at is None or record.expires_at > now)
-                and self._node_known_for_moderation(record.node_id, now=now)
+                and self._node_has_current_moderation_effect(record.node_id, now=now)
             )
             return {"records": records, "active": active}
 
@@ -1041,7 +1054,7 @@ class RegistryStore:
                 1
                 for record in self._trust_claims.values()
                 if (record.expires_at is None or record.expires_at > now)
-                and self._node_known_for_moderation(record.node_id, now=now)
+                and self._node_has_current_moderation_effect(record.node_id, now=now)
             )
             return {"records": records, "active": active}
 

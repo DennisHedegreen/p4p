@@ -5964,6 +5964,80 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(registry.health()["active_directory_claims"], 0)
         self.assertEqual(registry.health()["active_trust_claims"], 0)
 
+    def test_health_active_claim_counts_hide_claims_for_closed_local_node(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    }
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        registry.announce(registry.Node(**demo.sign_node_announcement()))
+        registry.directory_claim(
+            registry.DirectoryClaimRequest(
+                node_id=demo.NODE.node_id,
+                claims=["reviewed"],
+                reason="Current node before close",
+            ),
+            authorization=self.registry_admin_authorization(),
+        )
+        registry.trust_claim_issue(
+            registry.TrustClaimIssueRequest(
+                node_id=demo.NODE.node_id,
+                claims=["reviewed"],
+            ),
+            SimpleNamespace(base_url="https://local.registry.test/"),
+            authorization=self.registry_admin_authorization(),
+        )
+
+        self.assertEqual(registry.health()["active_directory_claims"], 1)
+        self.assertEqual(registry.health()["active_trust_claims"], 1)
+
+        registry.heartbeat(
+            registry.HeartbeatRequest(**self.make_signed_heartbeat_payload(demo, open=False))
+        )
+
+        discover_result = registry.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        directory_result = registry.directory(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+
+        self.assertEqual(discover_result.nodes, [])
+        self.assertEqual(directory_result.nodes, [])
+        self.assertEqual(registry.health()["directory_claim_records"], 1)
+        self.assertEqual(registry.health()["trust_claim_records"], 1)
+        self.assertEqual(registry.health()["active_directory_claims"], 0)
+        self.assertEqual(registry.health()["active_trust_claims"], 0)
+
     def test_invalid_trust_claim_signature_is_rejected(self) -> None:
         identity = load_module("p4p_identity.py")
         issuer_private_key = identity.generate_private_key()
