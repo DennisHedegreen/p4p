@@ -6013,6 +6013,59 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(trust_claim_error.exception.status_code, 400)
         self.assertEqual(trust_claim_error.exception.detail, "Invalid trust claim signature")
 
+    def test_imported_trust_claim_requires_current_target_node(self) -> None:
+        identity = load_module("p4p_identity.py")
+        issuer_private_key = identity.generate_private_key()
+        directory = load_module(
+            "registry/main.py",
+            {
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_moderate_directory": True}
+                ),
+            },
+        )
+        missing_node_id = "dk-missing-pizza-001"
+
+        claim_payload = {
+            "issuer_registry_url": "https://issuer.registry.test",
+            "issuer_registry_public_key": identity.public_key_from_private(issuer_private_key),
+            "node_id": missing_node_id,
+            "claims": ["reviewed"],
+            "reason": "External claim without current local target",
+            "issued_at": directory.utc_now().isoformat(),
+            "expires_at": (directory.utc_now() + directory.timedelta(days=7)).isoformat(),
+        }
+        unsigned = directory.TrustClaimRecord(
+            **{
+                **claim_payload,
+                "signature": "ed25519:pending",
+            }
+        )
+        signed_claim = directory.TrustClaimRecord(
+            **{
+                **directory.trust_claim_payload(unsigned),
+                "signature": identity.sign_payload(
+                    directory.trust_claim_payload(unsigned),
+                    issuer_private_key,
+                ),
+            }
+        )
+
+        with self.assertRaises(HTTPException) as trust_claim_error:
+            directory.trust_claim_import(
+                signed_claim,
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(trust_claim_error.exception.status_code, 404)
+        self.assertEqual(
+            trust_claim_error.exception.detail,
+            "Cannot import a trust claim for an unknown node_id",
+        )
+        self.assertEqual(directory.health()["trust_claim_records"], 0)
+        self.assertEqual(directory.health()["active_trust_claims"], 0)
+
     def test_expired_trust_claim_is_ignored_in_directory(self) -> None:
         identity = load_module("p4p_identity.py")
         issuer_private_key = identity.generate_private_key()

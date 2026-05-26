@@ -1136,6 +1136,11 @@ class RegistryStore:
         with self._lock:
             require_valid_trust_claim(claim)
             now = utc_now()
+            if not self._node_known_for_moderation(claim.node_id, now=now):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Cannot import a trust claim for an unknown node_id",
+                )
             record_key = trust_claim_record_key(
                 issuer_registry_url=str(claim.issuer_registry_url),
                 node_id=claim.node_id,

@@ -110,6 +110,7 @@ Then open:
 - root-managed node ids may also carry a separate root-signed manifest so revoked keys disappear from discovery and heartbeat acceptance
 - once a current root manifest exists for a node id, unsigned local announcements and unsigned local heartbeats are no longer accepted for that node id, and stale unsigned legacy state is hidden from discovery and source export
 - directory claims and locally issued trust claims only target node ids that are still current local or promoted node truth; hidden legacy state and history-only identity records are not enough
+- imported trust claims follow the same moderation boundary; a signed external claim still needs a current local or promoted target node before it is cached locally
 - health-level `active_directory_claims` and `active_trust_claims` follow the same current moderation truth instead of counting orphaned or now-hidden records as still active
 - root key changes for an existing root-managed node id require a previous-root rotation proof
 - `/identity-log` is read-only and contains public signing metadata, not node private keys
