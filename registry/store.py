@@ -967,11 +967,14 @@ class RegistryStore:
         )
         return active
 
-    def _node_known_for_trust_claim(self, node_id: str, *, now: datetime) -> bool:
+    def _node_known_for_moderation(self, node_id: str, *, now: datetime) -> bool:
         self._refresh_curated_active_index(now=now)
-        if node_id in self._nodes or node_id in self._curated_active_index:
+        stored = self._nodes.get(node_id)
+        if stored is not None and self._node_is_manifest_visible(stored.node):
             return True
-        return any(record.node_id == node_id for record in self._identity_records.values())
+        if node_id in self._curated_active_index:
+            return True
+        return False
 
     def _build_directory_node_view(
         self,
@@ -1063,6 +1066,11 @@ class RegistryStore:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="expires_at must be in the future when setting a directory claim",
                 )
+            if not self._node_known_for_moderation(payload.node_id, now=now):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Cannot set a directory claim for an unknown node_id",
+                )
             record = DirectoryClaimRecord(
                 node_id=payload.node_id,
                 claims=payload.claims,
@@ -1092,7 +1100,7 @@ class RegistryStore:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="expires_at must be in the future when issuing a trust claim",
                 )
-            if not self._node_known_for_trust_claim(payload.node_id, now=now):
+            if not self._node_known_for_moderation(payload.node_id, now=now):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Cannot issue a trust claim for an unknown node_id",

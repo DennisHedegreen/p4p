@@ -681,6 +681,76 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Current node manifest requires signed heartbeat updates",
         )
 
+    def test_hidden_manifest_legacy_state_cannot_receive_directory_or_trust_claims(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    }
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        unsigned_payload = demo.NODE.model_dump(mode="json", exclude_none=True)
+        unsigned_payload.pop("node_public_key", None)
+        unsigned_payload.pop("signed_at", None)
+        unsigned_payload.pop("signature", None)
+        unsigned_payload.pop("delegation", None)
+        registry.store._nodes[demo.NODE.node_id] = registry.StoredNode(
+            node=registry.Node(**unsigned_payload),
+            last_seen=registry.utc_now(),
+            last_signed_event_at=None,
+        )
+
+        with self.assertRaises(HTTPException) as directory_claim_error:
+            registry.directory_claim(
+                registry.DirectoryClaimRequest(
+                    node_id=demo.NODE.node_id,
+                    claims=["reviewed"],
+                    reason="Should not attach to hidden legacy state",
+                ),
+                authorization=self.registry_admin_authorization(),
+            )
+        with self.assertRaises(HTTPException) as trust_claim_error:
+            registry.trust_claim_issue(
+                registry.TrustClaimIssueRequest(
+                    node_id=demo.NODE.node_id,
+                    claims=["reviewed"],
+                ),
+                SimpleNamespace(base_url="https://local.registry.test/"),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(directory_claim_error.exception.status_code, 404)
+        self.assertEqual(
+            directory_claim_error.exception.detail,
+            "Cannot set a directory claim for an unknown node_id",
+        )
+        self.assertEqual(trust_claim_error.exception.status_code, 404)
+        self.assertEqual(
+            trust_claim_error.exception.detail,
+            "Cannot issue a trust claim for an unknown node_id",
+        )
+        self.assertEqual(registry.health()["active_directory_claims"], 0)
+        self.assertEqual(registry.health()["active_trust_claims"], 0)
+
     def test_root_rotation_allows_new_root_manifest_and_delegation(self) -> None:
         registry = load_module("registry/main.py")
         identity = load_module("p4p_identity.py")
