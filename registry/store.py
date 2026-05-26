@@ -1019,7 +1019,8 @@ class RegistryStore:
             active = sum(
                 1
                 for record in self._directory_claims.values()
-                if record.expires_at is None or record.expires_at > now
+                if (record.expires_at is None or record.expires_at > now)
+                and self._node_known_for_moderation(record.node_id, now=now)
             )
             return {"records": records, "active": active}
 
@@ -1039,7 +1040,8 @@ class RegistryStore:
             active = sum(
                 1
                 for record in self._trust_claims.values()
-                if record.expires_at is None or record.expires_at > now
+                if (record.expires_at is None or record.expires_at > now)
+                and self._node_known_for_moderation(record.node_id, now=now)
             )
             return {"records": records, "active": active}
 
