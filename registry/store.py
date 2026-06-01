@@ -989,6 +989,14 @@ class RegistryStore:
                 return True
         return node_id in self._curated_active_index
 
+    def _node_is_directory_visible_for_moderation(self, node_id: str, *, now: datetime) -> bool:
+        if not self._node_has_current_moderation_effect(node_id, now=now):
+            return False
+        claim = self._active_directory_claim(node_id, now=now)
+        if claim is None:
+            return True
+        return self._directory_claim_is_visible(claim)
+
     def _build_directory_node_view(
         self,
         *,
@@ -1054,7 +1062,7 @@ class RegistryStore:
                 1
                 for record in self._trust_claims.values()
                 if (record.expires_at is None or record.expires_at > now)
-                and self._node_has_current_moderation_effect(record.node_id, now=now)
+                and self._node_is_directory_visible_for_moderation(record.node_id, now=now)
             )
             return {"records": records, "active": active}
 

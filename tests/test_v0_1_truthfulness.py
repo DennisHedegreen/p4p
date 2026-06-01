@@ -5714,10 +5714,16 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 **self.make_registry_admin_env(),
+                "P4P_REGISTRY_URL": "https://country.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     registry_type="country",
                     scope={"country_code": "DK"},
-                    capabilities={"can_curate_active_index": True, "can_moderate_directory": True}
+                    capabilities={
+                        "can_curate_active_index": True,
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    }
                 ),
             },
         )
@@ -5742,6 +5748,15 @@ class P4PTruthfulnessTests(unittest.TestCase):
             ),
             authorization=self.registry_admin_authorization(),
         )
+        registry.trust_claim_issue(
+            registry.TrustClaimIssueRequest(
+                node_id=demo.NODE.node_id,
+                claims=["reviewed"],
+                reason="This trust note should stay inactive while the node is local-only here",
+            ),
+            SimpleNamespace(base_url="https://country.registry.test/"),
+            authorization=self.registry_admin_authorization(),
+        )
 
         discover_result = registry.discover(
             lat=55.6517,
@@ -5760,6 +5775,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
         self.assertEqual(len(discover_result.nodes), 1)
         self.assertEqual(directory_result.nodes, [])
+        self.assertEqual(registry.health()["directory_claim_records"], 1)
+        self.assertEqual(registry.health()["active_directory_claims"], 1)
+        self.assertEqual(registry.health()["trust_claim_records"], 1)
+        self.assertEqual(registry.health()["active_trust_claims"], 0)
 
     def test_expired_directory_claim_is_ignored(self) -> None:
         identity = load_module("p4p_identity.py")
