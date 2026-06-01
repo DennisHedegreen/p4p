@@ -65,7 +65,7 @@ Run the green gate:
 demo-node/.venv/bin/python -m unittest discover -s tests -v
 bash scripts/public-audit.sh
 node --check client/app.js
-demo-node/.venv/bin/python -m compileall demo_node pilot_node registry p4p_core scripts lab
+demo-node/.venv/bin/python -m compileall demo-node/app/demo_node pilot-node/app/pilot_node registry p4p_core scripts lab
 ```
 
 If the change is public-facing, also update the short explanation layer:

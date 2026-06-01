@@ -6,12 +6,16 @@ from pathlib import Path
 
 
 P4P_ROOT = Path(__file__).resolve().parents[1]
-PILOT_PACKAGE_ROOT = P4P_ROOT / "pilot_node"
+APP_ROOT = Path(__file__).resolve().parent / "app"
+PILOT_PACKAGE_ROOT = APP_ROOT / "pilot_node"
 if str(P4P_ROOT) not in sys.path:
     sys.path.insert(0, str(P4P_ROOT))
+if str(APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(APP_ROOT))
 
 # Make this launcher module behave like the real pilot_node package so imports
 # inside pilot_app.py can resolve pilot_node.config/routes/runtime.
+sys.modules["pilot_node"] = sys.modules[__name__]
 __path__ = [str(PILOT_PACKAGE_ROOT)]
 
 

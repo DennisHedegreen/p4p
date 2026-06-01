@@ -16,6 +16,7 @@ Minimal Python service used to prove the protocol loop.
 ## Files
 
 - `demo_node.py` — FastAPI node with announce/heartbeat loop
+- `app/demo_node/` — internal Python package used by the launcher
 - `operator.html` — local reference node-operator UI
 - `requirements.txt` — minimal runtime dependencies
 

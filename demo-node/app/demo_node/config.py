@@ -19,6 +19,8 @@ from p4p_core import (
 from p4p_core.constants import OrderMode
 from p4p_identity import load_or_create_private_key, public_key_from_private
 
+ROOM_ROOT = Path(__file__).resolve().parents[2]
+
 
 def load_node_private_key() -> str:
     env_private_key = os.environ.get("P4P_NODE_PRIVATE_KEY", "").strip()
@@ -103,7 +105,7 @@ def build_demo_config() -> DemoConfig:
         readiness_stale_after_seconds=heartbeat_interval_seconds + 5,
         order_modes=("disabled", "menu_only", "test", "live"),
         reference_modules=reference_modules,
-        operator_html=Path(__file__).resolve().parents[1] / "demo-node/operator.html",
+        operator_html=ROOM_ROOT / "operator.html",
         registry_urls=load_registry_urls(),
         node_private_key=node_private_key,
         node_public_key=public_key_from_private(node_private_key),

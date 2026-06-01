@@ -79,9 +79,9 @@ If you want to inspect concrete runtime behavior instead of only prose:
 - [`registry/`](registry/)
 - [`demo-node/`](demo-node/)
 - [`pilot-node/README.md`](pilot-node/README.md)
-- [`pilot_node/routes.py`](pilot_node/routes.py)
-- [`pilot_node/execution.py`](pilot_node/execution.py)
-- [`pilot_node/hardware_lanes.py`](pilot_node/hardware_lanes.py)
+- [`pilot-node/app/pilot_node/routes.py`](pilot-node/app/pilot_node/routes.py)
+- [`pilot-node/app/pilot_node/execution.py`](pilot-node/app/pilot_node/execution.py)
+- [`pilot-node/app/pilot_node/hardware_lanes.py`](pilot-node/app/pilot_node/hardware_lanes.py)
 - [`p4p_core/flow_contracts.py`](p4p_core/flow_contracts.py)
 
 ## Useful Commands

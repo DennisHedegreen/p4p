@@ -83,7 +83,7 @@ cd /path/to/p4p
 demo-node/.venv/bin/python -m unittest discover -s tests -v
 bash scripts/public-audit.sh
 node --check client/app.js
-demo-node/.venv/bin/python -m compileall demo_node pilot_node registry p4p_core scripts
+demo-node/.venv/bin/python -m compileall demo-node/app/demo_node pilot-node/app/pilot_node registry p4p_core scripts
 ```
 
 What should pass:

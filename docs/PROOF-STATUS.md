@@ -31,7 +31,7 @@ Verified on 30 April 2026:
 - `demo-node/.venv/bin/python -m unittest discover -s tests -v` passed with `109/109`
 - `bash scripts/public-audit.sh` passed
 - `node --check client/app.js` passed
-- `demo-node/.venv/bin/python -m compileall demo_node pilot_node registry p4p_core scripts` passed
+- `demo-node/.venv/bin/python -m compileall demo-node/app/demo_node pilot-node/app/pilot_node registry p4p_core scripts` passed
 
 This means the current repo state is internally coherent enough to keep the public claim narrow and honest.
 

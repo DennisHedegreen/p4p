@@ -7,8 +7,11 @@ from pathlib import Path
 import httpx
 
 P4P_ROOT = Path(__file__).resolve().parents[1]
+APP_ROOT = Path(__file__).resolve().parent / "app"
 if str(P4P_ROOT) not in sys.path:
     sys.path.insert(0, str(P4P_ROOT))
+if str(APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(APP_ROOT))
 
 from p4p_core import OrderAccepted, OrderItem, OrderRejected, OrderRequest, utc_now
 from p4p_identity import sign_payload

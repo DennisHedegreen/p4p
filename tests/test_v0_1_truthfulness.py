@@ -8918,7 +8918,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             pilot.store.close()
 
     def test_menu_import_ignores_bare_integer_tokens_when_a_name_sits_to_the_right(self) -> None:
-        menu_import = load_module("pilot_node/menu_import.py")
+        menu_import = load_module("pilot-node/app/pilot_node/menu_import.py")
 
         tokens = [
             {
@@ -8979,7 +8979,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertNotIn("Marsala 41", lines)
 
     def test_menu_import_pairs_prices_with_their_own_visual_column(self) -> None:
-        menu_import = load_module("pilot_node/menu_import.py")
+        menu_import = load_module("pilot-node/app/pilot_node/menu_import.py")
 
         tokens = [
             {
@@ -9053,7 +9053,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertNotIn("Bella Rosa 80,-", lines)
 
     def test_menu_import_recovers_lower_right_items_with_offset_prices(self) -> None:
-        menu_import = load_module("pilot_node/menu_import.py")
+        menu_import = load_module("pilot-node/app/pilot_node/menu_import.py")
 
         tokens = [
             {
@@ -10154,7 +10154,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_OPERATOR_TOKEN": "operator-secret",
             }
             pilot = load_module("pilot-node/pilot_node.py", env)
-            routes = load_module("pilot_node/routes.py", env)
+            routes = load_module("pilot-node/app/pilot_node/routes.py", env)
 
             pilot.operator_update_setup(
                 pilot.OperatorSetupUpdate(operator_locale="tr"),
@@ -10316,7 +10316,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 "P4P_OPERATOR_TOKEN": "operator-secret",
             }
             pilot = load_module("pilot-node/pilot_app.py", env)
-            routes = load_module("pilot_node/routes.py", env)
+            routes = load_module("pilot-node/app/pilot_node/routes.py", env)
             payload = json.loads((REPO_ROOT / "modules/p4p.menu.list/module.json").read_text(encoding="utf-8"))
             payload["module_id"] = "local.demo.multipart.menu"
             payload["provider_id"] = "local.demo"

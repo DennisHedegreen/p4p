@@ -105,18 +105,19 @@ from pilot_node.runtime import (
 from pilot_node.state_keys import ACTIVE_PAYMENT_MODULE_STATE_KEY
 
 
-P4P_ROOT = Path(__file__).resolve().parents[1]
-OPERATOR_ASSETS_ROOT = P4P_ROOT / "pilot-node" / "assets"
-OPERATOR_WELCOME_HTML_PATH = P4P_ROOT / "pilot-node" / "operator-welcome.html"
-OPERATOR_SETUP_HTML_PATH = P4P_ROOT / "pilot-node" / "operator-setup.html"
-OPERATOR_OPERATIONS_HTML_PATH = P4P_ROOT / "pilot-node" / "operator.html"
-OPERATOR_CATALOG_HTML_PATH = P4P_ROOT / "pilot-node" / "operator-catalog.html"
-OPERATOR_MODULES_HTML_PATH = P4P_ROOT / "pilot-node" / "operator-modules.html"
-OPERATOR_DISCOVER_HTML_PATH = P4P_ROOT / "pilot-node" / "operator-discover.html"
-OPERATOR_IMPORT_HTML_PATH = P4P_ROOT / "pilot-node" / "operator-import.html"
-OPERATOR_NODE_HTML_PATH = P4P_ROOT / "pilot-node" / "operator-node.html"
-MODULE_HTML_PATH = P4P_ROOT / "pilot-node" / "module.html"
-PICKUP_BOARD_HTML_PATH = P4P_ROOT / "pilot-node" / "pickup_board.html"
+ROOM_ROOT = Path(__file__).resolve().parents[2]
+P4P_ROOT = ROOM_ROOT.parent
+OPERATOR_ASSETS_ROOT = ROOM_ROOT / "assets"
+OPERATOR_WELCOME_HTML_PATH = ROOM_ROOT / "operator-welcome.html"
+OPERATOR_SETUP_HTML_PATH = ROOM_ROOT / "operator-setup.html"
+OPERATOR_OPERATIONS_HTML_PATH = ROOM_ROOT / "operator.html"
+OPERATOR_CATALOG_HTML_PATH = ROOM_ROOT / "operator-catalog.html"
+OPERATOR_MODULES_HTML_PATH = ROOM_ROOT / "operator-modules.html"
+OPERATOR_DISCOVER_HTML_PATH = ROOM_ROOT / "operator-discover.html"
+OPERATOR_IMPORT_HTML_PATH = ROOM_ROOT / "operator-import.html"
+OPERATOR_NODE_HTML_PATH = ROOM_ROOT / "operator-node.html"
+MODULE_HTML_PATH = ROOM_ROOT / "module.html"
+PICKUP_BOARD_HTML_PATH = ROOM_ROOT / "pickup_board.html"
 FOOD_IMAGE_FIXTURE_ROOT = P4P_ROOT / "docs" / "examples" / "food-image-fixtures"
 MODULE_DOCS_ROOT = P4P_ROOT / "docs" / "modules"
 PROVIDER_DOCS_ROOT = P4P_ROOT / "docs" / "providers"

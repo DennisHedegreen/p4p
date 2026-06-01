@@ -32,6 +32,11 @@ Start it in `menu_only`.
 
 Move to `live` only through explicit operator action.
 
+Internal package layout:
+
+- `pilot_node.py` is the room-level launcher module
+- `app/pilot_node/` holds the importable runtime package behind that launcher
+
 ## Local Run
 
 ```bash
