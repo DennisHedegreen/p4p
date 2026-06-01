@@ -968,13 +968,7 @@ class RegistryStore:
         return active
 
     def _node_known_for_moderation(self, node_id: str, *, now: datetime) -> bool:
-        self._refresh_curated_active_index(now=now)
-        stored = self._nodes.get(node_id)
-        if stored is not None and self._node_is_manifest_visible(stored.node):
-            return True
-        if node_id in self._curated_active_index:
-            return True
-        return False
+        return self._node_has_current_moderation_effect(node_id, now=now)
 
     def _node_has_current_moderation_effect(self, node_id: str, *, now: datetime) -> bool:
         self._refresh_curated_active_index(now=now)

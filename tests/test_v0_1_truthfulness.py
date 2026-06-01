@@ -6220,6 +6220,111 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(directory.health()["trust_claim_records"], 0)
         self.assertEqual(directory.health()["active_trust_claims"], 0)
 
+    def test_directory_claim_rejects_closed_local_node_without_current_truth(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_moderate_directory": True}
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        registry.announce(registry.Node(**demo.sign_node_announcement()))
+        registry.heartbeat(
+            registry.HeartbeatRequest(**self.make_signed_heartbeat_payload(demo, open=False))
+        )
+
+        with self.assertRaises(HTTPException) as directory_claim_error:
+            registry.directory_claim(
+                registry.DirectoryClaimRequest(
+                    node_id=demo.NODE.node_id,
+                    claims=["reviewed"],
+                    reason="Should fail after close",
+                ),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(directory_claim_error.exception.status_code, 404)
+        self.assertEqual(
+            directory_claim_error.exception.detail,
+            "Cannot set a directory claim for an unknown node_id",
+        )
+        self.assertEqual(registry.health()["directory_claim_records"], 0)
+        self.assertEqual(registry.health()["active_directory_claims"], 0)
+
+    def test_trust_claim_issue_rejects_revoked_local_node_without_current_truth(self) -> None:
+        identity = load_module("p4p_identity.py")
+        issuer_private_key = identity.generate_private_key()
+        registry = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://local.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": issuer_private_key,
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={
+                        "can_moderate_directory": True,
+                        "can_issue_trust_claims": True,
+                    }
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        registry.announce(registry.Node(**demo.sign_node_announcement()))
+        registry.node_manifest(
+            registry.NodeManifestRequest(
+                **self.make_node_manifest_request(
+                    demo,
+                    manifest_version=2,
+                    issued_at=registry.utc_now().isoformat(),
+                    key_status="revoked",
+                )
+            )
+        )
+
+        with self.assertRaises(HTTPException) as trust_claim_error:
+            registry.trust_claim_issue(
+                registry.TrustClaimIssueRequest(
+                    node_id=demo.NODE.node_id,
+                    claims=["reviewed"],
+                ),
+                SimpleNamespace(base_url="https://local.registry.test/"),
+                authorization=self.registry_admin_authorization(),
+            )
+
+        self.assertEqual(trust_claim_error.exception.status_code, 404)
+        self.assertEqual(
+            trust_claim_error.exception.detail,
+            "Cannot issue a trust claim for an unknown node_id",
+        )
+        self.assertEqual(registry.health()["trust_claim_records"], 0)
+        self.assertEqual(registry.health()["active_trust_claims"], 0)
+
     def test_expired_trust_claim_is_ignored_in_directory(self) -> None:
         identity = load_module("p4p_identity.py")
         issuer_private_key = identity.generate_private_key()
