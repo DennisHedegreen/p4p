@@ -100,11 +100,7 @@ def bind_routes(
         override_counts = store.curated_override_counts()
         directory_counts = store.directory_claim_counts()
         trust_claim_counts = store.trust_claim_counts()
-        reexportable_mirrors = [
-            stored
-            for stored, discovery_basis in discoverable_mirrors.values()
-            if discovery_basis == "trusted_upstream" and stored.verified_signature
-        ]
+        reexportable_mirrors = store._reexportable_mirror_sources(now=now)
         return {
             "status": "ok",
             "protocol_version": PROTOCOL_VERSION,

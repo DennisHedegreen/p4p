@@ -2554,6 +2554,57 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "https://umbrella.protocols4people.com/",
         )
 
+    def test_health_reexportable_mirrored_registries_counts_trusted_sources_even_without_visible_nodes(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        source.heartbeat(source.HeartbeatRequest(**self.make_signed_heartbeat_payload(demo, open=False)))
+        snapshot = source.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+        relay.registry_source_import(
+            snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
+
+        relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+
+        self.assertEqual(relay.health()["reexportable_mirrored_registries"], 1)
+        self.assertEqual(relay.health()["discoverable_mirrored_registries"], 0)
+        self.assertEqual(len(relay_snapshot.mirrored_sources), 1)
+        self.assertEqual(relay_snapshot.mirrored_sources[0].discovery_basis, "trusted_upstream")
+        self.assertTrue(relay_snapshot.mirrored_sources[0].verified_signature)
+
     def test_registry_source_import_skips_reordered_mirrored_sources_as_unchanged(self) -> None:
         identity = load_module("p4p_identity.py")
         source_a = load_module(
