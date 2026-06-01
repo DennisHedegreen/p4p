@@ -115,6 +115,7 @@ Then open:
 - those active moderation counts also follow current *effect*, not just existence: closed or heartbeat-stale local nodes do not keep claims “active” in health while they are absent from `directory()`
 - active trust-claim counts also follow directory visibility: if a current directory claim hides a node from this registry's `directory()` surface, its trust claims are not counted as active here
 - health-level `reexportable_mirrored_registries` follows the actual trusted relay envelope, not ordinary discovery visibility; a trusted signed upstream can stay re-exportable for source-proof purposes even while its current node set is empty or hidden from `discover()`
+- when a trusted signed upstream is re-exported only for proof/sync and currently has no visible nodes, the nested mirror metadata stays honest: `discovery_eligible=false` and `discovery_basis=trusted_upstream_no_visible_nodes`, while downstream validation still accepts that relay envelope as trusted re-export proof
 - root key changes for an existing root-managed node id require a previous-root rotation proof
 - `/identity-log` is read-only and contains public signing metadata, not node private keys
 - `/registry-source` is a full registry snapshot surface for later mirroring or umbrella ingestion

@@ -2578,6 +2578,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 ),
             },
         )
+        downstream = load_module("registry/main.py", self.make_registry_admin_env())
         demo = load_module(
             "demo-node/demo_node.py",
             {
@@ -2598,11 +2599,20 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
 
         relay_snapshot = relay.registry_source(SimpleNamespace(base_url="https://ignored.example/"))
+        imported = downstream.registry_source_import(
+            relay_snapshot,
+            authorization=self.registry_admin_authorization(),
+        )
 
         self.assertEqual(relay.health()["reexportable_mirrored_registries"], 1)
         self.assertEqual(relay.health()["discoverable_mirrored_registries"], 0)
+        self.assertEqual(imported.imported_relayed_sources, 1)
         self.assertEqual(len(relay_snapshot.mirrored_sources), 1)
-        self.assertEqual(relay_snapshot.mirrored_sources[0].discovery_basis, "trusted_upstream")
+        self.assertFalse(relay_snapshot.mirrored_sources[0].discovery_eligible)
+        self.assertEqual(
+            relay_snapshot.mirrored_sources[0].discovery_basis,
+            "trusted_upstream_no_visible_nodes",
+        )
         self.assertTrue(relay_snapshot.mirrored_sources[0].verified_signature)
 
     def test_registry_source_import_skips_reordered_mirrored_sources_as_unchanged(self) -> None:

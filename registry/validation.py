@@ -914,7 +914,13 @@ def require_valid_registry_source(payload: RegistrySourceResponse) -> bool:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Re-exported mirrored source must carry a verified upstream signature",
             )
-        if not mirrored_source.discovery_eligible or mirrored_source.discovery_basis != "trusted_upstream":
+        if mirrored_source.discovery_eligible:
+            reexport_basis_allowed = mirrored_source.discovery_basis == "trusted_upstream"
+        else:
+            reexport_basis_allowed = (
+                mirrored_source.discovery_basis == "trusted_upstream_no_visible_nodes"
+            )
+        if not reexport_basis_allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only trusted upstream mirrored sources may be re-exported",

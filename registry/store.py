@@ -1338,16 +1338,23 @@ class RegistryStore:
             events = list(self._identity_events)
             mirrored_sources: list[RegistrySourceMirrorExport] = []
             if self._config.registry_source_reexport_policy == "local_plus_trusted_mirrors":
-                for stored, discovery_basis in self._reexportable_mirror_sources(now=now).values():
+                for stored, _ in self._reexportable_mirror_sources(now=now).values():
                     if not stored.verified_signature:
                         continue
+                    _, discovery_eligible, discovery_basis = self._mirror_source_discovery_status(
+                        stored,
+                        now=now,
+                    )
+                    exported_discovery_basis = discovery_basis
+                    if not discovery_eligible and discovery_basis == "no_visible_nodes":
+                        exported_discovery_basis = "trusted_upstream_no_visible_nodes"
                     mirrored_sources.append(
                         RegistrySourceMirrorExport(
                             snapshot=self._response_to_snapshot(stored.snapshot),
                             imported_at=stored.imported_at,
                             verified_signature=stored.verified_signature,
-                            discovery_eligible=True,
-                            discovery_basis=discovery_basis,
+                            discovery_eligible=discovery_eligible,
+                            discovery_basis=exported_discovery_basis,
                             relayed_by_registry_url=registry_url,
                         )
                     )
