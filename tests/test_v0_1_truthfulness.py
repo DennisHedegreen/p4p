@@ -458,6 +458,43 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         self.assertEqual(directory_result.nodes[0].undeclared_modules, ["p4p.delivery.pickup"])
 
+    def test_directory_starts_from_same_visible_nodes_as_discover(self) -> None:
+        identity = load_module("p4p_identity.py")
+        registry = load_module("registry/main.py")
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        registry.node_manifest(
+            registry.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        registry.announce(registry.Node(**demo.sign_node_announcement()))
+
+        discover_result = registry.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        directory_result = registry.directory(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+
+        self.assertEqual([node.node_id for node in discover_result.nodes], [demo.NODE.node_id])
+        self.assertEqual(
+            [node.node_id for node in directory_result.nodes],
+            [node.node_id for node in discover_result.nodes],
+        )
+
     def test_root_delegation_accepts_valid_operational_node_and_exposes_role(self) -> None:
         registry = load_module("registry/main.py")
         identity = load_module("p4p_identity.py")

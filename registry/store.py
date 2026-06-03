@@ -1184,6 +1184,83 @@ class RegistryStore:
                 imported_at=now,
             )
 
+    def _discover_locked(
+        self,
+        *,
+        lat: float,
+        lng: float,
+        radius: float,
+        category: str | None,
+        country: str | None,
+        now: datetime,
+    ) -> list[NodeView]:
+        self._refresh_curated_active_index(now=now)
+        cutoff = now - timedelta(seconds=HEARTBEAT_TTL_SECONDS)
+        results_by_node_id: dict[str, NodeView] = {}
+
+        for stored in self._nodes.values():
+            view = self._build_discover_view(
+                node=stored.node,
+                last_seen=stored.last_seen,
+                manifests_by_node_id=None,
+                source_kind="local",
+                source_registry_url=None,
+                source_relay_registry_url=None,
+                source_signature_verified=None,
+                source_discovery_basis="local_registry",
+                source_snapshot_hash=None,
+                source_exported_at=None,
+                source_imported_at=None,
+                source_last_synced_at=None,
+                source_freshness_state=None,
+                lat=lat,
+                lng=lng,
+                radius=radius,
+                category=category,
+                country=country,
+                cutoff=cutoff,
+            )
+            if view is None:
+                continue
+            results_by_node_id[stored.node.node_id] = view
+
+        for entry in self._curated_active_index.values():
+            if entry.node.node_id in results_by_node_id:
+                continue
+            if not self._curated_entry_is_current(entry, now=now):
+                continue
+            view = self._build_discover_view(
+                node=entry.node,
+                last_seen=entry.last_seen,
+                manifests_by_node_id={},
+                source_kind=entry.source_kind,
+                source_registry_url=str(entry.source_registry_url),
+                source_relay_registry_url=(
+                    str(entry.source_relay_registry_url) if entry.source_relay_registry_url else None
+                ),
+                source_signature_verified=entry.source_signature_verified,
+                source_discovery_basis=entry.source_discovery_basis,
+                source_snapshot_hash=entry.source_snapshot_hash,
+                source_exported_at=entry.source_exported_at,
+                source_imported_at=entry.source_imported_at,
+                source_last_synced_at=entry.source_last_synced_at,
+                source_freshness_state=entry.source_freshness_state,
+                lat=lat,
+                lng=lng,
+                radius=radius,
+                category=category,
+                country=country,
+                cutoff=cutoff,
+            )
+            if view is None:
+                continue
+            results_by_node_id[entry.node.node_id] = view
+
+        return sorted(
+            results_by_node_id.values(),
+            key=lambda node: ((node.distance_km or 0), node.name.lower()),
+        )
+
     def discover(
         self,
         *,
@@ -1194,72 +1271,13 @@ class RegistryStore:
         country: str | None,
     ) -> list[NodeView]:
         with self._lock:
-            now = utc_now()
-            self._refresh_curated_active_index(now=now)
-            cutoff = now - timedelta(seconds=HEARTBEAT_TTL_SECONDS)
-            results_by_node_id: dict[str, NodeView] = {}
-
-            for stored in self._nodes.values():
-                view = self._build_discover_view(
-                    node=stored.node,
-                    last_seen=stored.last_seen,
-                    manifests_by_node_id=None,
-                    source_kind="local",
-                    source_registry_url=None,
-                    source_relay_registry_url=None,
-                    source_signature_verified=None,
-                    source_discovery_basis="local_registry",
-                    source_snapshot_hash=None,
-                    source_exported_at=None,
-                    source_imported_at=None,
-                    source_last_synced_at=None,
-                    source_freshness_state=None,
-                    lat=lat,
-                    lng=lng,
-                    radius=radius,
-                    category=category,
-                    country=country,
-                    cutoff=cutoff,
-                )
-                if view is None:
-                    continue
-                results_by_node_id[stored.node.node_id] = view
-
-            for entry in self._curated_active_index.values():
-                if entry.node.node_id in results_by_node_id:
-                    continue
-                if not self._curated_entry_is_current(entry, now=now):
-                    continue
-                view = self._build_discover_view(
-                    node=entry.node,
-                    last_seen=entry.last_seen,
-                    manifests_by_node_id={},
-                    source_kind=entry.source_kind,
-                    source_registry_url=str(entry.source_registry_url),
-                    source_relay_registry_url=(
-                        str(entry.source_relay_registry_url) if entry.source_relay_registry_url else None
-                    ),
-                    source_signature_verified=entry.source_signature_verified,
-                    source_discovery_basis=entry.source_discovery_basis,
-                    source_snapshot_hash=entry.source_snapshot_hash,
-                    source_exported_at=entry.source_exported_at,
-                    source_imported_at=entry.source_imported_at,
-                    source_last_synced_at=entry.source_last_synced_at,
-                    source_freshness_state=entry.source_freshness_state,
-                    lat=lat,
-                    lng=lng,
-                    radius=radius,
-                    category=category,
-                    country=country,
-                    cutoff=cutoff,
-                )
-                if view is None:
-                    continue
-                results_by_node_id[entry.node.node_id] = view
-
-            return sorted(
-                results_by_node_id.values(),
-                key=lambda node: ((node.distance_km or 0), node.name.lower()),
+            return self._discover_locked(
+                lat=lat,
+                lng=lng,
+                radius=radius,
+                category=category,
+                country=country,
+                now=utc_now(),
             )
 
     def directory(
@@ -1273,12 +1291,13 @@ class RegistryStore:
     ) -> list[DirectoryNodeView]:
         with self._lock:
             now = utc_now()
-            nodes = self.discover(
+            nodes = self._discover_locked(
                 lat=lat,
                 lng=lng,
                 radius=radius,
                 category=category,
                 country=country,
+                now=now,
             )
             visible: list[DirectoryNodeView] = []
             for node in nodes:
