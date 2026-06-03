@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import HTTPException, status
 
 from p4p_core import HeartbeatRequest, NodeManifest, NodeManifestRequest, resolve_enabled_modules, utc_now
+from p4p_core.constants import PROTOCOL_VERSION
 
 from registry.config import RegistryConfig, normalized_registry_url
 from registry.models import (
@@ -849,6 +850,87 @@ class RegistryStore:
                     )
                 )
             return RegistryMirrorStatusResponse(query_time=utc_now(), sources=sources)
+
+    def health_snapshot(self) -> dict[str, object]:
+        with self._lock:
+            now = utc_now()
+            active_mirrors = self._active_mirror_sources(now=now)
+            discoverable_mirrors = self._discoverable_mirror_sources(now=now)
+            registered_node_count = sum(
+                1
+                for stored in self._nodes.values()
+                if self._node_is_source_export_visible(stored.node)
+            )
+            discoverable_mirror_node_count = sum(
+                len(self._visible_mirror_nodes(stored, now=now))
+                for stored, _ in discoverable_mirrors.values()
+            )
+            self._refresh_curated_active_index(now=now)
+            promotion_counts = {
+                "records": len(self._curated_promotion_records),
+                "promoted": sum(
+                    1 for record in self._curated_promotion_records.values() if record.decision == "promote"
+                ),
+            }
+            promotion_counts["denied"] = promotion_counts["records"] - promotion_counts["promoted"]
+            override_counts = {
+                "records": len(self._curated_overrides),
+                "active": sum(
+                    1
+                    for record in self._curated_overrides.values()
+                    if record.expires_at is None or record.expires_at > now
+                ),
+            }
+            directory_claim_counts = {
+                "records": len(self._directory_claims),
+                "active": sum(
+                    1
+                    for record in self._directory_claims.values()
+                    if (record.expires_at is None or record.expires_at > now)
+                    and self._node_has_current_moderation_effect(record.node_id, now=now)
+                ),
+            }
+            trust_claim_counts = {
+                "records": len(self._trust_claims),
+                "active": sum(
+                    1
+                    for record in self._trust_claims.values()
+                    if (record.expires_at is None or record.expires_at > now)
+                    and self._node_is_directory_visible_for_moderation(record.node_id, now=now)
+                ),
+            }
+            reexportable_mirrors = self._reexportable_mirror_sources(now=now)
+            return {
+                "status": "ok",
+                "protocol_version": PROTOCOL_VERSION,
+                "registered_nodes": registered_node_count,
+                "mirrored_registries": len(active_mirrors),
+                "mirrored_nodes": sum(len(stored.snapshot.nodes) for stored in active_mirrors.values()),
+                "discoverable_mirrored_registries": len(discoverable_mirrors),
+                "discoverable_mirrored_nodes": discoverable_mirror_node_count,
+                "configured_mirror_upstreams": len(self._config.mirror_upstreams),
+                "trusted_mirror_upstreams": len(self._config.mirror_trusted_upstreams),
+                "mirror_discovery_policy": self._config.mirror_discovery_policy,
+                "curated_index_promotion_policy": self._config.curated_index_promotion_policy,
+                "registry_source_reexport_policy": self._config.registry_source_reexport_policy,
+                "registry_metadata": self._config.registry_metadata.model_dump(mode="json", exclude_none=True),
+                "curated_active_index_entries": len(self._curated_active_index),
+                "curated_promotion_records": promotion_counts["records"],
+                "curated_promoted_sources": promotion_counts["promoted"],
+                "curated_denied_sources": promotion_counts["denied"],
+                "curated_override_records": override_counts["records"],
+                "active_curated_overrides": override_counts["active"],
+                "directory_claim_records": directory_claim_counts["records"],
+                "active_directory_claims": directory_claim_counts["active"],
+                "trust_claim_records": trust_claim_counts["records"],
+                "active_trust_claims": trust_claim_counts["active"],
+                "reexportable_mirrored_registries": len(reexportable_mirrors),
+                "mirror_sync_interval_seconds": self._config.mirror_sync_interval_seconds,
+                "mirror_ttl_seconds": self._config.mirror_source_ttl_seconds,
+                "storage_backend": self.storage_backend,
+                "persistence_enabled": self.persistence_enabled,
+                "registry_signing_enabled": bool(self._config.registry_private_key),
+            }
 
     def curated_promotion_counts(self) -> dict[str, int]:
         with self._lock:

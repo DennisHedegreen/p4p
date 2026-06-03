@@ -83,55 +83,7 @@ def bind_routes(
 
     @app.get("/health")
     def health() -> dict[str, object]:
-        now = utc_now()
-        active_mirrors = store._active_mirror_sources(now=now)
-        discoverable_mirrors = store._discoverable_mirror_sources(now=now)
-        registered_node_count = sum(
-            1
-            for stored in store._nodes.values()
-            if store._node_is_source_export_visible(stored.node)
-        )
-        discoverable_mirror_node_count = sum(
-            len(store._visible_mirror_nodes(stored, now=now))
-            for stored, _ in discoverable_mirrors.values()
-        )
-        store._refresh_curated_active_index(now=now)
-        promotion_counts = store.curated_promotion_counts()
-        override_counts = store.curated_override_counts()
-        directory_counts = store.directory_claim_counts()
-        trust_claim_counts = store.trust_claim_counts()
-        reexportable_mirrors = store._reexportable_mirror_sources(now=now)
-        return {
-            "status": "ok",
-            "protocol_version": PROTOCOL_VERSION,
-            "registered_nodes": registered_node_count,
-            "mirrored_registries": len(active_mirrors),
-            "mirrored_nodes": sum(len(stored.snapshot.nodes) for stored in active_mirrors.values()),
-            "discoverable_mirrored_registries": len(discoverable_mirrors),
-            "discoverable_mirrored_nodes": discoverable_mirror_node_count,
-            "configured_mirror_upstreams": len(config.mirror_upstreams),
-            "trusted_mirror_upstreams": len(config.mirror_trusted_upstreams),
-            "mirror_discovery_policy": config.mirror_discovery_policy,
-            "curated_index_promotion_policy": config.curated_index_promotion_policy,
-            "registry_source_reexport_policy": config.registry_source_reexport_policy,
-            "registry_metadata": config.registry_metadata.model_dump(mode="json", exclude_none=True),
-            "curated_active_index_entries": len(store._curated_active_index),
-            "curated_promotion_records": promotion_counts["records"],
-            "curated_promoted_sources": promotion_counts["promoted"],
-            "curated_denied_sources": promotion_counts["denied"],
-            "curated_override_records": override_counts["records"],
-            "active_curated_overrides": override_counts["active"],
-            "directory_claim_records": directory_counts["records"],
-            "active_directory_claims": directory_counts["active"],
-            "trust_claim_records": trust_claim_counts["records"],
-            "active_trust_claims": trust_claim_counts["active"],
-            "reexportable_mirrored_registries": len(reexportable_mirrors),
-            "mirror_sync_interval_seconds": config.mirror_sync_interval_seconds,
-            "mirror_ttl_seconds": config.mirror_source_ttl_seconds,
-            "storage_backend": store.storage_backend,
-            "persistence_enabled": store.persistence_enabled,
-            "registry_signing_enabled": bool(config.registry_private_key),
-        }
+        return store.health_snapshot()
 
     @app.post("/announce", response_model=AnnounceResponse)
     def announce(node: Node) -> AnnounceResponse:
