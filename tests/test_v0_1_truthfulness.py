@@ -5386,6 +5386,57 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertFalse(mirror_status.sources[0].discovery_eligible)
         self.assertEqual(mirror_status.sources[0].discovery_basis, "expired")
 
+    def test_registry_sync_status_refreshes_curated_counts_for_expired_source(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_SOURCE_TTL_SECONDS": "1",
+                "P4P_MIRROR_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True}
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        mirror.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+
+        stored = next(iter(mirror.store._mirror_sources.values()))
+        stored.imported_at = mirror.utc_now() - mirror.timedelta(seconds=2)
+
+        sync_status = mirror.registry_sync_status(authorization=self.registry_admin_authorization())
+        promotions = mirror.curated_promotions(authorization=self.registry_admin_authorization())
+
+        self.assertEqual(sync_status.curated_promotion_records, 1)
+        self.assertEqual(sync_status.curated_promoted_sources, 0)
+        self.assertEqual(sync_status.curated_denied_sources, 1)
+        self.assertEqual(promotions.records[0].decision, "deny")
+        self.assertEqual(promotions.records[0].decision_basis, "expired")
+
     def test_stale_mirrored_node_is_not_treated_as_visible_for_status_or_promotion(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(

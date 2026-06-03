@@ -123,10 +123,12 @@ class MirrorSyncState:
 
     def snapshot(self) -> RegistrySyncStatusResponse:
         with self._lock:
+            now = utc_now()
+            self._store._refresh_curated_active_index(now=now)
             promotion_counts = self._store.curated_promotion_counts()
             override_counts = self._store.curated_override_counts()
             return RegistrySyncStatusResponse(
-                query_time=utc_now(),
+                query_time=now,
                 registry_metadata=self._config.registry_metadata,
                 configured_upstreams=self._config.mirror_upstreams,
                 trusted_upstreams=self._config.mirror_trusted_upstreams,
