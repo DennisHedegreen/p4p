@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P4P Brussels 2026 Hackathon Checklist</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    :root {
+      --paper: #f8f3e8;
+      --ink: #1a1715;
+      --muted: #675f55;
+      --line: #d7c9b5;
+      --accent: #f04a2a;
+      --accent-soft: #fff0e7;
+      --green: #2d8b58;
+      --green-soft: #e7f4eb;
+      --brown: #6f4c2e;
+      --dark: #211b17;
+      --dark-soft: #2c241f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #d8d0c3;
+      color: var(--ink);
+      font-family: "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .sheet {
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      padding: 9mm;
+      background:
+        radial-gradient(circle at 84% 12%, rgba(240, 74, 42, 0.08) 0 14mm, transparent 14.2mm),
+        radial-gradient(circle at 12% 90%, rgba(45, 139, 88, 0.08) 0 13mm, transparent 13.2mm),
+        var(--paper);
+      break-after: page;
+      page-break-after: always;
+    }
+
+    .sheet:last-of-type {
+      break-after: auto;
+      page-break-after: auto;
+    }
+
+    .frame {
+      height: 279mm;
+      padding: 7.5mm;
+      border: 0.45mm solid rgba(215, 201, 181, 0.95);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 4mm;
+    }
+
+    .kicker,
+    .page-number {
+      font-size: 2.7mm;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0;
+    }
+
+    h1,
+    h2,
+    h3,
+    p,
+    ul,
+    ol {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 9.6mm;
+      line-height: 0.98;
+      max-width: 158mm;
+    }
+
+    .hero {
+      display: grid;
+      gap: 2.2mm;
+    }
+
+    .lead {
+      max-width: 154mm;
+      font-size: 3.75mm;
+      line-height: 1.22;
+      color: var(--ink);
+    }
+
+    .hero-band {
+      padding: 3.2mm 3.8mm;
+      border-radius: 3mm;
+      background: var(--dark);
+      color: #fff8f1;
+      font-size: 3.15mm;
+      line-height: 1.22;
+      font-weight: 700;
+      max-width: 156mm;
+    }
+
+    .sheet--intro h1 {
+      font-size: 8.9mm;
+    }
+
+    .sheet--intro .lead {
+      font-size: 3.5mm;
+    }
+
+    .sheet--intro .summary-box {
+      font-size: 2.8mm;
+    }
+
+    .sheet--intro p,
+    .sheet--intro li {
+      font-size: 2.84mm;
+      line-height: 1.2;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3mm;
+    }
+
+    .summary-box {
+      padding: 3.3mm 3.6mm;
+      border-radius: 3mm;
+      font-size: 2.95mm;
+      line-height: 1.23;
+      font-weight: 700;
+    }
+
+    .summary-box--build {
+      background: var(--green-soft);
+      color: #173424;
+    }
+
+    .summary-box--claim {
+      background: var(--accent-soft);
+      color: #552519;
+    }
+
+    .summary-box--ask {
+      background: var(--dark-soft);
+      color: #fffaf2;
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 3.6mm;
+      align-content: start;
+    }
+
+    .grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .stack {
+      display: grid;
+      gap: 3.4mm;
+      align-content: start;
+    }
+
+    .card {
+      padding: 3.3mm 3.8mm;
+      border: 0.35mm solid rgba(215, 201, 181, 0.98);
+      border-radius: 3mm;
+      background: rgba(255, 252, 246, 0.94);
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .card--accent {
+      background: var(--accent-soft);
+    }
+
+    .card--green {
+      background: var(--green-soft);
+    }
+
+    .card--dark {
+      background: var(--dark);
+      color: #fff8f1;
+      border-color: rgba(33, 27, 23, 0.96);
+    }
+
+    .card--dark h2,
+    .card--dark h3 {
+      color: #ffd2c7;
+    }
+
+    h2 {
+      margin-bottom: 1.6mm;
+      font-size: 3.45mm;
+      line-height: 1.08;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h3 {
+      margin: 2mm 0 1mm;
+      font-size: 2.8mm;
+      line-height: 1.08;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    p,
+    li {
+      font-size: 2.95mm;
+      line-height: 1.24;
+    }
+
+    ul,
+    ol {
+      padding-left: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.95mm;
+    }
+
+    .checks li {
+      position: relative;
+      padding-left: 4.7mm;
+    }
+
+    .checks li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.45mm;
+      width: 2.7mm;
+      height: 2.7mm;
+      border: 0.35mm solid rgba(26, 23, 21, 0.78);
+      border-radius: 0.45mm;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .plain li {
+      position: relative;
+      padding-left: 4mm;
+    }
+
+    .plain li::before {
+      content: "";
+      position: absolute;
+      left: 0.6mm;
+      top: 1.05mm;
+      width: 1.55mm;
+      height: 1.55mm;
+      border-radius: 50%;
+      background: rgba(26, 23, 21, 0.78);
+    }
+
+    .plain--green li::before {
+      background: rgba(45, 139, 88, 0.92);
+    }
+
+    .plain--danger li::before {
+      background: rgba(240, 74, 42, 0.92);
+    }
+
+    .numbered {
+      counter-reset: item;
+    }
+
+    .numbered li {
+      position: relative;
+      padding-left: 5.4mm;
+    }
+
+    .numbered li::before {
+      counter-increment: item;
+      content: counter(item);
+      position: absolute;
+      left: 0;
+      top: 0.05mm;
+      width: 3.5mm;
+      height: 3.5mm;
+      border-radius: 50%;
+      background: rgba(240, 74, 42, 0.12);
+      color: var(--accent);
+      font-size: 2.45mm;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.6mm;
+      margin-top: 1mm;
+    }
+
+    .tag {
+      padding: 1.2mm 2.2mm;
+      border-radius: 999px;
+      border: 0.3mm solid rgba(215, 201, 181, 0.98);
+      font-size: 2.45mm;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(255, 252, 246, 0.9);
+      color: var(--brown);
+    }
+
+    .mini-note {
+      margin-top: 1.4mm;
+      color: var(--muted);
+      font-size: 2.6mm;
+      line-height: 1.22;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 6mm;
+      padding-top: 1.5mm;
+      border-top: 0.35mm solid rgba(215, 201, 181, 0.95);
+      color: var(--muted);
+      font-size: 2.35mm;
+    }
+
+    .footer strong {
+      color: var(--ink);
+    }
+
+    @media print {
+      body {
+        background: none;
+      }
+
+      .sheet {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet sheet--intro">
+    <section class="frame">
+      <header class="hero">
+        <p class="kicker">Brussels 2026 / Pizza4People / Team Packet</p>
+        <h1>WHAT WE CAN ACTUALLY BUILD, WHAT WE SHOULD NOT CLAIM, AND WHAT THIS TEAM CAN FINISH FAST.</h1>
+        <p class="lead">Use this as the working packet for the group. It is not the whitepaper and it is not the full repo explanation. It is the shortest honest path from P4P to something the team can align around, divide, build, and demo together.</p>
+        <div class="hero-band">Core claim: a local takeaway shop can be reachable by QR/link, show a menu, receive a pickup order, and keep the order path out of a marketplace middleman.</div>
+      </header>
+
+      <section class="summary">
+        <div class="summary-box summary-box--build">Build together: one direct pickup-ordering path for one local takeaway shop.</div>
+        <div class="summary-box summary-box--claim">Say clearly: discovery can be public, but the order should still go directly to the shop.</div>
+        <div class="summary-box summary-box--ask">Ask later: pilot partner, small follow-up support, and practical legal/regulatory help.</div>
+      </section>
+
+      <section class="grid-2">
+        <div class="stack">
+          <article class="card">
+            <h2>Agree This Before We Pitch</h2>
+            <ul class="checks">
+              <li>We agree on the shortest sentence: <strong>direct pickup ordering for local takeaway shops without marketplace capture</strong>.</li>
+              <li>We agree the hackathon demo is smaller than the full P4P repo.</li>
+              <li>We agree the registry is for discovery, not order relay.</li>
+              <li>We agree this is <strong>not</strong> "Uber Eats but open source."</li>
+              <li>We agree on one clear user: a small local takeaway shop that wants a direct route back to the customer.</li>
+            </ul>
+          </article>
+
+          <article class="card card--green">
+            <h2>What We Can Finish Together</h2>
+            <h3>Minimum demo</h3>
+            <ul class="checks">
+              <li>one shop page and readable menu</li>
+              <li>QR code or direct link</li>
+              <li>simple pickup-order flow</li>
+              <li>small operator screen</li>
+              <li><strong>received</strong> and <strong>ready</strong> status</li>
+              <li>payment at pickup first</li>
+            </ul>
+            <h3>Stronger if time allows</h3>
+            <ul class="checks">
+              <li>one small registry for discovery</li>
+              <li>one small node endpoint for menu and order</li>
+              <li>explicit <strong>order_mode</strong></li>
+              <li>request trace that proves menu/order hit the node directly</li>
+              <li>backup registry failover for discovery</li>
+            </ul>
+          </article>
+
+        </div>
+
+        <div class="stack">
+          <article class="card">
+            <h2>What Success Looks Like</h2>
+            <ul class="checks">
+              <li>A customer opens a QR code or direct link.</li>
+              <li>The customer sees the shop page and menu.</li>
+              <li>The customer places a pickup order.</li>
+              <li>The shop sees the order on its operator screen.</li>
+              <li>The order moves from <strong>received</strong> to <strong>ready</strong>.</li>
+              <li>The team can explain in one sentence why this is different from a platform marketplace.</li>
+              <li>If using the technical variant, the team can show discovery used a registry but the order did not go through the registry.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>What We Say Honestly In The Room</h2>
+            <ul class="plain">
+              <li>This is a proof of direct ordering, not a finished business rollout.</li>
+              <li>This is a prototype, not a production restaurant system.</li>
+              <li>The value is the boundary: discovery can be public without giving the order path to a marketplace.</li>
+              <li>The team is testing whether a shop can stay directly reachable.</li>
+            </ul>
+            <h3>Keep out of scope</h3>
+            <ul class="plain plain--danger">
+              <li>online payment integration, delivery logistics, and customer accounts</li>
+              <li>large admin dashboards and full federation story</li>
+              <li>production security claims and legal overpromises</li>
+              <li>pretending the whole repo is the demo</li>
+            </ul>
+          </article>
+
+          <article class="card card--dark">
+            <h2>One Clean 5-Person Split</h2>
+            <ol class="numbered">
+              <li>customer page, menu, and QR flow</li>
+              <li>order submit path and basic state handling</li>
+              <li>operator view and ready/received state changes</li>
+              <li>registry/discovery story and proof trace</li>
+              <li>pitch, packet, and live demo setup</li>
+            </ol>
+            <p class="mini-note">If the group does not want the registry in the live demo, keep the direct ordering proof and show the registry only as the technical extension.</p>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span><strong>P4P Hackathon Packet</strong><br>Page 1 of 3 · demo scope and honest claim</span>
+        <span>Hedegreen Research<br>Brussels prep · 2026</span>
+      </footer>
+    </section>
+  </main>
+
+  <main class="sheet">
+    <section class="frame">
+      <header class="hero">
+        <p class="kicker">Page 2 / What Already Exists</p>
+        <h1>THE REPO ALREADY HAS REAL LANES. THE JOB IS TO PICK THE RIGHT ONES AND MAKE THEM PRESENTABLE.</h1>
+        <p class="lead">Do not invent a fake architecture for the room. Pick a small honest subset from what already exists in P4P, and make that subset work cleanly as a team.</p>
+      </header>
+
+      <section class="grid-2">
+        <div class="stack">
+          <article class="card">
+            <h2>Repo Lanes The Group Can Pick From</h2>
+            <ul class="plain">
+              <li><strong>`registry/`</strong>: discovery lane, announce, heartbeat, nearby lookup, failover story.</li>
+              <li><strong>`demo-node/`</strong>: smallest protocol proof node with direct menu and order path.</li>
+              <li><strong>`pilot-node/`</strong>: more real restaurant-shaped node with operator rooms, SQLite state, and optional module lanes.</li>
+              <li><strong>`client/`</strong>: simple public customer flow and menu/order surface.</li>
+              <li><strong>`docs/` + `tests/`</strong>: one-pagers, packet, demo script, proof language, and smoke path.</li>
+            </ul>
+          </article>
+
+          <article class="card card--green">
+            <h2>Modules The Group Can Actually Use</h2>
+            <h3>Public customer side</h3>
+            <ul class="plain plain--green">
+              <li><strong>`p4p.menu.list`</strong>: plain customer menu surface.</li>
+              <li><strong>`p4p.payment.cash`</strong>: pay-at-pickup boundary without pretending P4P is a payment company.</li>
+              <li><strong>`p4p.customer.status`</strong>: read-only order status for the customer after order submission.</li>
+            </ul>
+            <h3>Operator side</h3>
+            <ul class="plain plain--green">
+              <li><strong>`p4p.kitchen.screen`</strong>: operator queue for incoming and ready orders.</li>
+              <li><strong>`p4p.catalog.editor`</strong>: restaurant-owned menu/catalog truth.</li>
+              <li><strong>`p4p.pickup.board.basic`</strong>: simple local pickup counter board.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>Good Optional Add-Ons If Time Allows</h2>
+            <ul class="plain">
+              <li><strong>`p4p.menu.photo-map`</strong>: more visual paper-menu style customer surface.</li>
+              <li><strong>`p4p.stock.basic`</strong>: simple stock check before the order proceeds.</li>
+              <li><strong>`p4p.catalog.import.ocr`</strong>: draft OCR/scanned-menu helper beside the catalog editor.</li>
+              <li><strong>`p4p.order.alert.basic`</strong>: local alert/bell self-test lane.</li>
+              <li><strong>`p4p.order.print.backup`</strong>: backup print/spool self-test lane.</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stack">
+          <article class="card card--accent">
+            <h2>Keep On GitHub, Not In The Room Claim</h2>
+            <ul class="plain plain--danger">
+              <li><strong>`p4p.payment.godpay-mock`</strong> and <strong>`p4p.payment.chaospay-mock`</strong>: internal mock/debug lanes only.</li>
+              <li><strong>`p4p.payment.mobilepay`</strong>: planned external adapter invitation, not a live payment claim.</li>
+              <li><strong>`p4p.order.print`</strong>: planned printer/POS direction, not the first honest demo requirement.</li>
+              <li><strong>`p4p.notify.email`</strong> and <strong>`p4p.notify.sms`</strong>: planned fallback notification directions.</li>
+              <li><strong>`p4p.trust.cvr-basic`</strong>: later trust/CVR direction, not first hackathon scope.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>Choose One Build Shape</h2>
+            <ul class="plain">
+              <li>Use <strong>`pilot-node/`</strong> if the group wants a more believable operator surface with modules.</li>
+              <li>Use <strong>`demo-node/`</strong> if the group wants the smallest technical proof first.</li>
+              <li>Use <strong>`client/`</strong> or a very thin custom surface for the customer flow.</li>
+              <li>Bring in <strong>`registry/`</strong> only if someone on the team wants the deeper protocol boundary and can keep it explained simply.</li>
+            </ul>
+            <div class="tag-row">
+              <span class="tag">menu</span>
+              <span class="tag">pickup</span>
+              <span class="tag">cash first</span>
+              <span class="tag">operator queue</span>
+              <span class="tag">status</span>
+            </div>
+          </article>
+
+          <article class="card card--dark">
+            <h2>One Clean GitHub Split</h2>
+            <ol class="numbered">
+              <li><strong>Registry person</strong>: `registry/`, discovery story, technical proof notes.</li>
+              <li><strong>Node person</strong>: `demo-node/` or `pilot-node/`, menu/order path, module wiring.</li>
+              <li><strong>Customer person</strong>: `client/`, menu, QR, order submit, status handoff.</li>
+              <li><strong>Operator person</strong>: kitchen screen, pickup board, catalog/editor polish.</li>
+              <li><strong>Narrative person</strong>: docs, slides, one-pagers, live demo order.</li>
+            </ol>
+            <p class="mini-note">Practical rule: one owner per lane, one shared merge point, and no mass editing across every folder at once.</p>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span><strong>P4P Hackathon Packet</strong><br>Page 2 of 3 · repo lanes and real modules</span>
+        <span>Hedegreen Research<br>Brussels prep · 2026</span>
+      </footer>
+    </section>
+  </main>
+
+  <main class="sheet">
+    <section class="frame">
+      <header class="hero">
+        <p class="kicker">Page 3 / What Comes After</p>
+        <h1>IF THE DEMO LANDS, THE NEXT JOB IS NOT MORE HYPE. IT IS A SMALL, CONTROLLED PATH INTO REALITY.</h1>
+        <p class="lead">This last page is for the group, judges, and possible supporters. It explains the next path, what help would matter, and how the team can stay honest after the event.</p>
+      </header>
+
+      <section class="grid-2">
+        <div class="stack">
+          <article class="card card--green">
+            <h2>Longer-Term Path</h2>
+            <h3>Phase 1: tighten the packet</h3>
+            <ul class="plain plain--green">
+              <li>clean the repo story and public reading path</li>
+              <li>keep the non-technical and technical one-pagers aligned</li>
+              <li>show one short demo path outsiders can follow fast</li>
+              <li>write the fuller whitepaper later as a separate job</li>
+            </ul>
+            <h3>Phase 2: controlled real pilot</h3>
+            <ul class="plain plain--green">
+              <li>one real takeaway or food-service partner</li>
+              <li>real QR, menu, pickup, operator flow, and local hardware truth</li>
+              <li>honest log of what breaks in practice</li>
+            </ul>
+            <h3>Phase 3: module maturation</h3>
+            <ul class="plain plain--green">
+              <li>printer / kitchen ticket lane</li>
+              <li>local node / local box lane</li>
+              <li>better stock, alert, and pickup-board reliability</li>
+              <li>later payment adapters, trust, and certification lanes if the pilot is real</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>What Help Would Actually Matter</h2>
+            <ul class="plain">
+              <li>one real pilot partner willing to test a direct route outside marketplace capture</li>
+              <li>small follow-up funding or incubation for controlled pilot work</li>
+              <li>legal and regulatory guidance around ordering, receipts, and consumer rules</li>
+              <li>multilingual or cross-country testing support</li>
+              <li>one public-interest or civic-tech partner that cares about local digital resilience</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="stack">
+          <article class="card card--accent">
+            <h2>What We Must Not Do After The Event</h2>
+            <ul class="plain plain--danger">
+              <li>do not claim P4P is already a finished restaurant product</li>
+              <li>do not imply the payment lane is solved if it is still cash-first</li>
+              <li>do not present mock modules as real production partners</li>
+              <li>do not describe the whole repo as one coherent finished stack if it is still a proof system</li>
+              <li>do not treat hackathon applause as pilot evidence</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>Group Debrief</h2>
+            <ul class="checks">
+              <li>Did people understand the problem quickly?</li>
+              <li>Did they understand why this is not just another food app?</li>
+              <li>Did the direct-order boundary feel meaningful?</li>
+              <li>Did anyone ask for the technical version?</li>
+              <li>Did anyone offer a real pilot path?</li>
+              <li>Did the room push us toward too much scope?</li>
+              <li>Which modules sounded real and useful to outsiders?</li>
+              <li>What should be cut or clarified before the next presentation?</li>
+            </ul>
+          </article>
+
+          <article class="card card--dark">
+            <h2>The Sentence We End On</h2>
+            <p>This team does not need to prove the whole future of food ordering. It only needs to prove that a shop can stay directly reachable, and that the surrounding software can stay modular instead of collapsing back into one platform owner.</p>
+            <div class="tag-row">
+              <span class="tag">direct route</span>
+              <span class="tag">modular</span>
+              <span class="tag">cash first</span>
+              <span class="tag">small pilot</span>
+              <span class="tag">honest scope</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span><strong>P4P Hackathon Packet</strong><br>Page 3 of 3 · next path and support asks</span>
+        <span>Hedegreen Research<br>Brussels prep · 2026</span>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

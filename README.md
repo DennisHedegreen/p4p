@@ -165,6 +165,12 @@ If you want the next gate after the proof:
 3. `docs/FIVE-PLACE-PILOT-PACK.md`
 4. `TEST-GUIDE.md`
 
+If you want the owner-facing pilot collateral:
+
+1. `docs/owner-pack/README.md`
+2. `docs/OWNER-COLLATERAL-SYSTEM.md`
+3. `docs/PUBLIC-SURFACE.md`
+
 If you want the module direction:
 
 1. `docs/MODULES-START-HERE.md`
@@ -186,6 +192,9 @@ When documents overlap, read them like this:
 - `PILOT-LIVE.md`: separate next gate, not current proof
 - `docs/GITHUB-READER-GUIDE.md`: reading-path routing
 - `docs/PROOF-STATUS.md`: dated factual checkpoint log
+- `docs/owner-pack/README.md`: canonical owner-facing booklet pack
+- `docs/OWNER-COLLATERAL-SYSTEM.md`: print-system rules for owner collateral
+- `docs/PUBLIC-SURFACE.md`: how site, GitHub, and print collateral split the public lane
 
 If a statement is about what the protocol contract is, `SPEC.md` wins.
 
