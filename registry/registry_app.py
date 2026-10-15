@@ -23,8 +23,10 @@ from p4p_core import (
     NodeManifestKey,
     NodeManifestRequest,
     NodeRootRotation,
+    RateLimitRule,
     RegistryEntry,
     build_cors_middleware_options,
+    configure_http_hardening,
     utc_now,
 )
 from p4p_core.constants import PROTOCOL_VERSION
@@ -180,6 +182,19 @@ app = FastAPI(
         config=CONFIG,
         store=store,
         mirror_sync_state=MIRROR_SYNC_STATE,
+    ),
+)
+configure_http_hardening(
+    app,
+    default_max_body_bytes=2 * 1024 * 1024,
+    route_body_limits={"/registry-source/import": 4 * 1024 * 1024},
+    rate_limit_rules=(
+        RateLimitRule("POST", "/announce", 300),
+        RateLimitRule("POST", "/node-manifest", 120),
+        RateLimitRule("POST", "/heartbeat", 600),
+        RateLimitRule("POST", "/registry-source/import", 30),
+        RateLimitRule("POST", "/trust-claims/import", 60),
+        RateLimitRule("POST", "/registry-sync", 30),
     ),
 )
 app.add_middleware(CORSMiddleware, **build_cors_middleware_options())

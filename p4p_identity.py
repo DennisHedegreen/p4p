@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -84,17 +85,25 @@ def load_or_create_private_key(path: Path | None) -> str:
     if path is None:
         return generate_private_key()
 
+    path = path.expanduser()
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if path.exists():
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"{path} must be a regular key file")
+        path.chmod(0o600)
         data = json.loads(path.read_text(encoding="utf-8"))
         private_key = data.get("private_key")
         if not isinstance(private_key, str):
             raise ValueError(f"{path} is missing private_key")
+        derived_public_key = public_key_from_private(private_key)
+        stored_public_key = data.get("public_key")
+        if stored_public_key is not None and stored_public_key != derived_public_key:
+            raise ValueError(f"{path} public_key does not match private_key")
         return private_key
 
     private_key = generate_private_key()
     public_key = public_key_from_private(private_key)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
+    payload = (
         json.dumps(
             {
                 "key_type": "ed25519",
@@ -104,8 +113,12 @@ def load_or_create_private_key(path: Path | None) -> str:
             indent=2,
             sort_keys=True,
         )
-        + "\n",
-        encoding="utf-8",
+        + "\n"
     )
-    path.chmod(0o600)
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return load_or_create_private_key(path)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(payload)
     return private_key

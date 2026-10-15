@@ -18,6 +18,28 @@ P4P does not hold funds, process payments, store payment credentials, settle mon
 
 Payment modules are adapters chosen by the restaurant or node operator.
 
+## Active Public Restart
+
+Current checkpoint: 15 October 2026.
+
+P4P is actively being worked on in public again. The current local recovery and
+hardening gate is green:
+
+- 291 automated tests run; 289 passed and 2 optional OCR tests were skipped
+- the dependency and public-input security audit is green
+- the local direct-discovery and ordering proof is green
+- a pinned, non-root container candidate passed signed dual-registry discovery
+  and restart-persistence checks
+
+The public API subdomains are not yet a valid hosted proof. Registry A, an
+independent Registry B, the demo node, DNS, and TLS still have to pass the same
+gate on real hosts. This repository therefore shows active, reviewable work, not
+a production-readiness claim.
+
+Follow the current work in [`ROADMAP.md`](ROADMAP.md), reproduce the checks with
+[`TEST-GUIDE.md`](TEST-GUIDE.md), and inspect the deployment boundary in
+[`deploy/README.md`](deploy/README.md).
+
 ## If You Land Here Cold
 
 If you are seeing this repo for the first time, start with these three questions:

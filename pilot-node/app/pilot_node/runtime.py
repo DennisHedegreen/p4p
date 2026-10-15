@@ -7,6 +7,7 @@ import sqlite3
 import threading
 from dataclasses import dataclass
 from datetime import timedelta
+from pathlib import Path
 
 from fastapi import HTTPException, status
 
@@ -58,9 +59,19 @@ from pilot_node.state_keys import (
 class PilotStore:
     def __init__(self, db_path: str, *, config: PilotConfig) -> None:
         self._config = config
-        self._db_path = db_path.strip() or ":memory:"
+        configured_db_path = db_path.strip() or ":memory:"
+        self._db_path = (
+            configured_db_path
+            if configured_db_path == ":memory:"
+            else str(Path(configured_db_path).expanduser())
+        )
         self._lock = threading.RLock()
+        if self._db_path != ":memory:":
+            db_file = Path(self._db_path).expanduser()
+            db_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         self._connection = sqlite3.connect(self._db_path, check_same_thread=False)
+        if self._db_path != ":memory:":
+            db_file.chmod(0o600)
         self._connection.row_factory = sqlite3.Row
         self._initialize()
 

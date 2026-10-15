@@ -260,19 +260,19 @@ class MenuImportPreviewResponse(BaseModel):
 class OrderItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = Field(pattern=CATEGORY_PATTERN)
-    quantity: int = Field(ge=1)
+    id: str = Field(max_length=64, pattern=CATEGORY_PATTERN)
+    quantity: int = Field(ge=1, le=99)
 
 
 class OrderRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    customer_name: str = Field(min_length=1)
-    customer_contact: str = Field(min_length=1)
+    customer_name: str = Field(min_length=1, max_length=120)
+    customer_contact: str = Field(min_length=1, max_length=254)
     fulfillment: str = Field(default="pickup", pattern=r"^pickup$")
-    items: list[OrderItem] = Field(min_length=1)
-    note: str = ""
-    client_version: str = Field(min_length=1)
+    items: list[OrderItem] = Field(min_length=1, max_length=50)
+    note: str = Field(default="", max_length=1000)
+    client_version: str = Field(min_length=1, max_length=100)
 
 
 class OrderAccepted(BaseModel):

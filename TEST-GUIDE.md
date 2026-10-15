@@ -38,7 +38,18 @@ For proof-only work, `registry/.venv`, `demo-node/.venv`, and `lab/.venv` are en
 
 `pilot-node/.venv` is required for the local pilot gate in section 10.
 
-If they do not exist yet:
+If they do not exist yet, provision all four environments from the shared local
+dependency lock:
+
+```bash
+cd /path/to/p4p
+bash scripts/bootstrap-local.sh
+```
+
+The script creates the component-specific virtual environments expected by the
+lab while constraining shared dependencies through `requirements.lock.txt`.
+
+The equivalent manual setup is:
 
 ```bash
 cd /path/to/p4p/registry
@@ -80,11 +91,11 @@ Run this from `P4P/`:
 
 ```bash
 cd /path/to/p4p
-demo-node/.venv/bin/python -m unittest discover -s tests -v
-bash scripts/public-audit.sh
-node --check client/app.js
-demo-node/.venv/bin/python -m compileall demo-node/app/demo_node pilot-node/app/pilot_node registry p4p_core scripts
+bash scripts/check-local.sh
 ```
+
+The lifecycle tests use real AnyIO worker threads. Run the rescue gate in a
+normal local shell or CI runner, not inside a sandbox that blocks thread wakeups.
 
 What should pass:
 
@@ -101,6 +112,50 @@ What should pass:
 If this suite is red, fix that first.
 
 Do not trust a manual green flow until this suite is green again.
+
+For a running narrow proof stack, run the read-only HTTP health matrix:
+
+```bash
+python3 scripts/health-check.py --mode local
+```
+
+Before public DNS is changed, run the same matrix against the candidate public
+URLs in hosted mode:
+
+```bash
+python3 scripts/health-check.py \
+  --mode hosted \
+  --client https://client.pizza4people.com \
+  --registry-a https://registry-a.pizza4people.com \
+  --registry-b https://registry-b.pizza4people.com \
+  --node https://demo-node.pizza4people.com
+```
+
+Hosted mode additionally refuses registries without SQLite persistence, stable
+signing, a configured-but-closed admin boundary, baseline security headers, or a
+common discoverable node.
+
+The reference runtimes also enforce bounded request bodies. Public order routes
+have an in-process per-client rate limit, while registry announce, heartbeat,
+manifest, import, and sync writes use route-specific limits. These controls are
+defense in depth; a hosted deployment must still enforce limits at its reverse
+proxy because in-memory counters are not shared between workers or hosts.
+
+Before accepting a hosted candidate, provision and audit its persistent signing
+identities, tokens, and SQLite state with `scripts/runtime-state.py`. Create a
+live-safe backup, verify its manifest, restore it into a new empty directory, and
+audit the restored copy. Exact commands and ownership boundaries are in
+`deploy/README.md`. A passing local recovery rehearsal is required evidence, but
+it is not a substitute for repeating the drill on the actual hosts.
+
+For the Docker/Railway-shaped runtime candidate, run:
+
+```bash
+bash scripts/check-container.sh
+```
+
+This is a local build and restart test. It does not create a Railway project,
+attach a real volume, reserve a domain, or prove the independent backup host.
 
 ## 4. Start the live lab
 

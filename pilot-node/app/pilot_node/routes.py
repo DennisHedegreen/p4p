@@ -29,8 +29,10 @@ from p4p_core import (
     OrderRequest,
     OrderStatusUpdate,
     PublicOrderStatus,
+    RateLimitRule,
     StoredOrder,
     build_cors_middleware_options,
+    configure_http_hardening,
     format_money_minor,
     utc_now,
 )
@@ -3681,6 +3683,12 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         version=PROTOCOL_VERSION,
         summary="Restaurant-owned node for the P4P live pilot.",
         lifespan=build_app_lifespan(runtime),
+    )
+    configure_http_hardening(
+        app,
+        default_max_body_bytes=1024 * 1024,
+        route_body_limits={"/operator/menu/import-image-preview": 12 * 1024 * 1024},
+        rate_limit_rules=(RateLimitRule("POST", "/p4p/order", 30),),
     )
     app.add_middleware(CORSMiddleware, **build_cors_middleware_options())
 
