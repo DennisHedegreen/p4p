@@ -19,6 +19,8 @@ from fastapi.testclient import TestClient
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = REPO_ROOT.parent
+WORKSPACE_PUBLIC_ROOT = WORKSPACE_ROOT / "public/www"
+NODE_CONTROL_PATH = REPO_ROOT / "node-control/node_control.py"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -347,6 +349,7 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIsInstance(pilot.node_state(), SharedNodeDescriptor)
         pilot.store.close()
 
+    @unittest.skipUnless(WORKSPACE_PUBLIC_ROOT.is_dir(), "requires the Hedegreen public workspace")
     def test_public_site_build_generates_catalog_and_facts(self) -> None:
         builder = load_module("scripts/build_public_site.py")
 
@@ -569,6 +572,7 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("مسار الطابعة الاحتياطية", provider_detail_page_ar)
         self.assertIn("هذه الصفحة المحلية هي الواجهة المقروءة لـ P4P.", provider_detail_page_ar)
 
+    @unittest.skipUnless(WORKSPACE_PUBLIC_ROOT.is_dir(), "requires the Hedegreen public workspace")
     def test_protocols4people_surface_stays_human_readable_but_narrow(self) -> None:
         protocols_site = (WORKSPACE_ROOT / "public/www/protocols4people/index.html").read_text(encoding="utf-8")
 
@@ -585,6 +589,7 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("What is real now, what comes next, and what is not claimed.", protocols_site)
         self.assertIn("No broad restaurant rollout yet", protocols_site)
 
+    @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
     def test_node_control_docs_and_dashboard_keep_registry_boundary_clear(self) -> None:
         node_control_readme = (REPO_ROOT / "node-control/README.md").read_text(encoding="utf-8")
         control = load_module("node-control/node_control.py")

@@ -97,6 +97,12 @@ bash scripts/check-local.sh
 The lifecycle tests use real AnyIO worker threads. Run the rescue gate in a
 normal local shell or CI runner, not inside a sandbox that blocks thread wakeups.
 
+In a standalone public checkout, nine workspace integration tests are skipped:
+they exercise the private node-control tool, the Hedegreen public-site build, or
+the separately versioned Pizzacoin module. The public core still runs in full.
+Inside the complete workspace those integrations run automatically when their
+source paths are present.
+
 What should pass:
 
 - truthfulness and cleanup tests stay green

@@ -21,8 +21,11 @@ being claimed as restored.
 
 Verified locally at this checkpoint:
 
-- `bash scripts/check-local.sh` completed 291 tests: 289 passed and 2 optional
-  OCR tests were skipped
+- the complete workspace `bash scripts/check-local.sh` gate completed 291 tests:
+  289 passed and 2 optional OCR tests were skipped
+- the same gate in a standalone public checkout completed all 291 tests: 280
+  passed and 11 were skipped; the additional 9 skips require the private node
+  control, the Hedegreen public-site workspace, or the separate Pizzacoin module
 - the public audit, JavaScript syntax, Python compile, and whitespace gates passed
 - dependency audit found no known vulnerabilities in the locked Python set
 - the normal local client, two registries, and demo-node health matrix passed
