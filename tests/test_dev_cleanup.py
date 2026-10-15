@@ -4,6 +4,8 @@ import asyncio
 import importlib.util
 import json
 import os
+import pwd
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -11,7 +13,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.testclient import TestClient
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = REPO_ROOT.parent
@@ -20,12 +24,13 @@ if str(REPO_ROOT) not in sys.path:
 
 import p4p_core.modules as module_catalog
 import module_catalog as public_module_catalog
+import p4p_identity
 
 from p4p_core import HeartbeatRequest as SharedHeartbeatRequest
 from p4p_core import Location as SharedLocation
 from p4p_core import ModuleResultEvent
 from p4p_core import NodeDescriptor as SharedNodeDescriptor
-from p4p_core import build_cors_middleware_options
+from p4p_core import RateLimitRule, build_cors_middleware_options, configure_http_hardening
 from p4p_core import load_reference_module_catalog, load_reference_provider_catalog
 from p4p_core import utc_now, validate_pilot_order_event_flow
 
@@ -97,6 +102,137 @@ class P4PDevCleanupTests(unittest.TestCase):
 
         self.assertFalse(demo.OPERATOR_ENABLED)
 
+    def test_private_key_files_are_private_and_self_consistent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            key_dir = Path(temp_dir) / "keys"
+            key_path = key_dir / "node.json"
+            private_key = p4p_identity.load_or_create_private_key(key_path)
+
+            self.assertEqual(key_dir.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(key_path.stat().st_mode & 0o777, 0o600)
+
+            key_path.chmod(0o644)
+            self.assertEqual(p4p_identity.load_or_create_private_key(key_path), private_key)
+            self.assertEqual(key_path.stat().st_mode & 0o777, 0o600)
+
+            payload = json.loads(key_path.read_text(encoding="utf-8"))
+            payload["public_key"] = p4p_identity.public_key_from_private(
+                p4p_identity.generate_private_key()
+            )
+            key_path.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "public_key does not match"):
+                p4p_identity.load_or_create_private_key(key_path)
+
+            shared_dir = Path(temp_dir) / "shared"
+            shared_dir.mkdir(mode=0o777)
+            shared_dir.chmod(0o777)
+            p4p_identity.load_or_create_private_key(shared_dir / "lab-key.json")
+            self.assertEqual(shared_dir.stat().st_mode & 0o777, 0o777)
+
+    def test_persistent_runtime_databases_are_private(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "runtime"
+            registry_db = root / "registry" / "registry.sqlite3"
+            pilot_db = root / "pilot" / "pilot.sqlite3"
+            registry = load_module(
+                "registry/main.py",
+                {"P4P_REGISTRY_DB_PATH": str(registry_db)},
+            )
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(pilot_db),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            self.assertEqual(registry_db.parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(registry_db.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(pilot_db.parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(pilot_db.stat().st_mode & 0o777, 0o600)
+
+            registry.store.close()
+            pilot.store.close()
+
+    def test_runtime_state_backup_and_recovery_copy(self) -> None:
+        runtime_state = load_module("scripts/runtime-state.py")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            state_dir = root / "source" / "state"
+            secrets_dir = root / "source" / "secrets"
+            state_owner = pwd.getpwuid(os.getuid()).pw_name
+            initialized = runtime_state.init_runtime_state(
+                state_dir,
+                secrets_dir,
+                state_owner=state_owner,
+            )
+
+            for database_name in runtime_state.PILOT_DATABASES:
+                database_path = state_dir / database_name
+                connection = sqlite3.connect(database_path)
+                connection.execute("CREATE TABLE proof (value TEXT NOT NULL)")
+                connection.execute("INSERT INTO proof (value) VALUES (?)", (database_name,))
+                connection.commit()
+                connection.close()
+                database_path.chmod(0o600)
+
+            audited = runtime_state.audit_runtime_state(
+                state_dir,
+                secrets_dir,
+                profile="pilot",
+                require_databases=True,
+                state_owner=state_owner,
+            )
+            backup_dir = root / "backup"
+            created = runtime_state.backup_runtime_state(state_dir, secrets_dir, backup_dir)
+            verified = runtime_state.verify_backup(backup_dir)
+            restored = runtime_state.restore_copy(
+                backup_dir,
+                root / "restore",
+                state_owner=state_owner,
+            )
+            restored_audit = runtime_state.audit_runtime_state(
+                Path(restored["state_dir"]),
+                Path(restored["secrets_dir"]),
+                profile="pilot",
+                require_databases=True,
+                state_owner=state_owner,
+            )
+
+            self.assertFalse(initialized["secrets_printed"])
+            self.assertEqual(initialized["state_owner"], state_owner)
+            self.assertTrue(audited["keys_are_distinct"])
+            self.assertEqual(created["file_count"], len(runtime_state.KEY_FILES) + len(runtime_state.SECRET_FILES) + len(runtime_state.PILOT_DATABASES))
+            self.assertEqual(verified["status"], "passed")
+            self.assertEqual(restored_audit["status"], "passed")
+
+            restored_db = Path(restored["state_dir"]) / "registry-a.sqlite3"
+            connection = sqlite3.connect(restored_db)
+            restored_value = connection.execute("SELECT value FROM proof").fetchone()[0]
+            connection.close()
+            self.assertEqual(restored_value, "registry-a.sqlite3")
+
+            backed_up_key = backup_dir / "state" / runtime_state.KEY_FILES[0]
+            backed_up_key.write_text("tampered", encoding="utf-8")
+            with self.assertRaisesRegex(runtime_state.StateError, "hash mismatch"):
+                runtime_state.verify_backup(backup_dir)
+
+    def test_container_candidate_keeps_privilege_and_state_boundaries(self) -> None:
+        dockerfile = (REPO_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        entrypoint = (REPO_ROOT / "deploy/container-entrypoint.sh").read_text(encoding="utf-8")
+        smoke = (REPO_ROOT / "scripts/check-container.sh").read_text(encoding="utf-8")
+
+        self.assertIn("python:3.12.12-slim-bookworm@sha256:", dockerfile)
+        self.assertIn("USER p4p", dockerfile)
+        self.assertNotIn("COPY . .", dockerfile)
+        self.assertIn('service="${P4P_SERVICE:-}"', entrypoint)
+        self.assertIn('chown -R p4p:p4p "$data_dir"', entrypoint)
+        self.assertIn('exec gosu p4p "$0" "$@"', entrypoint)
+        self.assertIn('exec "$@"', entrypoint)
+        self.assertIn("P4P container candidate is green.", smoke)
+        self.assertIn("lost its node across restart", smoke)
+
     def test_demo_operator_http_requires_token_when_enabled(self) -> None:
         demo = load_module(
             "demo-node/demo_node.py",
@@ -142,6 +278,57 @@ class P4PDevCleanupTests(unittest.TestCase):
             ["https://pizza4people.com", "https://protocols4people.com"],
         )
         self.assertNotIn("allow_origin_regex", allowlist)
+
+    def test_http_hardening_limits_bodies_rates_and_adds_headers(self) -> None:
+        app = FastAPI()
+        configure_http_hardening(
+            app,
+            default_max_body_bytes=16,
+            rate_limit_rules=(RateLimitRule("POST", "/rate-limited", 2),),
+        )
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["https://client.example"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+        @app.get("/health")
+        def health() -> dict[str, str]:
+            return {"status": "ok"}
+
+        @app.post("/body-limited")
+        def body_limited() -> dict[str, str]:
+            return {"status": "ok"}
+
+        @app.post("/rate-limited")
+        def rate_limited() -> dict[str, str]:
+            return {"status": "ok"}
+
+        with TestClient(app) as client:
+            healthy = client.get("/health")
+            oversized = client.post(
+                "/body-limited",
+                content=b"x" * 17,
+                headers={"Origin": "https://client.example"},
+            )
+            first = client.post("/rate-limited")
+            second = client.post("/rate-limited")
+            rejected = client.post("/rate-limited")
+
+        self.assertEqual(healthy.headers["x-content-type-options"], "nosniff")
+        self.assertEqual(healthy.headers["x-frame-options"], "DENY")
+        self.assertEqual(healthy.headers["referrer-policy"], "no-referrer")
+        self.assertEqual(oversized.status_code, 413)
+        self.assertEqual(
+            oversized.headers["access-control-allow-origin"],
+            "https://client.example",
+        )
+        self.assertEqual(oversized.headers["x-content-type-options"], "nosniff")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(rejected.status_code, 429)
+        self.assertIn("retry-after", rejected.headers)
 
     def test_registry_uses_shared_protocol_models(self) -> None:
         registry = load_module("registry/main.py")

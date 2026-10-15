@@ -180,8 +180,9 @@ class RegistryStore:
             return
 
         db_file = Path(self._db_path).expanduser()
-        db_file.parent.mkdir(parents=True, exist_ok=True)
+        db_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         self._connection = sqlite3.connect(db_file, check_same_thread=False)
+        db_file.chmod(0o600)
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
         )

@@ -11,7 +11,17 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-from p4p_core import Menu, OrderAccepted, OrderRejected, OrderRequest, build_cors_middleware_options, normalize_module_ids, utc_now
+from p4p_core import (
+    Menu,
+    OrderAccepted,
+    OrderRejected,
+    OrderRequest,
+    RateLimitRule,
+    build_cors_middleware_options,
+    configure_http_hardening,
+    normalize_module_ids,
+    utc_now,
+)
 from p4p_core.constants import PROTOCOL_VERSION
 
 from demo_node.config import OperatorStateUpdate
@@ -231,6 +241,11 @@ def build_app(runtime: DemoRuntime) -> FastAPI:
         version=PROTOCOL_VERSION,
         summary="Reference restaurant node for the P4P v0.1 protocol.",
         lifespan=build_app_lifespan(runtime),
+    )
+    configure_http_hardening(
+        app,
+        default_max_body_bytes=64 * 1024,
+        rate_limit_rules=(RateLimitRule("POST", "/p4p/order", 30),),
     )
     app.add_middleware(CORSMiddleware, **build_cors_middleware_options())
 

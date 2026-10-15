@@ -339,6 +339,45 @@ class P4PTruthfulnessTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Menu(currency="PIZZACOIN", updated_at=utc_now(), items=[])
 
+    def test_order_contract_rejects_unbounded_or_blank_public_input(self) -> None:
+        from p4p_core import OrderItem, OrderRequest
+
+        valid = OrderRequest(
+            customer_name="  Anna Hansen  ",
+            customer_contact="  +4512345678  ",
+            items=[OrderItem(id="margherita", quantity=2)],
+            note="  No onions  ",
+            client_version="  p4p-web-0.1  ",
+        )
+
+        self.assertEqual(valid.customer_name, "Anna Hansen")
+        self.assertEqual(valid.customer_contact, "+4512345678")
+        self.assertEqual(valid.note, "No onions")
+
+        invalid_payloads = [
+            {"customer_name": " "},
+            {"customer_name": "n" * 121},
+            {"customer_contact": "c" * 255},
+            {"items": [OrderItem(id="margherita", quantity=1)] * 51},
+            {"note": "n" * 1001},
+            {"client_version": "v" * 101},
+        ]
+        baseline = {
+            "customer_name": "Anna Hansen",
+            "customer_contact": "+4512345678",
+            "items": [OrderItem(id="margherita", quantity=1)],
+            "client_version": "p4p-web-0.1",
+        }
+        for override in invalid_payloads:
+            with self.subTest(override=next(iter(override))):
+                with self.assertRaises(ValidationError):
+                    OrderRequest(**(baseline | override))
+
+        with self.assertRaises(ValidationError):
+            OrderItem(id="a" * 65, quantity=1)
+        with self.assertRaises(ValidationError):
+            OrderItem(id="margherita", quantity=100)
+
     def test_single_registry_fallback_still_works(self) -> None:
         demo = load_module(
             "demo-node/demo_node.py",

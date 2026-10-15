@@ -143,6 +143,63 @@ Required live pilot files:
 - `/var/lib/p4p/*.sqlite3` for persistent data
 - `/var/lib/p4p/*-key.json` for node or registry signing keys
 
+Provision the state and secret files without printing secret values:
+
+```bash
+sudo python3 scripts/runtime-state.py init \
+  --state-dir /var/lib/p4p \
+  --secrets-dir /etc/p4p \
+  --state-owner p4p
+```
+
+This creates five distinct signing identities and three strong service-secret
+files. State files are owned by the runtime user and all generated files use
+mode `0600`. The secret directory remains root-owned. Copy the generated values
+into the host-specific environment files; do not print them into a receipt or
+commit them.
+
+After the services have created their databases, audit the proof host with:
+
+```bash
+sudo python3 scripts/runtime-state.py audit \
+  --state-dir /var/lib/p4p \
+  --secrets-dir /etc/p4p \
+  --state-owner p4p \
+  --profile proof \
+  --require-databases
+```
+
+Use `--profile pilot` when `pilot-node.sqlite3` must also exist and pass SQLite
+integrity checks.
+
+Create and verify a live-safe backup before a deployment or migration:
+
+```bash
+sudo python3 scripts/runtime-state.py backup \
+  --state-dir /var/lib/p4p \
+  --secrets-dir /etc/p4p \
+  --output-dir /srv/p4p-backups/2026-10-15T120000Z
+
+sudo python3 scripts/runtime-state.py verify-backup \
+  --backup-dir /srv/p4p-backups/2026-10-15T120000Z
+```
+
+The backup contains private signing keys and access tokens in plaintext files
+with mode `0600`. Store it on an encrypted volume with restricted access and
+copy it off the runtime host. Never place it in this repository.
+
+Test restoration into a new empty location, never over live state:
+
+```bash
+sudo python3 scripts/runtime-state.py restore-copy \
+  --backup-dir /srv/p4p-backups/2026-10-15T120000Z \
+  --target-root /var/lib/p4p-restore-test \
+  --state-owner p4p
+```
+
+Then run `audit` against the restored `state/` and `secrets/` directories before
+the copy is accepted as recoverable.
+
 Set env files to owner-readable only because `pilot-node.env` contains the operator token:
 
 ```bash
@@ -184,7 +241,67 @@ Use Caddy or nginx as the public HTTPS reverse proxy.
 
 `caddy.live-pilot.example` shows the intended host-to-local-port mapping.
 
+## Railway Container Candidate
+
+The repository root contains one bounded container candidate for `registry`,
+`demo-node`, and `pilot-node`. Select the runtime with `P4P_SERVICE`; do not run
+multiple services in one container.
+
+Required Railway shape for each service:
+
+- build from the root `Dockerfile`
+- set `P4P_SERVICE` to exactly one supported runtime
+- attach a separate volume at `/data`
+- set `RAILWAY_RUN_UID=0` so the entrypoint can take ownership of the root-mounted
+  volume, then drop immediately to the image user `p4p` with UID 10001
+- set the service-specific environment values from the matching example file
+- keep registry admin tokens in Railway variables, never in source control
+- use `/health` as the registry health path and `/p4p/menu` for the public demo
+  node until registry-dependent node readiness is intentionally selected
+
+The container defaults persistent database and key paths into `/data`. A missing
+or unwritable data directory fails startup. Registry administration still fails
+closed when its token is absent.
+
+Run the complete local container gate before preparing a remote deployment:
+
+```bash
+bash scripts/check-container.sh
+```
+
+The gate builds the pinned image, starts two signed SQLite registries and one
+test-only demo node, checks that app processes run as UID 10001, verifies private
+runtime-file modes and dual discovery, then restarts both registries and confirms
+that the node remains persisted. It uses disposable local state and cleans it up.
+
+Railway is only a candidate for registry A and the demo node. Registry B must be
+on an independent host before P4P can make a host-failure claim. Creating the
+Railway project, service volumes, domains, or paid usage remains a separate
+approval boundary.
+
 ## Proof Smoke
+
+Run the automated read-only gate first:
+
+```bash
+python3 scripts/health-check.py \
+  --mode hosted \
+  --client https://client.pizza4people.com \
+  --registry-a https://registry-a.pizza4people.com \
+  --registry-b https://registry-b.pizza4people.com \
+  --node https://demo-node.pizza4people.com
+```
+
+This gate requires both registries to use SQLite and stable signing keys. It also
+checks discovery agreement, test-only node mode, disabled public operator access,
+the admin fail-closed boundary, client configuration, browser CORS, and baseline
+security headers.
+
+The applications provide request-body limits, route-specific in-process rate
+limits, and baseline security headers. Keep them enabled. Add Caddy or nginx
+request-rate and body-size limits as the shared hosted boundary, and configure
+HTTPS-only HSTS there. An application limiter is not a replacement for a proxy
+limit when multiple processes or hosts are serving traffic.
 
 After the services are running:
 

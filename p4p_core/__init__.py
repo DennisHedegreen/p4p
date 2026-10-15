@@ -16,6 +16,7 @@ from .flow_contracts import (
     build_pilot_order_flow_contract,
     validate_pilot_order_event_flow,
 )
+from .http_hardening import RateLimitRule, configure_http_hardening
 from .money import (
     CURRENCY_CODE_PATTERN,
     ZERO_DECIMAL_CURRENCIES,
@@ -99,6 +100,7 @@ __all__ = [
     "PublicOrderStatus",
     "PROTOCOL_VERSION",
     "ProviderManifest",
+    "RateLimitRule",
     "ResolvedModules",
     "RegistrationSnapshot",
     "RegistryEntry",
@@ -106,6 +108,7 @@ __all__ = [
     "ZERO_DECIMAL_CURRENCIES",
     "StoredOrder",
     "build_cors_middleware_options",
+    "configure_http_hardening",
     "build_pilot_order_flow_contract",
     "env_float",
     "env_list",

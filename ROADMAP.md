@@ -325,7 +325,8 @@ It is the restaurant-owned control plane for one node.
 
 ## 7. Gate D: Client Hardening
 
-Status: required before real pilot.
+Status: implemented in the reference client and verified locally on 2026-10-15;
+public deployment readback remains required.
 
 Purpose:
 
@@ -333,13 +334,14 @@ make the browser client safe enough for untrusted registry and node data.
 
 Required:
 
-- stop rendering untrusted data through raw `innerHTML`
-- escape or DOM-build all node, menu, module, and endpoint text
-- show live/test/menu-only state clearly
-- show pay-at-pickup clearly
-- show which registry answered discovery
-- preserve failover behavior
-- keep direct client-to-node menu and order flow
+- done: stop rendering untrusted data through raw `innerHTML`
+- done: DOM-build all node, menu, module, and endpoint text
+- done: show live/test/menu-only state clearly
+- done: show which registry answered discovery
+- done: preserve failover behavior
+- done: keep direct client-to-node menu and order flow
+- verify on the deployed pilot surface: show pay-at-pickup clearly in the final
+  restaurant-specific customer flow
 
 The public client should not pretend to be a full marketplace.
 
@@ -347,7 +349,7 @@ It is a reference client for direct discovery and ordering.
 
 ## 8. Gate E: Deployment Spine
 
-Status: partially documented.
+Status: local production-shape spine verified; real hosts not provisioned.
 
 Purpose:
 
@@ -355,23 +357,24 @@ make the live topology repeatable.
 
 Required deployment pieces:
 
-- Caddy or nginx reverse proxy
-- systemd services for registries
-- systemd service for restaurant node
-- env examples for registry A
-- env examples for registry B
-- env example for restaurant node
-- SQLite paths outside the repo
-- stable node key files outside the repo
-- stable registry signing key files outside the repo
-- log inspection commands
-- restart commands
-- backup commands
+- prepared: Caddy reverse-proxy example
+- prepared: systemd services for registries
+- prepared: systemd service for restaurant node
+- done: env examples for registry A, registry B, demo node, and restaurant node
+- done: SQLite paths outside the repo
+- done: stable node and registry key-file configuration outside the repo
+- done: private runtime provisioning and ownership audit
+- done: live-safe SQLite backup, manifest verification, and non-overwriting
+  recovery-copy commands
+- done locally: restart persistence and hosted-mode health gate
+- done locally: pinned minimal container image, non-root runtime, volume ownership
+  handoff, dual-registry discovery, and container restart-persistence smoke
+- still hosted: proxy limits, HSTS, monitoring, log inspection, and recovery drill
 
-First real topology:
+Target topology:
 
-- Hetzner: primary registry and public client
-- Dennis server: backup registry
+- selected primary Linux host: primary registry, demo node, and optionally client
+- independent second host: backup registry
 - restaurant-controlled host: restaurant node
 
 The first live pilot may still use a hosted node if the restaurant cannot host yet.

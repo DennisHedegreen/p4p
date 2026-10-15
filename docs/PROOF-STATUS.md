@@ -1,6 +1,6 @@
 # P4P Proof Status
 
-Current checkpoint: 6 May 2026
+Current checkpoint: 15 October 2026
 
 This file is the dated proof checkpoint for the public P4P surface.
 
@@ -13,6 +13,38 @@ If documents overlap:
 - `PROOF.md` wins on what is publicly claimed right now
 - `docs/PROOF-STATUS.md` wins on dated hosted-proof facts
 - `SPEC.md` wins on contract details
+
+## 15 October 2026 restart checkpoint
+
+P4P development is active publicly again, but the hosted dynamic proof is not
+being claimed as restored.
+
+Verified locally at this checkpoint:
+
+- `bash scripts/check-local.sh` completed 291 tests: 289 passed and 2 optional
+  OCR tests were skipped
+- the public audit, JavaScript syntax, Python compile, and whitespace gates passed
+- dependency audit found no known vulnerabilities in the locked Python set
+- the normal local client, two registries, and demo-node health matrix passed
+- the isolated production-shape gate passed with separate SQLite registries,
+  stable signing identities, configured administration boundaries, restart
+  persistence, backup verification, and recovery copy
+- `bash scripts/check-container.sh` built the pinned runtime image and passed
+  signed dual-registry discovery, UID 10001 runtime checks, private file-mode
+  checks, and registry restart persistence
+
+Verified against the intended public hostnames:
+
+- `registry-a.pizza4people.com`, `registry-b.pizza4people.com`,
+  `demo-node.pizza4people.com`, and `client.pizza4people.com` still resolve to the
+  same static Simply host
+- the presented certificate covers `pizza4people.com` and
+  `www.pizza4people.com`, not those four subdomains
+- verified HTTPS therefore fails before the dynamic API proof can be accepted
+
+The next public gate is a real primary host, a genuinely independent Registry B,
+valid DNS/TLS, and a complete hosted readback. No broad production rollout or
+restaurant-live claim follows from the local results.
 
 ## Canonical public source
 
