@@ -17,7 +17,6 @@ bash scripts/public-audit.sh
   pilot-node/app/pilot_node \
   registry \
   p4p_core \
-  scripts \
-  node-control
+  scripts
 
 echo "P4P local baseline is green."
