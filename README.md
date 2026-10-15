@@ -25,7 +25,10 @@ Current checkpoint: 15 October 2026.
 P4P is actively being worked on in public again. The current local recovery and
 hardening gate is green:
 
-- 291 automated tests run; 289 passed and 2 optional OCR tests were skipped
+- the complete workspace gate ran 291 automated tests: 289 passed and 2 optional
+  OCR tests were skipped
+- a standalone public checkout ran the same 291 tests: 280 passed and 11 were
+  skipped because 9 workspace integrations are intentionally not in this repo
 - the dependency and public-input security audit is green
 - the local direct-discovery and ordering proof is green
 - a pinned, non-root container candidate passed signed dual-registry discovery

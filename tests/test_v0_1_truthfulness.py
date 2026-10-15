@@ -21,6 +21,8 @@ from starlette.requests import Request
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+NODE_CONTROL_PATH = REPO_ROOT / "node-control/node_control.py"
+PIZZACOIN_MANIFEST = REPO_ROOT.parent / "Pizzacoin/contracts/module.json"
 _MODULE_COUNTER = 0
 
 
@@ -939,6 +941,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(rotation_error.exception.status_code, 400)
         self.assertEqual(rotation_error.exception.detail, "Invalid root rotation signature")
 
+    @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
     def test_node_control_snapshot_aggregates_registry_and_operator_truth(self) -> None:
         control = load_module(
             "node-control/node_control.py",
@@ -1091,6 +1094,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertIn("box_v1_counter", html)
         self.assertIn("Pilot Pizza A", html)
 
+    @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
     def test_node_control_reads_public_health_without_operator_token(self) -> None:
         control = load_module(
             "node-control/node_control.py",
@@ -8452,9 +8456,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             )
             pilot.store.close()
 
+    @unittest.skipUnless(PIZZACOIN_MANIFEST.is_file(), "requires the separate Pizzacoin module")
     def test_pilot_node_imports_external_pizzacoin_manifest_and_executes_selected_payment(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
+            pizzacoin_manifest = PIZZACOIN_MANIFEST
             pilot = load_module(
                 "pilot-node/pilot_node.py",
                 {
@@ -8514,9 +8519,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(stored[0].status_message, "Order accepted. Print confirmed.")
             pilot.store.close()
 
+    @unittest.skipUnless(PIZZACOIN_MANIFEST.is_file(), "requires the separate Pizzacoin module")
     def test_pilot_node_operator_modules_reports_active_external_payment_health(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
+            pizzacoin_manifest = PIZZACOIN_MANIFEST
             pilot = load_module(
                 "pilot-node/pilot_node.py",
                 {
@@ -8554,9 +8560,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertTrue(modules["lanes"]["operator"]["modules"][0]["active"])
             pilot.store.close()
 
+    @unittest.skipUnless(PIZZACOIN_MANIFEST.is_file(), "requires the separate Pizzacoin module")
     def test_pilot_node_operator_modules_marks_selected_payment_missing_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
+            pizzacoin_manifest = PIZZACOIN_MANIFEST
             pilot = load_module(
                 "pilot-node/pilot_node.py",
                 {
@@ -9728,6 +9735,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(missing_module.exception.detail, "Photo map menu module is not enabled")
             pilot.store.close()
 
+    @unittest.skipUnless(PIZZACOIN_MANIFEST.is_file(), "requires the separate Pizzacoin module")
     def test_pilot_node_external_payment_requires_explicit_customer_user(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pizzacoin_manifest = REPO_ROOT.parent / "Pizzacoin" / "contracts" / "module.json"
