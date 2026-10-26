@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import secrets
 import sqlite3
@@ -119,6 +120,7 @@ class PilotStore:
                 )
                 """
             )
+            self._ensure_order_columns()
             self._connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS order_events (
@@ -128,6 +130,15 @@ class PilotStore:
                     source_module TEXT NOT NULL,
                     event_json TEXT NOT NULL,
                     recorded_at TEXT NOT NULL
+                )
+                """
+            )
+            self._connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS order_event_receipts (
+                    order_id TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL,
+                    PRIMARY KEY(order_id, idempotency_key)
                 )
                 """
             )
@@ -156,6 +167,50 @@ class PilotStore:
         }
         if "image_url" not in columns:
             self._connection.execute("ALTER TABLE menu_items ADD COLUMN image_url TEXT NOT NULL DEFAULT ''")
+
+    def _ensure_order_columns(self) -> None:
+        columns = {
+            str(row["name"])
+            for row in self._connection.execute("PRAGMA table_info(orders)").fetchall()
+        }
+        additions = {
+            "client_request_id": "TEXT",
+            "request_fingerprint": "TEXT",
+            "status_token": "TEXT",
+        }
+        for name, column_type in additions.items():
+            if name not in columns:
+                self._connection.execute(f"ALTER TABLE orders ADD COLUMN {name} {column_type}")
+
+        legacy_rows = self._connection.execute(
+            """
+            SELECT order_id FROM orders
+            WHERE client_request_id IS NULL OR request_fingerprint IS NULL OR status_token IS NULL
+            """
+        ).fetchall()
+        for row in legacy_rows:
+            order_id = str(row["order_id"])
+            self._connection.execute(
+                """
+                UPDATE orders
+                SET client_request_id = COALESCE(client_request_id, ?),
+                    request_fingerprint = COALESCE(request_fingerprint, ?),
+                    status_token = COALESCE(status_token, ?)
+                WHERE order_id = ?
+                """,
+                (
+                    f"legacy:{order_id}",
+                    f"legacy:{order_id}",
+                    secrets.token_urlsafe(32),
+                    order_id,
+                ),
+            )
+        self._connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS orders_client_request_id_idx ON orders(client_request_id)"
+        )
+        self._connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS orders_status_token_idx ON orders(status_token)"
+        )
 
     def close(self) -> None:
         with self._lock:
@@ -252,8 +307,30 @@ class PilotStore:
             rows = self._connection.execute("SELECT id FROM menu_items WHERE active = 1").fetchall()
             return {str(row["id"]) for row in rows}
 
-    def create_order(self, payload: OrderRequest) -> StoredOrder:
+    @staticmethod
+    def _order_request_fingerprint(payload: OrderRequest) -> str:
+        canonical = json.dumps(
+            payload.model_dump(mode="json", exclude={"client_request_id"}),
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest()
+
+    def create_order_once(self, payload: OrderRequest) -> tuple[StoredOrder, bool]:
         with self._lock, self._connection:
+            fingerprint = self._order_request_fingerprint(payload)
+            existing_row = self._connection.execute(
+                "SELECT * FROM orders WHERE client_request_id = ?",
+                (payload.client_request_id,),
+            ).fetchone()
+            if existing_row is not None:
+                if str(existing_row["request_fingerprint"]) != fingerprint:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="client_request_id was already used for a different order",
+                    )
+                return self._row_to_order(existing_row), False
+
             active_ids = self.active_menu_item_ids()
             unknown = [item.id for item in payload.items if item.id not in active_ids]
             if unknown:
@@ -263,7 +340,9 @@ class PilotStore:
                 )
             now = utc_now()
             order = StoredOrder(
-                order_id=f"p4p-{now.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}",
+                order_id=f"p4p-{now.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(8)}",
+                client_request_id=payload.client_request_id,
+                status_token=secrets.token_urlsafe(32),
                 customer_name=payload.customer_name,
                 customer_contact=payload.customer_contact,
                 fulfillment=payload.fulfillment,
@@ -278,13 +357,17 @@ class PilotStore:
             self._connection.execute(
                 """
                 INSERT INTO orders(
-                    order_id, customer_name, customer_contact, fulfillment, items_json,
+                    order_id, client_request_id, request_fingerprint, status_token,
+                    customer_name, customer_contact, fulfillment, items_json,
                     note, client_version, status, payment_method, status_message,
                     requested_at, updated_at, estimated_ready
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     order.order_id,
+                    order.client_request_id,
+                    fingerprint,
+                    order.status_token,
                     order.customer_name,
                     order.customer_contact,
                     order.fulfillment,
@@ -299,7 +382,11 @@ class PilotStore:
                     serialize_datetime(order.estimated_ready),
                 ),
             )
-            return order
+            return order, True
+
+    def create_order(self, payload: OrderRequest) -> StoredOrder:
+        order, _created = self.create_order_once(payload)
+        return order
 
     def list_orders(self, *, limit: int = 100) -> list[StoredOrder]:
         with self._lock:
@@ -326,6 +413,32 @@ class PilotStore:
             )
         return event
 
+    def record_order_event_once(self, event: ModuleResultEvent) -> bool:
+        with self._lock, self._connection:
+            receipt = self._connection.execute(
+                """
+                INSERT OR IGNORE INTO order_event_receipts(order_id, idempotency_key)
+                VALUES(?, ?)
+                """,
+                (event.order_id or "", event.idempotency_key),
+            )
+            if receipt.rowcount == 0:
+                return False
+            self._connection.execute(
+                """
+                INSERT INTO order_events(order_id, action_id, source_module, event_json, recorded_at)
+                VALUES(?, ?, ?, ?, ?)
+                """,
+                (
+                    event.order_id,
+                    event.action_id,
+                    event.source_module,
+                    json.dumps(event.model_dump(mode="json", exclude_none=True)),
+                    serialize_datetime(event.timestamp),
+                ),
+            )
+            return True
+
     def list_order_events(self, order_id: str, *, limit: int = 100) -> list[ModuleResultEvent]:
         with self._lock:
             rows = self._connection.execute(
@@ -343,6 +456,14 @@ class PilotStore:
     def get_order(self, order_id: str) -> StoredOrder | None:
         with self._lock:
             row = self._connection.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,)).fetchone()
+            return self._row_to_order(row) if row else None
+
+    def get_order_by_status_token(self, status_token: str) -> StoredOrder | None:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM orders WHERE status_token = ?",
+                (status_token,),
+            ).fetchone()
             return self._row_to_order(row) if row else None
 
     def update_order_status(self, order_id: str, payload: OrderStatusUpdate) -> StoredOrder:
@@ -521,6 +642,8 @@ class PilotStore:
     def _row_to_order(self, row: sqlite3.Row) -> StoredOrder:
         return StoredOrder(
             order_id=row["order_id"],
+            client_request_id=str(row["client_request_id"] or ""),
+            status_token=str(row["status_token"] or ""),
             customer_name=row["customer_name"],
             customer_contact=row["customer_contact"],
             fulfillment=row["fulfillment"],

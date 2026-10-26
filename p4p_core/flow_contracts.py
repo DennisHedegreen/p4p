@@ -10,6 +10,7 @@ ORDER_RECEIVER_MODULE_ID = "p4p.order.receiver"
 PRINT_MODULE_ID = "p4p.order.print"
 NOTIFY_EMAIL_MODULE_ID = "p4p.notify.email"
 STOCK_BASIC_MODULE_ID = "p4p.stock.basic"
+CUSTOMER_STATUS_MODULE_ID = "p4p.customer.status"
 CONTRACT_PHASE_METADATA_KEY = "contract_phase"
 TRIGGER_EVENT_METADATA_KEY = "trigger_event"
 
@@ -28,6 +29,7 @@ PRINT_RESULT_EVENTS = frozenset(
 PRINT_FAILURE_EVENTS = PRINT_RESULT_EVENTS - {"PRINT_SUCCESS_CONFIRMED"}
 NOTIFICATION_RESULT_EVENTS = frozenset({"NOTIFICATION_SENT", "NOTIFICATION_FAILED"})
 PAYMENT_RESULT_EVENTS = frozenset({"PAYMENT_MODE_CHANGED", "PAYMENT_FAILED"})
+OBSERVATIONAL_EVENTS = frozenset({"ORDER_STATUS_VIEWED", "ORDER_STATUS_UPDATED"})
 
 
 @dataclass(frozen=True)
@@ -316,7 +318,20 @@ def validate_pilot_order_event_flow(
         enabled_module_ids,
         module_manifests=module_manifests,
     )
-    previous_event = existing_events[-1] if existing_events else None
+    if next_event.event == "ORDER_STATUS_VIEWED":
+        if not any(event.event == "ORDER_ACCEPTED" for event in existing_events):
+            raise ValueError("Pilot order flow requires an accepted order before ORDER_STATUS_VIEWED")
+        if next_event.source_module != CUSTOMER_STATUS_MODULE_ID:
+            raise ValueError(
+                f"Pilot order flow expects source {CUSTOMER_STATUS_MODULE_ID} for ORDER_STATUS_VIEWED, "
+                f"got {next_event.source_module}"
+            )
+        if _contract_phase(next_event) != "result":
+            raise ValueError("Pilot order flow expects contract_phase=result for ORDER_STATUS_VIEWED")
+        return
+
+    flow_events = [event for event in existing_events if event.event not in OBSERVATIONAL_EVENTS]
+    previous_event = flow_events[-1] if flow_events else None
     previous_name = previous_event.event if previous_event is not None else None
     allowed_next = contract.transitions.get(previous_name)
 
@@ -373,6 +388,7 @@ __all__ = [
     "FlowExtension",
     "NOTIFY_EMAIL_MODULE_ID",
     "NOTIFICATION_RESULT_EVENTS",
+    "OBSERVATIONAL_EVENTS",
     "ORDER_RECEIVER_MODULE_ID",
     "PAYMENT_RESULT_EVENTS",
     "PRINT_FAILURE_EVENTS",

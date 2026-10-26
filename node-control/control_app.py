@@ -62,10 +62,15 @@ def load_operator_tokens() -> dict[str, str]:
         raise ValueError("P4P_NODE_CONTROL_OPERATOR_TOKENS must be a JSON object")
     normalized: dict[str, str] = {}
     for key, value in payload.items():
-        normalized_key = str(key).strip()
+        normalized_key = str(key).strip().rstrip("/")
         normalized_value = str(value).strip()
         if not normalized_key or not normalized_value:
             continue
+        parts = urlsplit(normalized_key)
+        if parts.scheme not in {"http", "https"} or not parts.netloc:
+            raise ValueError(
+                "P4P_NODE_CONTROL_OPERATOR_TOKENS keys must be exact node endpoint URLs"
+            )
         normalized[normalized_key] = normalized_value
     return normalized
 
@@ -96,8 +101,8 @@ def _operator_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _operator_token_for(config: NodeControlConfig, *, node_id: str, endpoint: str) -> str | None:
-    return config.operator_tokens.get(node_id) or config.operator_tokens.get(endpoint)
+def _operator_token_for(config: NodeControlConfig, *, endpoint: str) -> str | None:
+    return config.operator_tokens.get(_node_endpoint_base(endpoint))
 
 
 def _fetch_registry_probe(client: httpx.Client, registry_url: str) -> dict[str, Any]:
@@ -211,7 +216,7 @@ def collect_control_snapshot(config: NodeControlConfig | None = None) -> dict[st
     registries: list[dict[str, Any]] = []
     nodes_by_id: dict[str, dict[str, Any]] = {}
 
-    with httpx.Client(timeout=effective.timeout_seconds, follow_redirects=True) as client:
+    with httpx.Client(timeout=effective.timeout_seconds, follow_redirects=False) as client:
         for registry_url in effective.registry_urls:
             probe = _fetch_registry_probe(client, registry_url)
             registries.append(probe)
@@ -269,9 +274,24 @@ def collect_control_snapshot(config: NodeControlConfig | None = None) -> dict[st
 
         nodes: list[dict[str, Any]] = []
         for node_id, record in nodes_by_id.items():
-            token = _operator_token_for(effective, node_id=node_id, endpoint=record["endpoint"])
             public_probe = _fetch_node_public_probe(client, record["endpoint"])
-            operator_probe = _fetch_node_operator_probe(client, record["endpoint"], token)
+            token = _operator_token_for(effective, endpoint=record["endpoint"])
+            observed_health = public_probe.get("health") or {}
+            observed_info = public_probe.get("info") or {}
+            observed_node_ids = {
+                str(value).strip()
+                for value in (observed_health.get("node_id"), observed_info.get("node_id"))
+                if str(value or "").strip()
+            }
+            if token and observed_node_ids != {node_id}:
+                operator_probe = {
+                    "access": "identity_mismatch",
+                    "state": None,
+                    "modules": None,
+                    "reason": "public node identity did not match configured registry identity",
+                }
+            else:
+                operator_probe = _fetch_node_operator_probe(client, record["endpoint"], token)
             operator_state = operator_probe.get("state") or {}
             operator_modules = operator_probe.get("modules") or {}
             module_entries = list(operator_modules.get("modules") or [])

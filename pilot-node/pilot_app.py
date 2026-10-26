@@ -118,12 +118,12 @@ def public_order(payload: OrderRequest, *, locale: str | None = None):
     return _public_order(RUNTIME, payload, locale=locale)
 
 
-def public_order_status(order_id: str) -> PublicOrderStatus:
-    return _public_order_status(RUNTIME, order_id)
+def public_order_status(status_token: str) -> PublicOrderStatus:
+    return _public_order_status(RUNTIME, status_token)
 
 
-def public_order_status_page(order_id: str, *, locale: str | None = None) -> str:
-    return _public_order_status_page(RUNTIME, order_id, locale=locale)
+def public_order_status_page(status_token: str, *, locale: str | None = None) -> str:
+    return _public_order_status_page(RUNTIME, status_token, locale=locale)
 
 
 def public_info():

@@ -20,7 +20,8 @@ It gives the customer a narrow way to see what happened after an order was sent.
 - exposes estimated ready time when available
 - exposes fulfillment type
 - exposes payment method/status summary
-- records `ORDER_STATUS_VIEWED`
+- uses a separate high-entropy status token instead of treating the display order id as a credential
+- rate-limits public status lookups and records at most one idempotent `ORDER_STATUS_VIEWED` event per order
 
 ## What It Does Not Own
 
@@ -39,6 +40,7 @@ The status surface must stay narrow. It is for customer-facing state, not intern
 Allowed data:
 
 - `order_id`
+- `status_token` for lookup only; it is not returned in the status payload
 - `order_status`
 - `estimated_ready`
 - `fulfillment_type`
@@ -63,11 +65,7 @@ Inputs:
 
 Outputs:
 
-- `ORDER_STATUS_VIEWED`
-
-Failure mode:
-
-- `ORDER_STATUS_LOOKUP_FAILED`
+- `ORDER_STATUS_VIEWED`, recorded only for the first public status view per order
 
 ## Local Test Path
 
@@ -80,8 +78,8 @@ P4P_NODE_MODULES=p4p.customer.status,p4p.kitchen.screen,p4p.payment.cash
 Then create an order and open:
 
 ```text
-GET /p4p/orders/{order_id}
-GET /p4p/orders/{order_id}/status
+GET /p4p/order-status/{status_token}
+GET /p4p/order-status/{status_token}/status
 ```
 
 ## Current Readiness

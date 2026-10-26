@@ -37,12 +37,11 @@
   ],
   "blocking_policy": "non_blocking",
   "suggested_fallbacks": {},
-  "idempotency_scope": "customer_status_lookup",
-  "failure_modes": [
-    "ORDER_STATUS_LOOKUP_FAILED"
-  ],
+  "idempotency_scope": "first_customer_status_view_per_order",
+  "failure_modes": [],
   "requires": [],
   "data_access": [
+    "status_token",
     "order_id",
     "order_status",
     "estimated_ready",

@@ -101,7 +101,7 @@ class InMemoryRateLimitMiddleware:
         if any(rule.requests < 1 or rule.window_seconds < 1 for rule in rules):
             raise ValueError("rate-limit requests and windows must be positive")
         self.app = app
-        self.rules = {(rule.method.upper(), rule.path): rule for rule in rules}
+        self.rules = tuple(rules)
         self._buckets: dict[tuple[str, str, str], deque[float]] = defaultdict(deque)
         self._lock = threading.Lock()
         self._cleanup_interval = max((rule.window_seconds for rule in rules), default=60)
@@ -114,7 +114,18 @@ class InMemoryRateLimitMiddleware:
 
         method = str(scope.get("method", "GET")).upper()
         path = str(scope.get("path", ""))
-        rule = self.rules.get((method, path))
+        rule = next(
+            (
+                candidate
+                for candidate in self.rules
+                if candidate.method.upper() == method
+                and (
+                    candidate.path == path
+                    or (candidate.path.endswith("*") and path.startswith(candidate.path[:-1]))
+                )
+            ),
+            None,
+        )
         if rule is None:
             await self.app(scope, receive, send)
             return
@@ -123,7 +134,7 @@ class InMemoryRateLimitMiddleware:
         client_host = str(client[0]) if client else "unknown"
         now = time.monotonic()
         cutoff = now - rule.window_seconds
-        key = (client_host, method, path)
+        key = (client_host, method, rule.path)
         retry_after = rule.window_seconds
         allowed = False
         with self._lock:

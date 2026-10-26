@@ -42,7 +42,7 @@ This surface only reads and aggregates.
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
 P4P_NODE_CONTROL_REGISTRY_URLS=http://127.0.0.1:8000,http://127.0.0.1:8002 \
-P4P_NODE_CONTROL_OPERATOR_TOKENS='{"dk-brondby-kebab-001":"operator-secret"}' \
+P4P_NODE_CONTROL_OPERATOR_TOKENS='{"http://127.0.0.1:8201":"operator-secret"}' \
 ./.venv/bin/uvicorn node_control:app --port 8210
 ```
 
@@ -53,7 +53,7 @@ Then open:
 ## Runtime Config
 
 - `P4P_NODE_CONTROL_REGISTRY_URLS` is the comma-separated list of registries to read.
-- `P4P_NODE_CONTROL_OPERATOR_TOKENS` is a JSON object keyed by `node_id` or exact node endpoint, used only for optional `/operator/state` and `/operator/modules` reads.
+- `P4P_NODE_CONTROL_OPERATOR_TOKENS` is a JSON object keyed by exact node endpoint. A token is sent only after the endpoint's public health and info responses agree with the registry `node_id`; redirects are not followed.
 - `P4P_NODE_CONTROL_TIMEOUT_SECONDS` controls per-request probe timeout.
 
 ## Endpoints

@@ -297,6 +297,8 @@ Required capabilities:
 - order dashboard: API exists, UI still needed
 - order states: `new`, `accepted`, `rejected`, `ready`, `completed`, `cancelled`: first version exists
 - order timestamp and order id: first version exists
+- order ingress retry idempotency: implemented and verified locally; shared multi-process coordination is still a scale gate
+- customer status lookup: separate high-entropy token, bounded first-view evidence, and route rate limiting verified locally
 - customer name and contact stored only in node: first version exists
 - clear pickup/payment wording: first version exists
 - live/test/menu-only/closed controls: first version exists
@@ -369,6 +371,8 @@ Required deployment pieces:
 - done locally: restart persistence and hosted-mode health gate
 - done locally: pinned minimal container image, non-root runtime, volume ownership
   handoff, dual-registry discovery, and container restart-persistence smoke
+- done locally: pull-request security gate with dependency, static-analysis, test,
+  container-build, and high/critical image-vulnerability checks
 - still hosted: proxy limits, HSTS, monitoring, log inspection, and recovery drill
 
 Target topology:

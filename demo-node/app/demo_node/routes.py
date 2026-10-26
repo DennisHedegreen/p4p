@@ -206,7 +206,10 @@ def order(runtime: DemoRuntime, payload: OrderRequest) -> OrderAccepted | OrderR
     if not node_accepts_orders(runtime):
         return OrderRejected(reason="orders_disabled", message="Denne node modtager ikke ordre endnu.")
     ready_at = utc_now() + timedelta(minutes=20)
-    print("[p4p-demo-node] order received:", payload.model_dump())
+    print(
+        "[p4p-demo-node] order received:",
+        {"client_request_id": payload.client_request_id, "item_count": len(payload.items)},
+    )
     return OrderAccepted(
         order_id=f"test-{utc_now().strftime('%Y-%m-%d-%H%M%S')}",
         estimated_ready=ready_at,

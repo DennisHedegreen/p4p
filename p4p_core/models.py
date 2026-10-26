@@ -267,6 +267,11 @@ class OrderItem(BaseModel):
 class OrderRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
+    client_request_id: str = Field(
+        min_length=16,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]+$",
+    )
     customer_name: str = Field(min_length=1, max_length=120)
     customer_contact: str = Field(min_length=1, max_length=254)
     fulfillment: str = Field(default="pickup", pattern=r"^pickup$")
@@ -280,6 +285,7 @@ class OrderAccepted(BaseModel):
 
     accepted: bool = True
     order_id: str
+    status_token: str | None = None
     estimated_ready: datetime
     message: str
 
@@ -296,6 +302,8 @@ class StoredOrder(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     order_id: str
+    client_request_id: str = ""
+    status_token: str = ""
     customer_name: str
     customer_contact: str
     fulfillment: str
@@ -322,7 +330,7 @@ class PublicOrderStatus(BaseModel):
     updated_at: datetime
     estimated_ready: datetime | None = None
     customer_notice: str = (
-        "Keep your order id private. This prototype status lookup does not expose "
+        "Keep your private status link private. This status lookup does not expose "
         "customer contact data or operator-only order notes."
     )
 

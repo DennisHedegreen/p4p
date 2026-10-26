@@ -192,6 +192,20 @@ def record_order_flow_event(runtime: PilotRuntime, event: ModuleResultEvent) -> 
     return runtime.store.record_order_event(event)
 
 
+def record_order_flow_event_once(runtime: PilotRuntime, event: ModuleResultEvent) -> ModuleResultEvent:
+    existing_events = runtime.store.list_order_events(event.order_id or "")
+    if any(existing.idempotency_key == event.idempotency_key for existing in existing_events):
+        return event
+    validate_pilot_order_event_flow(
+        existing_events,
+        event,
+        enabled_module_ids=effective_flow_module_ids(runtime),
+        module_manifests=runtime.config.resolved_modules.manifests,
+    )
+    runtime.store.record_order_event_once(event)
+    return event
+
+
 def process_accepted_order(runtime: PilotRuntime, order: StoredOrder) -> StoredOrder:
     accepted_order = runtime.store.update_order_status(
         order.order_id,
@@ -1397,4 +1411,5 @@ __all__ = [
     "execute_external_payment_module",
     "execute_module_lane",
     "process_accepted_order",
+    "record_order_flow_event_once",
 ]
