@@ -169,9 +169,15 @@ The first pilot order-state set is:
 - `GET /p4p/menu/list`
 - `GET /p4p/menu/photo-map`
 - `POST /p4p/order`
-- `GET /p4p/orders/{order_id}`
-- `GET /p4p/orders/{order_id}/status`
+- `GET /p4p/order-status/{status_token}`
+- `GET /p4p/order-status/{status_token}/status`
 - `GET /p4p/info`
+
+Every order submission must include a stable `client_request_id` of 16 to 128
+characters. Retrying the same payload with the same key returns the original
+order; reusing the key for different order data returns `409`. Successful pilot
+orders return a separate high-entropy `status_token` for the private status link.
+The display `order_id` does not authorize a public status lookup.
 
 ## Operator Endpoints
 

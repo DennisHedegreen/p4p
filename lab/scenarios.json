@@ -562,8 +562,8 @@
         "menu_json": "http://127.0.0.1:8595/p4p/menu",
         "list_menu": "http://127.0.0.1:8595/p4p/menu/list",
         "order_api": "http://127.0.0.1:8595/p4p/order",
-        "status_page_template": "http://127.0.0.1:8595/p4p/orders/{order_id}",
-        "status_api_template": "http://127.0.0.1:8595/p4p/orders/{order_id}/status"
+        "status_page_template": "http://127.0.0.1:8595/p4p/order-status/{status_token}",
+        "status_api_template": "http://127.0.0.1:8595/p4p/order-status/{status_token}/status"
       }
     },
     "kebab-shop": {
@@ -591,8 +591,8 @@
         "menu_json": "http://127.0.0.1:8596/p4p/menu",
         "list_menu": "http://127.0.0.1:8596/p4p/menu/list",
         "order_api": "http://127.0.0.1:8596/p4p/order",
-        "status_page_template": "http://127.0.0.1:8596/p4p/orders/{order_id}",
-        "status_api_template": "http://127.0.0.1:8596/p4p/orders/{order_id}/status"
+        "status_page_template": "http://127.0.0.1:8596/p4p/order-status/{status_token}",
+        "status_api_template": "http://127.0.0.1:8596/p4p/order-status/{status_token}/status"
       }
     },
     "menu-only": {
@@ -618,8 +618,8 @@
         "menu_json": "http://127.0.0.1:8597/p4p/menu",
         "list_menu": "http://127.0.0.1:8597/p4p/menu/list",
         "order_api": "http://127.0.0.1:8597/p4p/order",
-        "status_page_template": "http://127.0.0.1:8597/p4p/orders/{order_id}",
-        "status_api_template": "http://127.0.0.1:8597/p4p/orders/{order_id}/status"
+        "status_page_template": "http://127.0.0.1:8597/p4p/order-status/{status_token}",
+        "status_api_template": "http://127.0.0.1:8597/p4p/order-status/{status_token}/status"
       }
     }
   },

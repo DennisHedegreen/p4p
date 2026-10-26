@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,6 +87,7 @@ def load_module(relative_path: str, env: dict[str, str] | None = None):
 class P4PDevCleanupTests(unittest.TestCase):
     def make_pilot_order_request(self, pilot_module, item_id: str = "kebab-pita"):
         return pilot_module.OrderRequest(
+            client_request_id=f"test-{uuid4().hex}",
             customer_name="Anna Hansen",
             customer_contact="+4512345678",
             fulfillment="pickup",
@@ -286,7 +288,10 @@ class P4PDevCleanupTests(unittest.TestCase):
         configure_http_hardening(
             app,
             default_max_body_bytes=16,
-            rate_limit_rules=(RateLimitRule("POST", "/rate-limited", 2),),
+            rate_limit_rules=(
+                RateLimitRule("POST", "/rate-limited", 2),
+                RateLimitRule("GET", "/status/*", 1),
+            ),
         )
         app.add_middleware(
             CORSMiddleware,
@@ -307,6 +312,10 @@ class P4PDevCleanupTests(unittest.TestCase):
         def rate_limited() -> dict[str, str]:
             return {"status": "ok"}
 
+        @app.get("/status/{status_token}")
+        def status_lookup(status_token: str) -> dict[str, str]:
+            return {"status_token": status_token}
+
         with TestClient(app) as client:
             healthy = client.get("/health")
             oversized = client.post(
@@ -317,6 +326,8 @@ class P4PDevCleanupTests(unittest.TestCase):
             first = client.post("/rate-limited")
             second = client.post("/rate-limited")
             rejected = client.post("/rate-limited")
+            first_status = client.get("/status/first")
+            rotated_status = client.get("/status/second")
 
         self.assertEqual(healthy.headers["x-content-type-options"], "nosniff")
         self.assertEqual(healthy.headers["x-frame-options"], "DENY")
@@ -331,6 +342,8 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertEqual(second.status_code, 200)
         self.assertEqual(rejected.status_code, 429)
         self.assertIn("retry-after", rejected.headers)
+        self.assertEqual(first_status.status_code, 200)
+        self.assertEqual(rotated_status.status_code, 429)
 
     def test_registry_uses_shared_protocol_models(self) -> None:
         registry = load_module("registry/main.py")
@@ -1837,6 +1850,31 @@ class P4PDevCleanupTests(unittest.TestCase):
             validate_pilot_order_event_flow(existing_events, stock_validated, enabled_module_ids=("p4p.order.print",))
 
         self.assertIn("forbids ORDER_VALIDATED after ORDER_ACCEPTED", str(error.exception))
+
+    def test_customer_status_observation_does_not_replace_operational_flow_state(self) -> None:
+        accepted = make_flow_event(
+            event="ORDER_ACCEPTED",
+            source_module="p4p.order.receiver",
+            action_id="order:ord-flow-1:accept",
+            metadata={"contract_phase": "result"},
+        )
+        viewed = make_flow_event(
+            event="ORDER_STATUS_VIEWED",
+            source_module="p4p.customer.status",
+            action_id="order:ord-flow-1:customer-status:first-view",
+            side_effect_state="none",
+            metadata={"contract_phase": "result"},
+        )
+        print_requested = make_flow_event(
+            event="PRINT_REQUESTED",
+            source_module="p4p.order.print",
+            action_id="order:ord-flow-1:print:primary",
+            side_effect_state="none",
+            metadata={"contract_phase": "request"},
+        )
+
+        validate_pilot_order_event_flow([accepted], viewed)
+        validate_pilot_order_event_flow([accepted, viewed], print_requested)
 
     def test_pilot_build_result_event_rejects_unknown_runtime_module_id(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
