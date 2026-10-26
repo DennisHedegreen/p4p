@@ -12,6 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 from unittest.mock import patch
+from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException, Response
@@ -278,6 +279,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
     def make_order_request(self, demo_module):
         return demo_module.OrderRequest(
+            client_request_id=f"test-{uuid4().hex}",
             customer_name="Anna Hansen",
             customer_contact="+4512345678",
             fulfillment="pickup",
@@ -288,6 +290,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
     def make_pilot_order_request(self, pilot_module, item_id: str = "kebab-pita"):
         return pilot_module.OrderRequest(
+            client_request_id=f"test-{uuid4().hex}",
             customer_name="Anna Hansen",
             customer_contact="+4512345678",
             fulfillment="pickup",
@@ -345,6 +348,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         from p4p_core import OrderItem, OrderRequest
 
         valid = OrderRequest(
+            client_request_id="test-request-00000001",
             customer_name="  Anna Hansen  ",
             customer_contact="  +4512345678  ",
             items=[OrderItem(id="margherita", quantity=2)],
@@ -365,6 +369,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {"client_version": "v" * 101},
         ]
         baseline = {
+            "client_request_id": "test-request-00000001",
             "customer_name": "Anna Hansen",
             "customer_contact": "+4512345678",
             "items": [OrderItem(id="margherita", quantity=1)],
@@ -947,7 +952,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "node-control/node_control.py",
             {
                 "P4P_NODE_CONTROL_REGISTRY_URLS": "http://registry-a.test,http://registry-b.test",
-                "P4P_NODE_CONTROL_OPERATOR_TOKENS": json.dumps({"dk-pizza-001": "operator-secret"}),
+                "P4P_NODE_CONTROL_OPERATOR_TOKENS": json.dumps(
+                    {"http://127.0.0.1:8201": "operator-secret"}
+                ),
             },
         )
         app_module = sys.modules[f"{control.__name__}_app"]
@@ -1156,6 +1163,62 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(node["public_probe"]["status"], "not_ready")
         self.assertEqual(node["operator_probe"]["access"], "not_configured")
         self.assertFalse(any("/operator/" in url for url, _headers in client.calls))
+
+    @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
+    def test_node_control_never_sends_token_when_public_identity_mismatches(self) -> None:
+        endpoint = "https://node.example"
+        control = load_module(
+            "node-control/node_control.py",
+            {
+                "P4P_NODE_CONTROL_REGISTRY_URLS": "https://registry.example",
+                "P4P_NODE_CONTROL_OPERATOR_TOKENS": json.dumps({endpoint: "operator-secret"}),
+            },
+        )
+        app_module = sys.modules[f"{control.__name__}_app"]
+        client = NodeControlClient(
+            {
+                "https://registry.example/health": (200, {"status": "ok"}),
+                "https://registry.example/registry-source": (
+                    200,
+                    {
+                        "registry_url": "https://registry.example",
+                        "nodes": [
+                            {
+                                "node": {
+                                    "node_id": "expected-node",
+                                    "name": "Expected node",
+                                    "endpoint": endpoint,
+                                    "country": "DK",
+                                    "city": "Copenhagen",
+                                    "categories": ["pizza"],
+                                },
+                                "last_seen": "2026-10-26T12:00:00Z",
+                            }
+                        ],
+                    },
+                ),
+                f"{endpoint}/health": (200, {"status": "ready", "node_id": "attacker-node"}),
+                f"{endpoint}/p4p/info": (200, {"node_id": "attacker-node"}),
+            }
+        )
+
+        with patch.object(app_module.httpx, "Client", new=lambda *args, **kwargs: client):
+            snapshot = control.collect_control_snapshot()
+
+        self.assertEqual(snapshot["nodes"][0]["operator_probe"]["access"], "identity_mismatch")
+        self.assertFalse(any("/operator/" in url for url, _headers in client.calls))
+
+    @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
+    def test_node_control_rejects_node_id_keyed_operator_tokens(self) -> None:
+        with self.assertRaisesRegex(ValueError, "exact node endpoint URLs"):
+            load_module(
+                "node-control/node_control.py",
+                {
+                    "P4P_NODE_CONTROL_OPERATOR_TOKENS": json.dumps(
+                        {"dk-pizza-001": "operator-secret"}
+                    )
+                },
+            )
 
     def test_missing_order_mode_defaults_to_disabled(self) -> None:
         registry = load_module("registry/main.py")
@@ -7984,13 +8047,14 @@ class P4PTruthfulnessTests(unittest.TestCase):
                         {
                             "accepted": True,
                             "order_id": "ord-test-1",
+                            "status_token": "status-token-for-ord-test-1",
                             "estimated_ready": "2026-05-14T00:00:00Z",
                             "message": "ok",
                         },
                     ),
                     (200, {"order_id": "ord-test-1", "status": "accepted"}),
                 ],
-            ),
+            ) as http_request,
         ):
             run = lab.run_customer_fixture(config, "pickup-basic")
 
@@ -8001,6 +8065,11 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(run["public_surface_key"], "list_menu")
         self.assertIn("main-open", run["registry_targets"])
         self.assertEqual(run["status_payload"]["status"], "accepted")
+        self.assertTrue(run["request_payload"]["client_request_id"].startswith("lab-pickup-basic-"))
+        self.assertIn(
+            "status-token-for-ord-test-1",
+            http_request.call_args_list[2].args[1],
+        )
         self.assertEqual(lab.run_store.list()[0]["run_id"], run["run_id"])
 
     def test_lab_customer_fixture_instance_can_target_generated_node_instance(self) -> None:
@@ -8057,6 +8126,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             {
                                 "accepted": True,
                                 "order_id": "ord-local-fixture-1",
+                                "status_token": "status-token-for-local-fixture-1",
                                 "estimated_ready": "2026-05-14T00:00:00Z",
                                 "message": "ok",
                             },
@@ -8159,6 +8229,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                             {
                                 "accepted": True,
                                 "order_id": "ord-flow-local-1",
+                                "status_token": "status-token-for-flow-local-1",
                                 "estimated_ready": "2026-05-14T00:00:00Z",
                                 "message": "ok",
                             },
@@ -8229,6 +8300,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                         {
                             "accepted": True,
                             "order_id": "ord-summary-1",
+                            "status_token": "status-token-for-summary-1",
                             "estimated_ready": "2026-05-14T00:00:00Z",
                             "message": "ok",
                         },
@@ -8658,12 +8730,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
             accepted = pilot.public_order(self.make_pilot_order_request(pilot))
             public_info = pilot.public_info()
-            status = pilot.public_order_status(accepted.order_id)
+            status = pilot.public_order_status(accepted.status_token)
             status_payload = status.model_dump(mode="json")
-            viewed_event = pilot.operator_order_events(
+            events_after_view = pilot.operator_order_events(
                 accepted.order_id,
                 authorization="Bearer operator-secret",
-            )[-1]
+            )
 
             self.assertIn("p4p.customer.status", public_info["modules"])
             self.assertEqual(status.order_id, accepted.order_id)
@@ -8673,18 +8745,19 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertNotIn("customer_contact", status_payload)
             self.assertNotIn("note", status_payload)
             self.assertNotIn("items", status_payload)
-            self.assertEqual(viewed_event.event, "ORDER_STATUS_VIEWED")
-            self.assertEqual(viewed_event.source_module, "p4p.customer.status")
-            self.assertFalse(viewed_event.metadata["exposes_customer_contact"])
-            self.assertFalse(viewed_event.metadata["exposes_order_note"])
+            status_view_events = [
+                event for event in events_after_view if event.event == "ORDER_STATUS_VIEWED"
+            ]
+            self.assertEqual(len(status_view_events), 1)
+            self.assertEqual(status_view_events[0].metadata["recording_policy"], "first_view_only")
 
             pilot.operator_update_order(
                 accepted.order_id,
                 pilot.OrderStatusUpdate(status="ready", status_message="Ready for pickup."),
                 authorization="Bearer operator-secret",
             )
-            ready_status = pilot.public_order_status(accepted.order_id)
-            status_page = pilot.public_order_status_page(accepted.order_id)
+            ready_status = pilot.public_order_status(accepted.status_token)
+            status_page = pilot.public_order_status_page(accepted.status_token)
 
             self.assertEqual(ready_status.status, "ready")
             self.assertEqual(ready_status.status_message, "Ready for pickup.")
@@ -8693,6 +8766,79 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertNotIn("+4512345678", status_page)
             self.assertNotIn("Anna Hansen", status_page)
             self.assertNotIn("No onions", status_page)
+            self.assertEqual(
+                sum(
+                    event.event == "ORDER_STATUS_VIEWED"
+                    for event in pilot.operator_order_events(
+                        accepted.order_id,
+                        authorization="Bearer operator-secret",
+                    )
+                ),
+                1,
+            )
+            pilot.store.close()
+
+    def test_pilot_order_ingress_is_idempotent_and_rejects_key_reuse_with_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.customer.status,p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+            request = self.make_pilot_order_request(pilot)
+
+            first = pilot.public_order(request)
+            first_events = pilot.operator_order_events(
+                first.order_id,
+                authorization="Bearer operator-secret",
+            )
+            repeated = pilot.public_order(request)
+            repeated_events = pilot.operator_order_events(
+                first.order_id,
+                authorization="Bearer operator-secret",
+            )
+
+            self.assertEqual(repeated.order_id, first.order_id)
+            self.assertEqual(repeated.status_token, first.status_token)
+            self.assertEqual(len(pilot.operator_orders(authorization="Bearer operator-secret")), 1)
+            self.assertEqual(repeated_events, first_events)
+
+            with self.assertRaises(HTTPException) as conflicting_reuse:
+                pilot.public_order(request.model_copy(update={"note": "Different order"}))
+
+            self.assertEqual(conflicting_reuse.exception.status_code, 409)
+            pilot.store.close()
+
+    def test_pilot_order_id_is_not_a_public_status_credential(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.customer.status,p4p.payment.cash",
+                },
+            )
+            accepted = pilot.public_order(self.make_pilot_order_request(pilot))
+
+            self.assertIsNotNone(accepted.status_token)
+            self.assertGreaterEqual(len(accepted.status_token or ""), 40)
+            self.assertEqual(
+                pilot.public_order_status(accepted.status_token).order_id,
+                accepted.order_id,
+            )
+            with self.assertRaises(HTTPException) as order_id_lookup:
+                pilot.public_order_status(accepted.order_id)
+
+            self.assertEqual(order_id_lookup.exception.status_code, 404)
             pilot.store.close()
 
     def test_pilot_node_customer_status_page_localizes_runtime_message_from_requested_locale(self) -> None:
@@ -8710,7 +8856,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             )
 
             accepted = pilot.public_order(self.make_pilot_order_request(pilot))
-            status_page = pilot.public_order_status_page(accepted.order_id, locale="tr")
+            status_page = pilot.public_order_status_page(accepted.status_token, locale="tr")
             stored = pilot.operator_orders(authorization="Bearer operator-secret")
 
             self.assertIn("lang=\"tr\"", status_page)
@@ -8739,7 +8885,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 pilot.OrderStatusUpdate(status="ready", status_message="Ready for pickup."),
                 authorization="Bearer operator-secret",
             )
-            status_page = pilot.public_order_status_page(accepted.order_id, locale="sv")
+            status_page = pilot.public_order_status_page(accepted.status_token, locale="sv")
             stored = pilot.operator_orders(authorization="Bearer operator-secret")
 
             self.assertIn("Klar för avhämtning.", status_page)
@@ -8767,7 +8913,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
                 pilot.OrderStatusUpdate(status="accepted", status_message="Seen by kitchen"),
                 authorization="Bearer operator-secret",
             )
-            status_page = pilot.public_order_status_page(accepted.order_id, locale="sv")
+            status_page = pilot.public_order_status_page(accepted.status_token, locale="sv")
             stored = pilot.operator_orders(authorization="Bearer operator-secret")
 
             self.assertIn("Seen by kitchen", status_page)
@@ -8791,7 +8937,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             accepted = pilot.public_order(self.make_pilot_order_request(pilot))
 
             with self.assertRaises(HTTPException) as missing_module:
-                pilot.public_order_status(accepted.order_id)
+                pilot.public_order_status(accepted.status_token)
 
             self.assertEqual(missing_module.exception.status_code, 404)
             self.assertEqual(missing_module.exception.detail, "Customer status module is not enabled")
@@ -9556,6 +9702,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             page_sv = pilot.public_menu_list_page(locale="sv")
             active_order = pilot.public_order(
                 pilot.OrderRequest(
+                    client_request_id=f"test-{uuid4().hex}",
                     customer_name="Anna Hansen",
                     customer_contact="+4512345678",
                     fulfillment="pickup",
@@ -9584,12 +9731,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertNotIn("Durum Test", page)
             self.assertIn('fetch("/p4p/order?lang=da"', page)
             self.assertIn("p4p-menu-list-0.1", page)
-            self.assertIn("/p4p/orders/${encodeURIComponent(body.order_id)}", page)
+            self.assertIn("/p4p/order-status/${encodeURIComponent(body.status_token)}", page)
             self.assertIn('<html lang="sv" dir="ltr">', page_sv)
             self.assertIn("Skicka order", page_sv)
             self.assertIn("Språk", page_sv)
             self.assertTrue(active_order.accepted)
-            status_page_ar = pilot.public_order_status_page(active_order.order_id, locale="ar")
+            status_page_ar = pilot.public_order_status_page(active_order.status_token, locale="ar")
             self.assertIn('<html lang="ar" dir="rtl">', status_page_ar)
             self.assertIn("حالة الطلب", status_page_ar)
             self.assertIn("العودة إلى القائمة", status_page_ar)
@@ -9670,6 +9817,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             page_ar = pilot.public_menu_photo_map_page(locale="ar")
             active_order = pilot.public_order(
                 pilot.OrderRequest(
+                    client_request_id=f"test-{uuid4().hex}",
                     customer_name="Anna Hansen",
                     customer_contact="+4512345678",
                     fulfillment="pickup",
@@ -9700,7 +9848,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertNotIn("Durum Test", page)
             self.assertIn('fetch("/p4p/order?lang=da"', page)
             self.assertIn("p4p-menu-photo-map-0.1", page)
-            self.assertIn("/p4p/orders/${encodeURIComponent(body.order_id)}", page)
+            self.assertIn("/p4p/order-status/${encodeURIComponent(body.status_token)}", page)
             self.assertIn('<html lang="ar" dir="rtl">', page_ar)
             self.assertIn("أرسل الطلب", page_ar)
             self.assertIn("اللغة", page_ar)

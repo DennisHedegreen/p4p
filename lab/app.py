@@ -4270,6 +4270,10 @@ def run_customer_fixture(
     status_template = profile_urls.get("status_api_template")
     selected_surface_key = str(fixture.get("menu_surface") or target.get("public_surface_key") or "public_shop")
     selected_surface_url = str(profile_urls.get(selected_surface_key) or target.get("public_shop_url") or "")
+    request_payload = dict(fixture["order_request"])
+    request_payload["client_request_id"] = (
+        f"lab-{fixture['id']}-{time.time_ns()}"
+    )
 
     run_payload: dict[str, Any] = {
         "kind": "customer_fixture",
@@ -4285,7 +4289,7 @@ def run_customer_fixture(
         "surface_url": selected_surface_url or None,
         "registry_targets": list(target.get("registry_targets") or []),
         "visibility_expectations": list(target.get("visibility_expectations") or []),
-        "request_payload": fixture["order_request"],
+        "request_payload": request_payload,
         "started_at": started_at,
         "finished_at": None,
         "order_id": None,
@@ -4323,7 +4327,7 @@ def run_customer_fixture(
         if not order_api_url:
             raise RuntimeError(f"Missing order_api for node profile: {target['id']}")
 
-        order_status_code, order_payload = _http_json_request("POST", order_api_url, fixture["order_request"])
+        order_status_code, order_payload = _http_json_request("POST", order_api_url, request_payload)
         if order_status_code != 200 or not isinstance(order_payload, dict):
             detail = order_payload.get("detail") if isinstance(order_payload, dict) else order_payload
             raise RuntimeError(f"Order request failed: {detail or order_status_code}")
@@ -4331,6 +4335,7 @@ def run_customer_fixture(
             raise RuntimeError(order_payload.get("message") or order_payload.get("reason") or "Order rejected.")
 
         order_id = str(order_payload.get("order_id") or "").strip()
+        status_token = str(order_payload.get("status_token") or "").strip()
         run_payload["order_id"] = order_id or None
 
         expected = fixture.get("expected") or {}
@@ -4343,7 +4348,9 @@ def run_customer_fixture(
         if poll and poll.get("enabled", True) and order_id:
             if not status_template:
                 raise RuntimeError(f"Missing status_api_template for node profile: {target['id']}")
-            status_url = status_template.replace("{order_id}", quote(order_id, safe=""))
+            if not status_token:
+                raise RuntimeError("Order accepted response did not include status_token.")
+            status_url = status_template.replace("{status_token}", quote(status_token, safe=""))
             for attempt in range(int(poll.get("attempts", 4))):
                 status_code, status_payload = _http_json_request("GET", status_url)
                 if status_code == 200 and isinstance(status_payload, dict):

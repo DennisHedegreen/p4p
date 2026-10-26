@@ -73,6 +73,7 @@ from pilot_node.execution import (
     STOCK_BASIC_MODULE_ID,
     build_result_event,
     process_accepted_order,
+    record_order_flow_event_once,
 )
 from pilot_node.hardware_lanes import (
     ORDER_ALERT_BASIC_MODULE_ID,
@@ -439,8 +440,8 @@ def root_index(runtime: PilotRuntime) -> dict[str, Any]:
             "menu_list": "GET /p4p/menu/list",
             "menu_photo_map": "GET /p4p/menu/photo-map",
             "order": "POST /p4p/order",
-            "order_status_page": "GET /p4p/orders/{order_id}",
-            "order_status_json": "GET /p4p/orders/{order_id}/status",
+            "order_status_page": "GET /p4p/order-status/{status_token}",
+            "order_status_json": "GET /p4p/order-status/{status_token}/status",
             "operator_welcome": "GET /operator/welcome",
             "operator_setup": "GET /operator/setup",
             "operator_gui": "GET /operator",
@@ -519,10 +520,12 @@ def public_order(runtime: PilotRuntime, payload: OrderRequest, *, locale: str | 
             reason="orders_disabled",
             message=customer_text(effective_locale, "customer.runtime.orders_disabled"),
         )
-    order = runtime.store.create_order(payload)
-    order = process_accepted_order(runtime, order)
+    order, created = runtime.store.create_order_once(payload)
+    if created:
+        order = process_accepted_order(runtime, order)
     return OrderAccepted(
         order_id=order.order_id,
+        status_token=order.status_token,
         estimated_ready=order.estimated_ready or (utc_now() + timedelta(minutes=20)),
         message=customer_status_message_text(effective_locale, order.status_message or "Order received."),
     )
@@ -658,12 +661,12 @@ def public_locale_switcher_html(runtime: PilotRuntime, locale: str, current_path
     )
 
 
-def public_order_status(runtime: PilotRuntime, order_id: str) -> PublicOrderStatus:
+def public_order_status(runtime: PilotRuntime, status_token: str) -> PublicOrderStatus:
     if not customer_status_module_enabled(runtime):
         raise HTTPException(status_code=404, detail="Customer status module is not enabled")
-    order = runtime.store.get_order(order_id)
+    order = runtime.store.get_order_by_status_token(status_token)
     if order is None:
-        raise HTTPException(status_code=404, detail=f"Unknown order_id: {order_id}")
+        raise HTTPException(status_code=404, detail="Unknown order status token")
     status_payload = PublicOrderStatus(
         order_id=order.order_id,
         status=order.status,
@@ -674,9 +677,9 @@ def public_order_status(runtime: PilotRuntime, order_id: str) -> PublicOrderStat
         updated_at=order.updated_at,
         estimated_ready=order.estimated_ready,
     )
-    checked_at = utc_now()
-    action_id = f"order:{order.order_id}:customer-status:{checked_at.isoformat()}"
-    runtime.store.record_order_event(
+    action_id = f"order:{order.order_id}:customer-status:first-view"
+    record_order_flow_event_once(
+        runtime,
         build_result_event(
             runtime=runtime,
             event="ORDER_STATUS_VIEWED",
@@ -695,14 +698,15 @@ def public_order_status(runtime: PilotRuntime, order_id: str) -> PublicOrderStat
                 "exposes_customer_name": False,
                 "exposes_order_note": False,
                 "exposes_operator_events": False,
+                "recording_policy": "first_view_only",
             },
-        )
+        ),
     )
     return status_payload
 
 
-def public_order_status_page(runtime: PilotRuntime, order_id: str, *, locale: str | None = None) -> str:
-    status_payload = public_order_status(runtime, order_id)
+def public_order_status_page(runtime: PilotRuntime, status_token: str, *, locale: str | None = None) -> str:
+    status_payload = public_order_status(runtime, status_token)
     effective_locale = normalize_locale(locale or persisted_operator_locale(runtime))
     status_label = customer_value_text(effective_locale, status_payload.status, title_case_fallback=True)
     message = customer_status_message_text(effective_locale, status_payload.status_message)
@@ -712,7 +716,9 @@ def public_order_status_page(runtime: PilotRuntime, order_id: str, *, locale: st
         else customer_text(effective_locale, "customer.status.not_set")
     )
     escaped_order_id = html.escape(status_payload.order_id, quote=True)
-    locale_switcher = public_locale_switcher_html(runtime, effective_locale, f"/p4p/orders/{escaped_order_id}")
+    escaped_status_token = html.escape(status_token, quote=True)
+    status_path = f"/p4p/order-status/{escaped_status_token}"
+    locale_switcher = public_locale_switcher_html(runtime, effective_locale, status_path)
     menu_link = public_menu_entry_url(runtime, effective_locale)
     return f"""<!doctype html>
 <html lang="{html.escape(effective_locale, quote=True)}" dir="{html.escape(locale_direction(effective_locale), quote=True)}">
@@ -836,7 +842,7 @@ def public_order_status_page(runtime: PilotRuntime, order_id: str, *, locale: st
         <div class="page-tools">
           <div class="page-links">
             <a href="{html.escape(menu_link, quote=True)}">{html.escape(customer_text(effective_locale, "customer.common.back_to_menu"))}</a>
-            <a href="/p4p/orders/{escaped_order_id}/status">{html.escape(customer_text(effective_locale, "customer.common.status_json"))}</a>
+            <a href="{status_path}/status">{html.escape(customer_text(effective_locale, "customer.common.status_json"))}</a>
           </div>
           {locale_switcher}
         </div>
@@ -858,11 +864,11 @@ def public_order_status_page(runtime: PilotRuntime, order_id: str, *, locale: st
           <dd>{html.escape(status_payload.updated_at.isoformat())}</dd>
         </dl>
         <div class="actions">
-          <form method="get" action="/p4p/orders/{escaped_order_id}">
+          <form method="get" action="{status_path}">
             <input type="hidden" name="lang" value="{html.escape(effective_locale, quote=True)}">
             <button type="submit">{html.escape(customer_text(effective_locale, "customer.status.refresh"))}</button>
           </form>
-          <a href="/p4p/orders/{escaped_order_id}/status">{html.escape(customer_text(effective_locale, "customer.common.status_json"))}</a>
+          <a href="{status_path}/status">{html.escape(customer_text(effective_locale, "customer.common.status_json"))}</a>
         </div>
         <p class="notice">{html.escape(customer_status_notice_text(effective_locale, status_payload.customer_notice))}</p>
       </section>
@@ -1307,6 +1313,8 @@ def public_menu_list_page(runtime: PilotRuntime, *, locale: str | None = None) -
         }});
       }});
 
+      let pendingRequestId = crypto.randomUUID();
+
       form.addEventListener("submit", async (event) => {{
         event.preventDefault();
         const items = selectedItems().map((item) => ({{ id: item.id, quantity: item.quantity }}));
@@ -1318,6 +1326,7 @@ def public_menu_list_page(runtime: PilotRuntime, *, locale: str | None = None) -
         result.textContent = copy.sending;
         const data = new FormData(form);
         const payload = {{
+          client_request_id: pendingRequestId,
           customer_name: String(data.get("customer_name") || "").trim(),
           customer_contact: String(data.get("customer_contact") || "").trim(),
           fulfillment: "pickup",
@@ -1335,8 +1344,9 @@ def public_menu_list_page(runtime: PilotRuntime, *, locale: str | None = None) -
           if (!response.ok || body.accepted === false) {{
             throw new Error(body.message || body.detail || body.reason || "Order was rejected.");
           }}
-          const statusLink = statusLinksEnabled ? ` <a href="/p4p/orders/${{encodeURIComponent(body.order_id)}}?lang={html.escape(effective_locale, quote=True)}">${{copy.checkStatus}}</a>` : "";
+          const statusLink = statusLinksEnabled && body.status_token ? ` <a href="/p4p/order-status/${{encodeURIComponent(body.status_token)}}?lang={html.escape(effective_locale, quote=True)}">${{copy.checkStatus}}</a>` : "";
           result.innerHTML = `${{copy.accepted}} <strong>${{body.order_id}}</strong>.${{statusLink}}`;
+          pendingRequestId = crypto.randomUUID();
         }} catch (error) {{
           result.textContent = error instanceof Error ? error.message : copy.failed;
         }} finally {{
@@ -1862,6 +1872,8 @@ def public_menu_photo_map_page(runtime: PilotRuntime, *, locale: str | None = No
         updateSummary();
       }});
 
+      let pendingRequestId = crypto.randomUUID();
+
       form.addEventListener("submit", async (event) => {{
         event.preventDefault();
         const items = selectedItems().map((item) => ({{ id: item.id, quantity: item.quantity }}));
@@ -1873,6 +1885,7 @@ def public_menu_photo_map_page(runtime: PilotRuntime, *, locale: str | None = No
         result.textContent = copy.sending;
         const data = new FormData(form);
         const payload = {{
+          client_request_id: pendingRequestId,
           customer_name: String(data.get("customer_name") || "").trim(),
           customer_contact: String(data.get("customer_contact") || "").trim(),
           fulfillment: "pickup",
@@ -1890,8 +1903,9 @@ def public_menu_photo_map_page(runtime: PilotRuntime, *, locale: str | None = No
           if (!response.ok || body.accepted === false) {{
             throw new Error(body.message || body.detail || body.reason || "Order was rejected.");
           }}
-          const statusLink = statusLinksEnabled ? ` <a href="/p4p/orders/${{encodeURIComponent(body.order_id)}}?lang={html.escape(effective_locale, quote=True)}">${{copy.checkStatus}}</a>` : "";
+          const statusLink = statusLinksEnabled && body.status_token ? ` <a href="/p4p/order-status/${{encodeURIComponent(body.status_token)}}?lang={html.escape(effective_locale, quote=True)}">${{copy.checkStatus}}</a>` : "";
           result.innerHTML = `${{copy.accepted}} <strong>${{body.order_id}}</strong>.${{statusLink}}`;
+          pendingRequestId = crypto.randomUUID();
         }} catch (error) {{
           result.textContent = error instanceof Error ? error.message : copy.failed;
         }} finally {{
@@ -3688,7 +3702,10 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         app,
         default_max_body_bytes=1024 * 1024,
         route_body_limits={"/operator/menu/import-image-preview": 12 * 1024 * 1024},
-        rate_limit_rules=(RateLimitRule("POST", "/p4p/order", 30),),
+        rate_limit_rules=(
+            RateLimitRule("POST", "/p4p/order", 30),
+            RateLimitRule("GET", "/p4p/order-status/*", 60),
+        ),
     )
     app.add_middleware(CORSMiddleware, **build_cors_middleware_options())
 
@@ -3751,14 +3768,14 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         locale, _ = public_locale_source(runtime, request)
         return public_order(runtime, payload, locale=locale)
 
-    @app.get("/p4p/orders/{order_id}", response_class=HTMLResponse)
-    def public_order_status_page_route(request: Request, order_id: str) -> str:
+    @app.get("/p4p/order-status/{status_token}", response_class=HTMLResponse)
+    def public_order_status_page_route(request: Request, status_token: str) -> str:
         locale, _ = public_locale_source(runtime, request)
-        return public_order_status_page(runtime, order_id, locale=locale)
+        return public_order_status_page(runtime, status_token, locale=locale)
 
-    @app.get("/p4p/orders/{order_id}/status", response_model=PublicOrderStatus)
-    def public_order_status_route(order_id: str) -> PublicOrderStatus:
-        return public_order_status(runtime, order_id)
+    @app.get("/p4p/order-status/{status_token}/status", response_model=PublicOrderStatus)
+    def public_order_status_route(status_token: str) -> PublicOrderStatus:
+        return public_order_status(runtime, status_token)
 
     @app.get("/p4p/info")
     def public_info_route() -> dict[str, Any]:
