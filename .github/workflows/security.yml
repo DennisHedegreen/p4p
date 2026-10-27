@@ -28,7 +28,8 @@ jobs:
             --constraint requirements.lock.txt \
             --requirement registry/requirements.txt \
             --requirement demo-node/requirements.txt \
-            --requirement pilot-node/requirements.txt
+            --requirement pilot-node/requirements.txt \
+            --requirement requirements-test.txt
           python -m pip install pip-audit bandit
       - name: Public release audit
         run: bash scripts/public-audit.sh
