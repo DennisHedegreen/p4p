@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
 import re
 from typing import Iterable
 
@@ -14,11 +13,9 @@ from p4p_core import (
 )
 
 try:
-    import rapidocr
     from rapidocr import RapidOCR
 except ImportError:  # pragma: no cover - exercised via availability checks
     RapidOCR = None
-    rapidocr = None
 
 _LEADING_NUMBER_RE = re.compile(r"^\s*(?:nr\.?\s*)?(?P<number>\d{1,3})[\s.)-]*", re.IGNORECASE)
 _LEADING_ITEM_CODE_RE = re.compile(r"^\s*(?:nr\.?\s*)?(?:\d{1,3}[A-Za-zÆØÅæøå]{1,2})\s+", re.IGNORECASE)
@@ -117,43 +114,13 @@ def _iter_candidate_lines(raw_text: str) -> Iterable[str]:
         yield line
 
 
-def _local_model_paths() -> dict[str, Path]:
-    if rapidocr is None:
-        raise RuntimeError(
-            "Local image OCR dependencies are not installed. Install pilot-node/requirements-ocr.txt."
-        )
-    model_root = Path(rapidocr.__file__).resolve().parent / "models"
-    paths = {
-        "det": model_root / "ch_PP-OCRv4_det_infer.onnx",
-        "cls": model_root / "ch_ppocr_mobile_v2.0_cls_infer.onnx",
-        "rec": model_root / "ch_PP-OCRv4_rec_infer.onnx",
-        "keys": model_root / "ppocr_keys_v1.txt",
-    }
-    missing = [str(path) for path in paths.values() if not path.exists()]
-    if missing:
-        raise RuntimeError(
-            "Local OCR models are missing. Expected built-in RapidOCR model files at: "
-            + ", ".join(missing)
-        )
-    return paths
-
-
 @lru_cache(maxsize=1)
 def _ocr_engine() -> RapidOCR:
     if RapidOCR is None:
         raise RuntimeError(
             "Local image OCR dependencies are not installed. Install pilot-node/requirements-ocr.txt."
         )
-    model_paths = _local_model_paths()
-    return RapidOCR(
-        params={
-            "Global.log_level": "warning",
-            "Det.model_path": str(model_paths["det"]),
-            "Cls.model_path": str(model_paths["cls"]),
-            "Rec.model_path": str(model_paths["rec"]),
-            "Rec.rec_keys_path": str(model_paths["keys"]),
-        }
-    )
+    return RapidOCR(params={"Global.log_level": "warning"})
 
 
 def _normalize_ocr_fragment(text: str) -> str:
