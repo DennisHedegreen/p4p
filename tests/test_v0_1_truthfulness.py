@@ -11861,6 +11861,103 @@ class P4PTruthfulnessTests(unittest.TestCase):
         )
         self.assertFalse([result for result in rejected if result.level == "FAIL"])
 
+    def test_pilot_readiness_checker_accepts_complete_menu_only_node(self) -> None:
+        checker = load_module("scripts/check-pilot-readiness.py")
+        baseline_modules = sorted(checker.BASELINE_MODULES)
+
+        def fake_fetch(url: str, *, token=None, timeout: float = 8.0):
+            if url.endswith("/health"):
+                return 200, {
+                    "status": "ready",
+                    "configured_registries": ["http://registry-a.test", "http://registry-b.test"],
+                    "registered_registries": ["http://registry-a.test", "http://registry-b.test"],
+                    "failed_registries": {},
+                }
+            if url.endswith("/p4p/info"):
+                return 200, {
+                    "order_mode": "menu_only",
+                    "fulfillment": ["pickup"],
+                    "payment_methods": ["pay_at_pickup"],
+                }
+            if url.endswith("/p4p/menu"):
+                return 200, {"items": [{"id": "pizza-1", "price": 9500}]}
+            if url.endswith("/operator/state") and token is None:
+                return 401, {"detail": "Invalid operator token"}
+            if url.endswith("/operator/state"):
+                return 200, {
+                    "node": {"order_mode": "menu_only"},
+                    "accepts_orders": False,
+                    "enabled_modules": baseline_modules,
+                    "active_by_lane": {"payment": "p4p.payment.cash"},
+                }
+            if url.endswith("/operator/setup"):
+                return 200, {
+                    "summary": {"ready_for_menu_only": True, "ready_for_live": False},
+                    "modules": {"restart_required": False},
+                }
+            if url.endswith("/operator/orders"):
+                return 200, []
+            raise AssertionError(f"unexpected URL {url}")
+
+        with patch.object(checker, "fetch_json", side_effect=fake_fetch):
+            results = checker.run_checks(
+                "http://127.0.0.1:8201",
+                operator_token="operator-secret",
+            )
+
+        self.assertFalse([entry for entry in results if entry.level == "FAIL"])
+
+    def test_pilot_readiness_checker_fails_closed_on_live_or_incomplete_state(self) -> None:
+        checker = load_module("scripts/check-pilot-readiness.py")
+
+        def fake_fetch(url: str, *, token=None, timeout: float = 8.0):
+            if url.endswith("/health"):
+                return 200, {
+                    "status": "ready",
+                    "configured_registries": ["http://registry-a.test"],
+                    "registered_registries": ["http://registry-a.test"],
+                    "failed_registries": {},
+                }
+            if url.endswith("/p4p/info"):
+                return 200, {
+                    "order_mode": "live",
+                    "fulfillment": ["pickup"],
+                    "payment_methods": ["pay_at_pickup"],
+                }
+            if url.endswith("/p4p/menu"):
+                return 200, {"items": [{"id": "pizza-1", "price": 9500}]}
+            if url.endswith("/operator/state") and token is None:
+                return 200, {"node": {"order_mode": "live"}}
+            if url.endswith("/operator/state"):
+                return 200, {
+                    "node": {"order_mode": "live"},
+                    "accepts_orders": True,
+                    "enabled_modules": ["p4p.payment.cash"],
+                    "active_by_lane": {"payment": "p4p.payment.cash"},
+                }
+            if url.endswith("/operator/setup"):
+                return 200, {
+                    "summary": {"ready_for_menu_only": False, "ready_for_live": False},
+                    "modules": {"restart_required": True},
+                }
+            if url.endswith("/operator/orders"):
+                return 200, []
+            raise AssertionError(f"unexpected URL {url}")
+
+        with patch.object(checker, "fetch_json", side_effect=fake_fetch):
+            results = checker.run_checks(
+                "http://127.0.0.1:8201",
+                operator_token="operator-secret",
+            )
+
+        failures = {entry.name for entry in results if entry.level == "FAIL"}
+        self.assertIn("health.dual_registry_config", failures)
+        self.assertIn("public.order_mode", failures)
+        self.assertIn("operator.auth_boundary", failures)
+        self.assertIn("operator.baseline_modules", failures)
+        self.assertIn("setup.ready_for_menu_only", failures)
+        self.assertIn("setup.restart_required", failures)
+
     def test_node_checker_refuses_live_order_without_explicit_flag(self) -> None:
         checker = load_module("scripts/check-node.py")
         calls: list[tuple[str, str]] = []

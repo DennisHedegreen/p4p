@@ -294,7 +294,7 @@ Required capabilities:
 - persistent menu configuration: first version exists
 - persistent order storage: first version exists
 - operator login: token-protected endpoints exist
-- order dashboard: API exists, UI still needed
+- order dashboard: operator UI and API exist; real-counter usability still needs a restaurant pass
 - order states: `new`, `accepted`, `rejected`, `ready`, `completed`, `cancelled`: first version exists
 - order timestamp and order id: first version exists
 - order ingress retry idempotency: implemented and verified locally; shared multi-process coordination is still a scale gate
@@ -302,7 +302,7 @@ Required capabilities:
 - customer name and contact stored only in node: first version exists
 - clear pickup/payment wording: first version exists
 - live/test/menu-only/closed controls: first version exists
-- registry health view: API exists, UI still needed
+- registry health view: operator node UI and API exist; hosted readback still needs a real pilot host
 - manual reannounce: first version exists
 - signed announcements and heartbeats: first version exists
 - root key and operational key support
@@ -373,6 +373,8 @@ Required deployment pieces:
   handoff, dual-registry discovery, and container restart-persistence smoke
 - done locally: pull-request security gate with dependency, static-analysis, test,
   container-build, and high/critical image-vulnerability checks
+- done locally: read-only pilot readiness checker for dual registration, operator
+  auth, menu, pickup/pay-at-pickup, baseline modules, setup and restart parity
 - still hosted: proxy limits, HSTS, monitoring, log inspection, and recovery drill
 
 Target topology:
