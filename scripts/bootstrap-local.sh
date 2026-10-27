@@ -20,5 +20,9 @@ for component in "${components[@]}"; do
     --requirement "$component_root/requirements.txt"
 done
 
+"$root/demo-node/.venv/bin/python" -m pip install \
+  --constraint "$constraints" \
+  --requirement "$root/requirements-test.txt"
+
 echo "P4P local runtimes are ready."
 echo "Run scripts/check-local.sh from the repository root."
