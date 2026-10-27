@@ -9629,6 +9629,21 @@ class P4PTruthfulnessTests(unittest.TestCase):
             )
             pilot.store.close()
 
+    def test_menu_import_ocr_engine_uses_rapidocr_packaged_defaults(self) -> None:
+        menu_import = load_module("pilot-node/app/pilot_node/menu_import.py")
+        captured: dict[str, object] = {}
+
+        class StubRapidOCR:
+            def __init__(self, **kwargs) -> None:
+                captured.update(kwargs)
+
+        with patch.object(menu_import, "RapidOCR", StubRapidOCR):
+            menu_import._ocr_engine.cache_clear()
+            engine = menu_import._ocr_engine()
+
+        self.assertIsInstance(engine, StubRapidOCR)
+        self.assertEqual(captured, {"params": {"Global.log_level": "warning"}})
+
     def test_pilot_node_menu_import_image_preview_requires_operator_token(self) -> None:
         fixture_path = REPO_ROOT / "docs/examples/menu-photo-map-fixtures/copenhagen-pizza-grill-paper-menu.png"
         try:

@@ -45,6 +45,29 @@ jobs:
           if [ -d node-control ]; then targets+=(node-control); fi
           bandit --recursive "${targets[@]}" --exclude 'registry/.venv,tests' --severity-level high --confidence-level medium
 
+  ocr-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pilot runtime, test and OCR dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            --constraint requirements.lock.txt \
+            --requirement pilot-node/requirements.txt \
+            --requirement requirements-test.txt \
+            --requirement pilot-node/requirements-ocr.txt
+      - name: Run OCR integration tests
+        run: |
+          python -m unittest -v \
+            tests.test_v0_1_truthfulness.P4PTruthfulnessTests.test_menu_import_ocr_engine_uses_rapidocr_packaged_defaults \
+            tests.test_v0_1_truthfulness.P4PTruthfulnessTests.test_pilot_node_menu_import_image_preview_extracts_draft_items_from_fixture \
+            tests.test_v0_1_truthfulness.P4PTruthfulnessTests.test_pilot_node_menu_import_image_preview_requires_operator_token
+
   container-build:
     runs-on: ubuntu-latest
     steps:
