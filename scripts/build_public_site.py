@@ -37,6 +37,7 @@ REPO_SCREENSHOT_PACK_PATH = P4P_ROOT / "docs/screenshot-pack.json"
 PUBLIC_ROOT = ROOT / "public/www/pizza4people"
 PROTOCOLS_ROOT = ROOT / "public/www/protocols4people"
 PRESS_ROOT = PUBLIC_ROOT / "press-kit"
+START_ROOT = PUBLIC_ROOT / "start"
 MODULES_ROOT = P4P_ROOT / "modules"
 TEMPLATE_ROOT = P4P_ROOT / "scripts/templates/public-site"
 PUBLIC_CATALOG_URLS = PublicCatalogUrls()
@@ -106,6 +107,14 @@ PIZZA_HOME_UI = {
         "ar": "التنقل الرئيسي",
         "ku": "Navîgasyona bingehîn",
         "en": "Primary navigation",
+    },
+    "nav_start": {
+        "da": "Start her",
+        "sv": "Börja här",
+        "tr": "Buradan başla",
+        "ar": "ابدأ هنا",
+        "ku": "Ji vir dest pê bike",
+        "en": "Start here",
     },
     "nav_owner": {
         "da": "For pizzeriaer",
@@ -210,6 +219,14 @@ PIZZA_HOME_UI = {
         "ar": "إذا كنت تدير محل بيتزا",
         "ku": "Heke tu pizzeriyayek dimeşînî",
         "en": "If you run a pizzeria",
+    },
+    "hero_action_start": {
+        "da": "Start her",
+        "sv": "Börja här",
+        "tr": "Buradan başla",
+        "ar": "ابدأ هنا",
+        "ku": "Ji vir dest pê bike",
+        "en": "Start here",
     },
     "hero_action_proof": {
         "da": "Se proofet",
@@ -499,6 +516,76 @@ PIZZA_HOME_UI = {
         "da": "Pizza4People er det konkrete restaurant-ordering proof. Protocols4People er den bredere protokol-familieretning.",
         "en": "Pizza4People is the concrete restaurant-ordering proof. Protocols4People is the broader protocol-family direction.",
     },
+}
+
+PIZZA_START_UI = {
+    "page_title": {"da": "Start her - Pizza4People forklaret enkelt", "en": "Start here - Pizza4People in plain language"},
+    "page_description": {"da": "En kort forklaring af P4P, det direkte ordreflow, de vigtigste begreber og projektets nuværende status.", "en": "A short explanation of P4P, its direct ordering flow, core concepts, and current project status."},
+    "eyebrow": {"da": "Start her", "en": "Start here"},
+    "title": {"da": "P4P uden protokolsprog.", "en": "P4P, without the protocol language."},
+    "lede": {"da": "Et pizzeria kan blive fundet offentligt, mens menu, ordre og kunderelation forbliver direkte mellem kunden og restauranten.", "en": "A pizzeria can be found publicly while its menu, orders, and customer relationship remain direct between the customer and the restaurant."},
+    "tag_protocol": {"da": "Åben protokol", "en": "Open protocol"},
+    "tag_status": {"da": "Avanceret prototype", "en": "Advanced prototype"},
+    "tag_next": {"da": "Kontrolleret pilot næste", "en": "Controlled pilot next"},
+    "status_label": {"da": "Nuværende status", "en": "Current status"},
+    "nav_terms": {"da": "Node / registry / modul", "en": "Node / registry / module"},
+    "nav_routes": {"da": "Ruter", "en": "Routes"},
+    "proof_alt": {"da": "Kunden finder en restaurant gennem en registry og taler derefter direkte med restaurantens node.", "en": "Customer discovers a restaurant through a registry, then talks directly to the restaurant node."},
+    "proof_caption": {"da": "Registry = discovery. Restaurant-node = menu og ordre. Registry er ude af flowet efter discovery.", "en": "Registry = discovery. Restaurant node = menu and order. The registry is out of the loop after discovery."},
+    "flow_kicker": {"da": "Et konkret eksempel", "en": "A concrete example"},
+    "flow_title": {"da": "Sådan kommer en ordre fra kunde til pizzeria.", "en": "How an order gets from customer to pizzeria."},
+    "flow_1_title": {"da": "Kunden søger", "en": "The customer searches"},
+    "flow_1_body": {"da": "En åben registry viser, hvilke restaurant-noder der findes.", "en": "An open registry shows which restaurant nodes are available."},
+    "flow_2_title": {"da": "Registry peger", "en": "The registry points"},
+    "flow_2_body": {"da": "Den returnerer pizzeriaets adresse. Den tager ikke imod ordren.", "en": "It returns the pizzeria node address. It does not receive the order."},
+    "flow_3_title": {"da": "Menuen hentes direkte", "en": "The menu loads directly"},
+    "flow_3_body": {"da": "Kundens klient henter menuen fra pizzeriaets egen node.", "en": "The customer client fetches the menu from the pizzeria's own node."},
+    "flow_4_title": {"da": "Ordren går direkte", "en": "The order goes directly"},
+    "flow_4_body": {"da": "Ordren sendes til pizzeriaets node. Efter discovery er registry ude af flowet.", "en": "The order is sent to the pizzeria node. After discovery, the registry is out of the flow."},
+    "terms_kicker": {"da": "Tre ord", "en": "Three terms"},
+    "terms_title": {"da": "Det er hele grundformen.", "en": "That is the basic shape."},
+    "node_title": {"da": "Node", "en": "Node"},
+    "node_body": {"da": "Pizzeriaets eget endpoint eller computer, hvor menu, ordrer og lokal tilstand bor.", "en": "The pizzeria-owned endpoint or computer where menu, orders, and local state live."},
+    "registry_title": {"da": "Registry", "en": "Registry"},
+    "registry_body": {"da": "En registry er telefonbogen. Den hjælper kunden med at finde noden, men bliver ikke ordrecentral.", "en": "A registry is the phone book. It helps the customer find the node, but does not become the order hub."},
+    "module_title": {"da": "Modul", "en": "Module"},
+    "module_body": {"da": "Et valgfrit, udskifteligt værktøj omkring kernen, for eksempel print, køkkenskærm, notifikation eller betalingsadapter.", "en": "An optional, replaceable tool around the core, such as printing, kitchen display, notification, or a payment adapter."},
+    "boundary_kicker": {"da": "Grænsen", "en": "The boundary"},
+    "does_title": {"da": "P4P gør", "en": "P4P does"},
+    "does_not_title": {"da": "P4P gør ikke", "en": "P4P does not"},
+    "does_1": {"da": "Definerer et åbent discovery- og ordreflow.", "en": "Defines an open discovery and ordering flow."},
+    "does_2": {"da": "Lader restauranten eje sin node og lokale drift.", "en": "Lets the restaurant own its node and local operations."},
+    "does_3": {"da": "Gør ekstra funktioner udskiftelige som moduler.", "en": "Keeps extra functions replaceable as modules."},
+    "not_1": {"da": "Holder eller afregner penge.", "en": "Hold or settle funds."},
+    "not_2": {"da": "Ejer kundekonti eller kunderelationen.", "en": "Own customer accounts or the customer relationship."},
+    "not_3": {"da": "Rangerer restauranter eller skjuler dem bag en marketplace.", "en": "Rank restaurants or hide them behind a marketplace."},
+    "status_kicker": {"da": "Hvor langt er det?", "en": "How far along is it?"},
+    "status_title": {"da": "Virkeligt proof, men ikke bred produktion endnu.", "en": "Real proof, but not broad production yet."},
+    "status_body_1": {"da": "Det offentlige v0.1-proof viser discovery, direkte menuhentning, direkte ordre og registry-failover.", "en": "The public v0.1 proof demonstrates discovery, direct menu fetch, direct ordering, and registry failover."},
+    "status_body_2": {"da": "En kontrolleret live-pilot på en restaurant-ejet node er næste gate. P4P hævder ikke endnu at være klar til bred produktionsdrift.", "en": "A controlled live pilot on a restaurant-owned node is the next gate. P4P does not yet claim broad production readiness."},
+    "routes_kicker": {"da": "Vælg din rute", "en": "Choose your route"},
+    "routes_title": {"da": "Læs kun det, du faktisk har brug for.", "en": "Read only what you actually need."},
+    "owner_title": {"da": "Jeg driver et pizzeria", "en": "I run a pizzeria"},
+    "owner_body": {"da": "Se hvad piloten kræver, og hvad restauranten selv beholder kontrollen over.", "en": "See what the pilot requires and what the restaurant keeps under its own control."},
+    "developer_title": {"da": "Jeg er udvikler", "en": "I am a developer"},
+    "developer_body": {"da": "Læs wire-kontrakten og arkitekturens anti-capture-grænser.", "en": "Read the wire contract and the architecture's anti-capture boundaries."},
+    "reviewer_title": {"da": "Jeg vil kontrollere påstandene", "en": "I want to review the claims"},
+    "reviewer_body": {"da": "Start med review-ruten og det kanoniske proof-dokument.", "en": "Start with the review route and the canonical proof document."},
+    "open_route": {"da": "Åbn ruten", "en": "Open route"},
+    "faq_kicker": {"da": "Korte svar", "en": "Short answers"},
+    "faq_title": {"da": "Det folk normalt spørger om.", "en": "What people usually ask."},
+    "faq_app_q": {"da": "Er P4P en app?", "en": "Is P4P an app?"},
+    "faq_app_a": {"da": "Nej. Det er en åben protokol og en lille basis, som forskellige apps og værktøjer kan bruge.", "en": "No. It is an open protocol and a small base that different apps and tools can use."},
+    "faq_now_q": {"da": "Kan et pizzeria bruge det nu?", "en": "Can a pizzeria use it now?"},
+    "faq_now_a": {"da": "Ikke som bred produktionsløsning endnu. Den næste ærlige milepæl er en kontrolleret live-pilot.", "en": "Not as a broad production service yet. The next honest milestone is a controlled live pilot."},
+    "faq_pizza_q": {"da": "Hvorfor pizza?", "en": "Why pizza?"},
+    "faq_pizza_a": {"da": "Fordi et smalt og konkret restaurantflow er lettere at bygge, teste og kritisere end en abstrakt platform.", "en": "Because a narrow, concrete restaurant flow is easier to build, test, and challenge than an abstract platform."},
+    "faq_payment_q": {"da": "Hvad med betaling?", "en": "What about payment?"},
+    "faq_payment_a": {"da": "Betaling kan tilføjes gennem adaptere valgt af restauranten. P4P selv holder ikke penge og er ikke merchant of record.", "en": "Payment can be added through adapters chosen by the restaurant. P4P itself does not hold funds or act as merchant of record."},
+    "github_action": {"da": "Læs Start Here på GitHub", "en": "Read Start Here on GitHub"},
+    "proof_action": {"da": "Se det kanoniske proof", "en": "Read the canonical proof"},
+    "home_action": {"da": "Tilbage til forsiden", "en": "Back to the homepage"},
+    "footer_status": {"da": "Offentligt v0.1-proof / kontrolleret pilot næste", "en": "Public v0.1 proof / controlled pilot next"},
 }
 
 PIZZA_PRESS_UI = {
@@ -3984,6 +4071,7 @@ def homepage_html(
         asset_prefix="assets/screenshots/",
     )
     canonical_url = urls["site"] if locale == "en" else f'{urls["site"]}{locale}.html'
+    start_href = "start/da.html" if locale == "da" else "start/"
     return render_template(
         "homepage.html",
         {
@@ -3999,6 +4087,7 @@ def homepage_html(
             "skip_link": escape(public_ui_text(PIZZA_HOME_UI, "skip", locale)),
             "brand_home_aria": escape(public_ui_text(PIZZA_HOME_UI, "brand_home", locale)),
             "nav_label": escape(public_ui_text(PIZZA_HOME_UI, "nav_label", locale)),
+            "nav_start": escape(public_ui_text(PIZZA_HOME_UI, "nav_start", locale)),
             "nav_owner": escape(public_ui_text(PIZZA_HOME_UI, "nav_owner", locale)),
             "nav_proof": escape(public_ui_text(PIZZA_HOME_UI, "nav_proof", locale)),
             "nav_modules": escape(public_ui_text(PIZZA_HOME_UI, "nav_modules", locale)),
@@ -4019,6 +4108,7 @@ def homepage_html(
             "hero_tag_pilot": escape(public_ui_text(PIZZA_HOME_UI, "hero_tag_pilot", locale)),
             "hero_tag_not_marketplace": escape(public_ui_text(PIZZA_HOME_UI, "hero_tag_not_marketplace", locale)),
             "hero_action_owner": escape(public_ui_text(PIZZA_HOME_UI, "hero_action_owner", locale)),
+            "hero_action_start": escape(public_ui_text(PIZZA_HOME_UI, "hero_action_start", locale)),
             "hero_action_proof": escape(public_ui_text(PIZZA_HOME_UI, "hero_action_proof", locale)),
             "hero_action_code": escape(public_ui_text(PIZZA_HOME_UI, "hero_action_code", locale)),
             "hero_more_routes": escape(public_ui_text(PIZZA_HOME_UI, "hero_more_routes", locale)),
@@ -4101,8 +4191,66 @@ def homepage_html(
             "contact_broader_label": escape(public_ui_text(PIZZA_HOME_UI, "contact_broader_label", locale)),
             "contact_fine_print": escape(public_ui_text(PIZZA_HOME_UI, "contact_fine_print", locale)),
             "footer_status": escape(public_field_text(home["footer_status"], locale)),
+            "start_href": escape(start_href),
         },
     )
+
+
+def start_here_html(site_data: dict, *, locale: str) -> str:
+    urls = site_data["canonical_urls"]
+    contact = site_data["contact"]
+    canonical_url = f'{urls["site"]}start/' if locale == "en" else f'{urls["site"]}start/da.html'
+
+    def ui(key: str) -> str:
+        return escape(public_ui_text(PIZZA_START_UI, key, locale))
+
+    keys = (
+        "eyebrow", "title", "lede", "tag_protocol", "tag_status", "tag_next", "status_label",
+        "nav_terms", "nav_routes", "proof_alt", "proof_caption",
+        "flow_kicker", "flow_title", "flow_1_title", "flow_1_body", "flow_2_title",
+        "flow_2_body", "flow_3_title", "flow_3_body", "flow_4_title", "flow_4_body",
+        "terms_kicker", "terms_title", "node_title", "node_body", "registry_title",
+        "registry_body", "module_title", "module_body", "boundary_kicker", "does_title",
+        "does_not_title", "does_1", "does_2", "does_3", "not_1", "not_2", "not_3",
+        "status_kicker", "status_title", "status_body_1", "status_body_2", "routes_kicker",
+        "routes_title", "owner_title", "owner_body", "developer_title", "developer_body",
+        "reviewer_title", "reviewer_body", "open_route", "faq_kicker", "faq_title",
+        "faq_app_q", "faq_app_a", "faq_now_q", "faq_now_a", "faq_pizza_q", "faq_pizza_a",
+        "faq_payment_q", "faq_payment_a", "github_action", "proof_action", "home_action",
+        "footer_status",
+    )
+    context = {key: ui(key) for key in keys}
+    context.update(
+        {
+            "lang_attr": escape(locale),
+            "dir_attr": escape(locale_direction(locale)),
+            "generated_comment": f"Generated from PIZZA_START_UI on {datetime.now(timezone.utc).isoformat()}",
+            "author_name": escape(contact["name"]),
+            "canonical_url": escape(canonical_url),
+            "page_title": ui("page_title"),
+            "page_description": ui("page_description"),
+            "skip_link": escape(public_ui_text(PIZZA_HOME_UI, "skip", locale)),
+            "brand_home_aria": escape(public_ui_text(PIZZA_HOME_UI, "brand_home", locale)),
+            "nav_label": escape(public_ui_text(PIZZA_HOME_UI, "nav_label", locale)),
+            "locale_switcher_html": (
+                f'<div class="locale-switcher" aria-label="{escape(public_ui_text(PIZZA_HOME_UI, "locale_label", locale))}">'
+                f'<span class="locale-switcher-label">{escape(public_ui_text(PIZZA_HOME_UI, "locale_label", locale))}</span>'
+                '<div class="locale-switcher-links">'
+                f'<a class="locale-link{" active" if locale == "da" else ""}" href="./da.html"'
+                f'{" aria-current=\"page\"" if locale == "da" else ""}>Dansk</a>'
+                f'<a class="locale-link{" active" if locale == "en" else ""}" href="./"'
+                f'{" aria-current=\"page\"" if locale == "en" else ""}>English</a>'
+                '</div></div>'
+            ),
+            "repo_start_url": escape(f'{urls["repo"]}/blob/main/START-HERE.md'),
+            "repo_proof_url": escape(urls["repo_proof"]),
+            "repo_pilot_url": escape(f'{urls["repo"]}/blob/main/PILOT-LIVE.md'),
+            "repo_spec_url": escape(f'{urls["repo"]}/blob/main/SPEC.md'),
+            "repo_architecture_url": escape(f'{urls["repo"]}/blob/main/ARCHITECTURE.md'),
+            "repo_review_url": escape(f'{urls["repo"]}/blob/main/REVIEW-ME.md'),
+        }
+    )
+    return render_template("start-here.html", context)
 
 
 def press_kit_html(
@@ -4402,6 +4550,8 @@ def build() -> None:
             PUBLIC_ROOT / f"{locale}.html",
             homepage_html(site_data, modules, providers, locale=locale, screenshot_pack=screenshot_pack),
         )
+    write_text(START_ROOT / "index.html", start_here_html(site_data, locale="en"))
+    write_text(START_ROOT / "da.html", start_here_html(site_data, locale="da"))
     write_text(PUBLIC_ROOT / "modules/index.html", modules_html(site_data, modules, providers, locale="en"))
     for locale in ("da", "sv", "tr", "ar", "ku"):
         write_text(PUBLIC_ROOT / "modules" / f"{locale}.html", modules_html(site_data, modules, providers, locale=locale))
