@@ -136,7 +136,7 @@ def _humanize_item_name(text: str) -> str:
     normalized = _CAMEL_CASE_SPLIT_RE.sub(" ", normalized)
     normalized = re.sub(r"(?<=[A-Za-zÆØÅæøå])(?=\d)", " ", normalized)
     normalized = re.sub(r"(?<=\d)(?=[A-Za-zÆØÅæøå])", " ", normalized)
-    normalized = re.sub(r"\s*/\s*", " / ", normalized)
+    normalized = normalized.replace("/", " / ")
     normalized = re.sub(r"(?<=\))(?=[A-Za-zÆØÅæøå])", " ", normalized)
     normalized = re.sub(r"(?<=[A-Za-zÆØÅæøå])\(", " (", normalized)
     normalized = re.sub(r"\)\s*(?=\()", ") ", normalized)

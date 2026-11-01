@@ -9273,6 +9273,15 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertEqual(candidates["kebab-pizza"].category, "pizza")
             pilot.store.close()
 
+    def test_menu_import_humanizes_slashes_without_regex_backtracking(self) -> None:
+        menu_import = load_module("pilot-node/app/pilot_node/menu_import.py")
+
+        normalized = menu_import._humanize_item_name(
+            f"CHINOTTO{' ' * 10_000}/{' ' * 10_000}LIMONATA"
+        )
+
+        self.assertEqual(normalized, "CHINOTTO / LIMONATA")
+
     def test_pilot_node_menu_import_preview_strips_glued_item_codes(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             pilot = load_module(
