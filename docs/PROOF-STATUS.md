@@ -1,6 +1,6 @@
 # P4P Proof Status
 
-Current checkpoint: 15 October 2026
+Current checkpoint: 6 November 2026
 
 This file is the dated proof checkpoint for the public P4P surface.
 
@@ -13,6 +13,39 @@ If documents overlap:
 - `PROOF.md` wins on what is publicly claimed right now
 - `docs/PROOF-STATUS.md` wins on dated hosted-proof facts
 - `SPEC.md` wins on contract details
+
+## 6 November 2026 local runtime-health checkpoint
+
+Verified locally from a clean `public-main` base plus the health-check fixes in
+the current working branch:
+
+- `bash scripts/check-local.sh` completed `312` tests with `2` intentional skips
+- the documented default `python3 scripts/health-check.py --mode local` command
+  passed against the reference client on port `8765`, two registries, and one
+  dual-registered test node
+- with the primary registry stopped, the backup registry still discovered the
+  same node, the menu remained available directly from the node, and a valid
+  test order was accepted directly by the node
+- a controlled pilot passed the read-only `menu_only` readiness gate with
+  `22 PASS`, `0 WARN`, and `0 FAIL`
+- after explicit local activation, the same pilot passed the `live` readiness
+  gate with `22 PASS`, `0 WARN`, and `0 FAIL`
+- one synthetic pilot order was stored in SQLite and remained present after the
+  pilot process restarted with the same database and persistent node identity
+- reusing a node id with a changed signing identity correctly produced
+  `503 not_ready` until the temporary in-memory registries were reset and the
+  persistent identity was reannounced
+
+Two local check-path defects were corrected during this pass:
+
+- `scripts/health-check.py` defaulted to client port `8768` even though the lab
+  and test guide use `8765`
+- the manual pilot order example omitted the now-required
+  `client_request_id`
+
+This is local runtime evidence only. The registries used for this pass were
+temporary in-memory processes, and no hosted DNS, TLS, independent Registry B,
+public node, physical hardware, or real restaurant order was verified.
 
 ## 15 October 2026 restart checkpoint
 

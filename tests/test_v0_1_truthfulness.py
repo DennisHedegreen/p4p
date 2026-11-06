@@ -83,6 +83,18 @@ class RegistryBridgeAsyncClient:
         return httpx.Response(200, request=request, json=result.model_dump(mode="json"))
 
 
+class HealthCheckDefaultsTests(unittest.TestCase):
+    def test_default_client_matches_the_local_lab_client(self) -> None:
+        health_check = load_module("scripts/health-check.py")
+        scenarios = json.loads((REPO_ROOT / "lab/scenarios.json").read_text(encoding="utf-8"))
+        client_service = scenarios["services"]["client-server"]
+
+        self.assertEqual(
+            health_check.DEFAULT_CLIENT_URL,
+            f"http://127.0.0.1:{client_service['port']}",
+        )
+
+
 class FailingAsyncClient:
     async def __aenter__(self) -> "FailingAsyncClient":
         return self
@@ -409,9 +421,11 @@ class P4PTruthfulnessTests(unittest.TestCase):
         client = (REPO_ROOT / "client/app.js").read_text()
         spec = (REPO_ROOT / "SPEC.md").read_text()
         implementer_kit = (REPO_ROOT / "docs/NODE-IMPLEMENTER-KIT.md").read_text()
+        test_guide = (REPO_ROOT / "TEST-GUIDE.md").read_text()
         self.assertIn("client_request_id: pendingOrderSubmission.clientRequestId", client)
         self.assertIn('"client_request_id": "p4p-web-', spec)
         self.assertIn('"client_request_id": "p4p-check-', implementer_kit)
+        self.assertIn('"client_request_id":"p4p-check-', test_guide)
 
     def test_single_registry_fallback_still_works(self) -> None:
         demo = load_module(
