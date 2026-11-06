@@ -31,6 +31,7 @@ Do not believe this:
 
 When documents overlap, read them like this:
 
+- `START-HERE.md`: plain-language introduction and audience routes
 - `README.md`: repo entrypoint and shortest public claim
 - `PROOF.md`: canonical current public proof claim
 - `docs/WHITEPAPER-v0.1.md`: explainer and boundary document
@@ -43,7 +44,7 @@ When documents overlap, read them like this:
 
 If you only want the public story:
 
-1. `README.md`
+1. `START-HERE.md`
 2. `PROOF.md`
 3. `docs/WHITEPAPER-v0.1.md`
 4. `docs/PROOF-STATUS.md`
