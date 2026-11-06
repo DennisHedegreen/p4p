@@ -417,7 +417,7 @@ curl -sS -X PATCH http://127.0.0.1:8201/operator/state \
 
 curl -sS -X POST http://127.0.0.1:8201/p4p/order \
   -H 'Content-Type: application/json' \
-  -d '{"customer_name":"Anna Hansen","customer_contact":"+4512345678","fulfillment":"pickup","items":[{"id":"kebab-pita","quantity":1}],"note":"Pilot dry run","client_version":"p4p-web-0.1"}'
+  -d '{"client_request_id":"p4p-check-pilot-dry-run-0001","customer_name":"Anna Hansen","customer_contact":"+4512345678","fulfillment":"pickup","items":[{"id":"kebab-pita","quantity":1}],"note":"Pilot dry run","client_version":"p4p-web-0.1"}'
 
 curl -sS http://127.0.0.1:8201/operator/orders \
   -H 'Authorization: Bearer change-this'
