@@ -975,6 +975,26 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(rotation_error.exception.detail, "Invalid root rotation signature")
 
     @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
+    def test_node_control_error_labels_do_not_expose_exception_details(self) -> None:
+        control = load_module("node-control/node_control.py")
+        app_module = sys.modules[f"{control.__name__}_app"]
+        secret = "postgres://operator:password@internal.example/private"
+        request = httpx.Request("GET", "http://registry.test/health")
+
+        labels = {
+            app_module._error_text(httpx.ConnectError(secret, request=request)),
+            app_module._error_text(httpx.ReadTimeout(secret, request=request)),
+            app_module._error_text(json.JSONDecodeError(secret, "", 0)),
+            app_module._error_text(RuntimeError(secret)),
+        }
+
+        self.assertEqual(
+            labels,
+            {"connect_error", "timeout", "invalid_response", "unexpected_error"},
+        )
+        self.assertNotIn(secret, " ".join(labels))
+
+    @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
     def test_node_control_snapshot_aggregates_registry_and_operator_truth(self) -> None:
         control = load_module(
             "node-control/node_control.py",

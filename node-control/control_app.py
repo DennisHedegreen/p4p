@@ -87,10 +87,14 @@ def _error_text(exc: Exception) -> str:
     if isinstance(exc, httpx.HTTPStatusError):
         return f"HTTP {exc.response.status_code}"
     if isinstance(exc, httpx.ConnectError):
-        return str(exc) or "connect_error"
+        return "connect_error"
     if isinstance(exc, httpx.TimeoutException):
         return "timeout"
-    return str(exc) or exc.__class__.__name__
+    if isinstance(exc, (httpx.DecodingError, json.JSONDecodeError, ValueError)):
+        return "invalid_response"
+    if isinstance(exc, httpx.HTTPError):
+        return "request_failed"
+    return "unexpected_error"
 
 
 def _node_endpoint_base(endpoint: str) -> str:
