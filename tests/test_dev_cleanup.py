@@ -345,6 +345,51 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertEqual(first_status.status_code, 200)
         self.assertEqual(rotated_status.status_code, 429)
 
+    def test_rate_limit_only_trusts_forwarded_clients_from_configured_proxies(self) -> None:
+        direct_app = FastAPI()
+        configure_http_hardening(
+            direct_app,
+            default_max_body_bytes=16,
+            rate_limit_rules=(RateLimitRule("POST", "/order", 1),),
+        )
+
+        @direct_app.post("/order")
+        def direct_order() -> dict[str, str]:
+            return {"status": "ok"}
+
+        with TestClient(direct_app, client=("198.51.100.20", 50000)) as client:
+            first_direct = client.post("/order", headers={"X-Forwarded-For": "203.0.113.1"})
+            spoofed_direct = client.post("/order", headers={"X-Forwarded-For": "203.0.113.2"})
+
+        self.assertEqual(first_direct.status_code, 200)
+        self.assertEqual(spoofed_direct.status_code, 429)
+
+        proxy_app = FastAPI()
+        configure_http_hardening(
+            proxy_app,
+            default_max_body_bytes=16,
+            rate_limit_rules=(RateLimitRule("POST", "/order", 1),),
+            trusted_proxy_cidrs=("10.0.0.0/24",),
+        )
+
+        @proxy_app.post("/order")
+        def proxied_order() -> dict[str, str]:
+            return {"status": "ok"}
+
+        with TestClient(proxy_app, client=("10.0.0.5", 50000)) as client:
+            first_client = client.post("/order", headers={"X-Forwarded-For": "198.51.100.30"})
+            second_client = client.post("/order", headers={"X-Forwarded-For": "198.51.100.31"})
+            repeated_client = client.post("/order", headers={"X-Forwarded-For": "198.51.100.30"})
+            spoofed_left_edge = client.post(
+                "/order",
+                headers={"X-Forwarded-For": "203.0.113.99, 198.51.100.31"},
+            )
+
+        self.assertEqual(first_client.status_code, 200)
+        self.assertEqual(second_client.status_code, 200)
+        self.assertEqual(repeated_client.status_code, 429)
+        self.assertEqual(spoofed_left_edge.status_code, 429)
+
     def test_registry_uses_shared_protocol_models(self) -> None:
         registry = load_module("registry/main.py")
         pilot = load_module(

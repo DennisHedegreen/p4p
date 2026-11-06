@@ -86,6 +86,7 @@ Must accept this shape:
 
 ```json
 {
+  "client_request_id": "p4p-check-550e8400-e29b-41d4-a716-446655440000",
   "customer_name": "P4P Interop Test",
   "customer_contact": "+4500000000",
   "fulfillment": "pickup",
@@ -97,9 +98,33 @@ Must accept this shape:
 }
 ```
 
+`client_request_id` is required. A client must reuse it when retrying the same
+logical order after a timeout or unknown response. The node must return the
+original result for the same key and payload, and reject the same key with a
+different payload.
+
+Rate-limit public order submission by the resolved client address. If the node
+runs behind a reverse proxy, accept `X-Forwarded-For` only from explicitly
+trusted proxy networks and resolve the chain from right to left. Do not treat a
+client-supplied device id as proof of a distinct customer.
+
 If `order_mode` is `test`, the node should return an accepted test-order response.
 
 If `order_mode` is `disabled` or `menu_only`, the node must reject the order.
+
+For `live`, an accepted HTTP submission must first be stored as `new`. Do not
+charge, print, or trigger kitchen side effects until a local operator explicitly
+accepts it. Here `accepted: true` means that ingress succeeded; it is not the
+kitchen-state transition.
+
+Enforce restaurant-configured line, unit, value, active-queue, pending-queue,
+and repeated-contact limits in the same transaction that creates the order.
+Perform the idempotency lookup first so a safe retry can still recover its
+original result when the queue is full.
+
+Snapshot product names and prices when the order is first stored. Payment,
+printing, and operator views must use that immutable snapshot rather than
+looking up the current menu during later acceptance or retry processing.
 
 Expected rejection:
 

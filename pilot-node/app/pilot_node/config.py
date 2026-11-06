@@ -5,6 +5,8 @@ import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict
 
@@ -73,6 +75,13 @@ class OperatorModuleManifestImport(BaseModel):
     manifest_json: str
 
 
+class OperatorOrderActionResolution(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["succeeded", "failed"]
+    note: str = ""
+
+
 @dataclass(frozen=True)
 class PilotConfig:
     heartbeat_interval_seconds: int
@@ -82,6 +91,19 @@ class PilotConfig:
     node_private_key: str
     node_public_key: str
     operator_token: str
+    persistent_database: bool
+    persistent_node_identity: bool
+    strong_operator_token: bool
+    manual_order_acceptance_required: bool
+    order_max_lines: int
+    order_max_units: int
+    order_max_value_minor: int
+    order_max_active: int
+    order_max_pending: int
+    order_max_pending_per_contact: int
+    order_rate_limit_requests: int
+    order_rate_limit_window_seconds: int
+    trusted_proxy_cidrs: tuple[str, ...]
     node_id: str
     node_name: str
     node_lat: float
@@ -222,6 +244,26 @@ def _env_int_range(name: str, default: int, *, minimum: int, maximum: int) -> in
     return min(max(parsed, minimum), maximum)
 
 
+def _operator_token_is_strong(token: str, *, node_id: str) -> bool:
+    normalized = token.strip()
+    placeholders = {
+        "change-this",
+        "operator-secret",
+        "replace-me",
+        "replace-with-a-long-random-secret",
+    }
+    return (
+        len(normalized) >= 32
+        and normalized.lower() not in placeholders
+        and normalized != node_id
+        and len(set(normalized)) >= 8
+    )
+
+
+def _is_loopback_base_url(value: str) -> bool:
+    return urlsplit(value).hostname in {"127.0.0.1", "localhost", "::1"}
+
+
 def _read_persisted_desired_module_ids(db_path: str) -> list[str] | None:
     normalized_path = db_path.strip()
     if not normalized_path or normalized_path == ":memory:":
@@ -261,9 +303,20 @@ def _read_persisted_desired_module_ids(db_path: str) -> list[str] | None:
 
 def build_pilot_config() -> PilotConfig:
     heartbeat_interval_seconds = int(os.environ.get("P4P_HEARTBEAT_INTERVAL_SECONDS", "60"))
-    node_private_key = load_node_private_key()
     node_id = env_str("P4P_NODE_ID", "dk-brondby-kebab-001")
-    db_path = os.environ.get("P4P_PILOT_NODE_DB_PATH", ":memory:")
+    node_base_url = os.environ.get("P4P_NODE_BASE_URL", "http://127.0.0.1:8201")
+    node_order_mode_default = env_str("P4P_NODE_ORDER_MODE", "menu_only")
+    if node_order_mode_default == "live" and not _is_loopback_base_url(node_base_url):
+        raise ValueError(
+            "Hosted pilot nodes must boot in menu_only and pass the operator live-activation gate"
+        )
+    node_private_key = load_node_private_key()
+    operator_token = os.environ.get("P4P_OPERATOR_TOKEN", "").strip()
+    db_path = os.environ.get("P4P_PILOT_NODE_DB_PATH", ":memory:").strip() or ":memory:"
+    persistent_node_identity = bool(
+        os.environ.get("P4P_NODE_PRIVATE_KEY", "").strip()
+        or os.environ.get("P4P_NODE_KEY_FILE", "").strip()
+    )
     env_node_modules = normalize_module_ids(env_list("P4P_NODE_MODULES", ["p4p.payment.cash"]))
     persisted_node_modules = _read_persisted_desired_module_ids(db_path)
     node_modules = persisted_node_modules or env_node_modules
@@ -322,11 +375,32 @@ def build_pilot_config() -> PilotConfig:
     return PilotConfig(
         heartbeat_interval_seconds=heartbeat_interval_seconds,
         readiness_stale_after_seconds=heartbeat_interval_seconds + 10,
-        node_base_url=os.environ.get("P4P_NODE_BASE_URL", "http://127.0.0.1:8201"),
+        node_base_url=node_base_url,
         registry_urls=load_registry_urls(),
         node_private_key=node_private_key,
         node_public_key=public_key_from_private(node_private_key),
-        operator_token=os.environ.get("P4P_OPERATOR_TOKEN", "").strip(),
+        operator_token=operator_token,
+        persistent_database=db_path != ":memory:",
+        persistent_node_identity=persistent_node_identity,
+        strong_operator_token=_operator_token_is_strong(operator_token, node_id=node_id),
+        manual_order_acceptance_required=not _is_loopback_base_url(node_base_url),
+        order_max_lines=_env_int_range("P4P_ORDER_MAX_LINES", 20, minimum=1, maximum=50),
+        order_max_units=_env_int_range("P4P_ORDER_MAX_UNITS", 20, minimum=1, maximum=500),
+        order_max_value_minor=_env_int_range(
+            "P4P_ORDER_MAX_VALUE_MINOR", 250_000, minimum=1, maximum=100_000_000
+        ),
+        order_max_active=_env_int_range("P4P_ORDER_MAX_ACTIVE", 50, minimum=1, maximum=10_000),
+        order_max_pending=_env_int_range("P4P_ORDER_MAX_PENDING", 25, minimum=1, maximum=10_000),
+        order_max_pending_per_contact=_env_int_range(
+            "P4P_ORDER_MAX_PENDING_PER_CONTACT", 3, minimum=1, maximum=100
+        ),
+        order_rate_limit_requests=_env_int_range(
+            "P4P_ORDER_RATE_LIMIT_REQUESTS", 30, minimum=1, maximum=10_000
+        ),
+        order_rate_limit_window_seconds=_env_int_range(
+            "P4P_ORDER_RATE_LIMIT_WINDOW_SECONDS", 60, minimum=1, maximum=86_400
+        ),
+        trusted_proxy_cidrs=tuple(env_list("P4P_TRUSTED_PROXY_CIDRS", [])),
         node_id=node_id,
         node_name=env_str("P4P_NODE_NAME", "P4P Pilot Kebab"),
         node_lat=env_float("P4P_NODE_LAT", 55.6517),
@@ -335,7 +409,7 @@ def build_pilot_config() -> PilotConfig:
         node_city=env_str("P4P_NODE_CITY", "Brondby"),
         node_categories=env_list("P4P_NODE_CATEGORIES", ["kebab"]),
         node_open_default=env_str("P4P_NODE_OPEN", "true").lower() == "true",
-        node_order_mode_default=env_str("P4P_NODE_ORDER_MODE", "menu_only"),
+        node_order_mode_default=node_order_mode_default,
         node_modules=node_modules,
         available_resolved_modules=available_resolved_modules,
         public_node_modules=resolved_modules.public_module_ids(),

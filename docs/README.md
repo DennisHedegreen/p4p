@@ -28,6 +28,8 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Human-readable reference pages for every current module manifest, including purpose, status, data access, boundaries, and local test paths.
 - `providers/`
   Human-readable reference pages for every unique current provider manifest identity in the reference catalog.
+- `owner-pack/`
+  Canonical owner-facing print collateral: the first-contact booklet, the practical pilot guide, and archived legacy print drafts.
 - `MODULE-RULES.md`
   Practical boundary rules for deciding what is core, what is a module, and what registries must not control.
 - `EVENT-CATALOG.md`
@@ -50,6 +52,15 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Short packet for independent node builders and interop sessions.
 - `NODE-OPERATOR-LITE.md`
   Reference node-owned operator surface for controlling order mode, modules, and registry health.
+- `REFERENCE-HARDWARE-KIT.md`
+  Physical reference shapes, procurement boundary, network constraint, and bench
+  acceptance matrix for the first restaurant-controlled node.
+- `HARDWARE-STATE-MODEL.md`
+  Node-local model separating base shape, enabled add-ons, detected devices, and
+  persistent test evidence.
+- `FIVE-PLACE-PILOT-PACK.md`
+  Comparison plan for screen-only, spool, alert, printer, and fuller counter
+  configurations across controlled pilot locations.
 - `P4P-LAB-v2.md`
   Planned local orchestration direction for `lab/`: registries, pilot-node profiles, customer fixtures, flow scenarios, and honest synthetic test surfaces above the protocol.
 - `P4P-LAB-v3.md`
@@ -64,6 +75,10 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Current dated proof checkpoint for public hosting behavior, browser verification, and source-of-truth alignment.
 - `GITHUB-READER-GUIDE.md`
   Short map for GitHub readers who need the repo to explain itself quickly before they read the deeper docs.
+- `OWNER-COLLATERAL-SYSTEM.md`
+  Canonical rule for how owner-facing booklets are structured, branded, exported, and archived.
+- `PUBLIC-SURFACE.md`
+  Short explanation of how `pizza4people.com`, GitHub, and offline owner-pack print collateral split the current public lane.
 - `RELEASE-NOTES.md`
   Short checkpoint and release-candidate notes used before cutting a proof-safe story to `main`.
 - `RELEASE-PLAN.md`
@@ -145,3 +160,9 @@ The module-execution contract and first-flow pack are also `v0.2` design documen
 `modules/` contains reference manifests for the planned `v0.2` provider/module shape. In the active `v0.1` wire contract, node-announced module ids are still opaque strings only.
 
 Loopback HTTP is allowed only for local reference development where the spec explicitly says so.
+
+If you want the owner-facing print layer first, start here:
+
+1. `docs/owner-pack/README.md`
+2. `docs/OWNER-COLLATERAL-SYSTEM.md`
+3. `docs/PUBLIC-SURFACE.md`
