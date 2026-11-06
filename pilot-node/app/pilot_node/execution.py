@@ -206,12 +206,85 @@ def record_order_flow_event_once(runtime: PilotRuntime, event: ModuleResultEvent
     return event
 
 
+def _action_has_unknown_side_effect(runtime: PilotRuntime, order_id: str, action_prefix: str) -> bool:
+    return any(
+        event.action_id.startswith(action_prefix) and event.side_effect_state == "unknown"
+        for event in runtime.store.list_order_events(order_id)
+    )
+
+
+def _execute_durable_lane(
+    runtime: PilotRuntime,
+    order: StoredOrder,
+    *,
+    lane: str,
+    action_id: str,
+    execute: Callable[[PilotRuntime, StoredOrder], tuple[StoredOrder, bool]],
+) -> tuple[StoredOrder, bool]:
+    action = runtime.store.ensure_order_action(
+        order_id=order.order_id,
+        action_id=action_id,
+        lane=lane,
+    )
+    if action["status"] == "succeeded":
+        return runtime.store.get_order(order.order_id) or order, True
+    if action["status"] in {"running", "unknown"}:
+        blocked_order = runtime.store.update_order_status(
+            order.order_id,
+            OrderStatusUpdate(
+                status="accepted",
+                status_message=f"Order accepted. {lane.title()} outcome needs human reconciliation.",
+            ),
+        )
+        return blocked_order, False
+
+    claimed = runtime.store.claim_order_action(
+        order_id=order.order_id,
+        action_id=action_id,
+        lane=lane,
+    )
+    if not claimed["claimed"]:
+        if claimed["status"] == "succeeded":
+            return runtime.store.get_order(order.order_id) or order, True
+        blocked_order = runtime.store.update_order_status(
+            order.order_id,
+            OrderStatusUpdate(
+                status="accepted",
+                status_message=f"Order accepted. {lane.title()} is already being processed.",
+            ),
+        )
+        return blocked_order, False
+
+    try:
+        updated_order, allows_next_step = execute(runtime, order)
+    except Exception as exc:
+        runtime.store.finish_order_action(action_id, status="unknown", last_error=str(exc))
+        raise
+
+    if allows_next_step:
+        runtime.store.finish_order_action(action_id, status="succeeded")
+        return updated_order, True
+
+    action_prefix = f"order:{order.order_id}:{lane}"
+    action_status = (
+        "unknown"
+        if _action_has_unknown_side_effect(runtime, order.order_id, action_prefix)
+        else "failed"
+    )
+    runtime.store.finish_order_action(
+        action_id,
+        status=action_status,
+        last_error=f"{lane}_lane_did_not_complete",
+    )
+    return updated_order, False
+
+
 def process_accepted_order(runtime: PilotRuntime, order: StoredOrder) -> StoredOrder:
     accepted_order = runtime.store.update_order_status(
         order.order_id,
         OrderStatusUpdate(status="accepted", status_message="Order accepted by node runtime."),
     )
-    record_order_flow_event(
+    record_order_flow_event_once(
         runtime,
         build_result_event(
             runtime=runtime,
@@ -228,15 +301,49 @@ def process_accepted_order(runtime: PilotRuntime, order: StoredOrder) -> StoredO
         )
     )
     if module_enabled(runtime, STOCK_BASIC_MODULE_ID):
-        accepted_order, stock_allows_next_step = execute_stock_lane(runtime, accepted_order)
+        accepted_order, stock_allows_next_step = _execute_durable_lane(
+            runtime,
+            accepted_order,
+            lane="stock",
+            action_id=f"outbox:{accepted_order.order_id}:stock:basic",
+            execute=execute_stock_lane,
+        )
         if not stock_allows_next_step:
             return accepted_order
-    accepted_order, payment_allows_next_step = execute_module_lane(runtime, accepted_order, lane="payment")
-    if not payment_allows_next_step:
-        return accepted_order
+    payment_module_id = effective_payment_module_id(runtime)
+    if payment_module_id:
+        accepted_order, payment_allows_next_step = _execute_durable_lane(
+            runtime,
+            accepted_order,
+            lane="payment",
+            action_id=f"outbox:{accepted_order.order_id}:payment:{payment_module_id}",
+            execute=lambda current_runtime, current_order: execute_module_lane(
+                current_runtime,
+                current_order,
+                lane="payment",
+            ),
+        )
+        if not payment_allows_next_step:
+            return accepted_order
     if not module_enabled(runtime, PRINT_MODULE_ID):
         return accepted_order
-    return execute_print_lane(runtime, accepted_order)
+
+    def run_print(current_runtime: PilotRuntime, current_order: StoredOrder) -> tuple[StoredOrder, bool]:
+        updated_order = execute_print_lane(current_runtime, current_order)
+        print_succeeded = any(
+            event.event == "PRINT_SUCCESS_CONFIRMED"
+            for event in current_runtime.store.list_order_events(current_order.order_id)
+        )
+        return updated_order, print_succeeded
+
+    accepted_order, _print_allows_next_step = _execute_durable_lane(
+        runtime,
+        accepted_order,
+        lane="print",
+        action_id=f"outbox:{accepted_order.order_id}:print:primary",
+        execute=run_print,
+    )
+    return accepted_order
 
 
 def execute_stock_lane(runtime: PilotRuntime, order: StoredOrder) -> tuple[StoredOrder, bool]:
@@ -577,6 +684,8 @@ def _external_payment_url_error(url: str) -> str | None:
 
 
 def _order_amount(runtime: PilotRuntime, order: StoredOrder) -> int:
+    if order.pricing_snapshot is not None:
+        return order.pricing_snapshot.total_minor
     menu = runtime.store.menu()
     price_by_id = {item.id: item.price for item in menu.items}
     total = 0

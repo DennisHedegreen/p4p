@@ -52,6 +52,15 @@ If you arrived here from GitHub and need the short orientation first, read `docs
   Short packet for independent node builders and interop sessions.
 - `NODE-OPERATOR-LITE.md`
   Reference node-owned operator surface for controlling order mode, modules, and registry health.
+- `REFERENCE-HARDWARE-KIT.md`
+  Physical reference shapes, procurement boundary, network constraint, and bench
+  acceptance matrix for the first restaurant-controlled node.
+- `HARDWARE-STATE-MODEL.md`
+  Node-local model separating base shape, enabled add-ons, detected devices, and
+  persistent test evidence.
+- `FIVE-PLACE-PILOT-PACK.md`
+  Comparison plan for screen-only, spool, alert, printer, and fuller counter
+  configurations across controlled pilot locations.
 - `P4P-LAB-v2.md`
   Planned local orchestration direction for `lab/`: registries, pilot-node profiles, customer fixtures, flow scenarios, and honest synthetic test surfaces above the protocol.
 - `P4P-LAB-v3.md`

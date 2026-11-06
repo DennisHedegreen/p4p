@@ -8,6 +8,7 @@ let pinnedRegistries = [];
 let activeRegistry = null;
 let selectedNode = null;
 let selectedNodeMenuState = "idle";
+let pendingOrderSubmission = null;
 
 const ZERO_DECIMAL_CURRENCIES = new Set([
   "BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG", "RWF",
@@ -91,6 +92,27 @@ function getOrderMode(node) {
 
 function nodeAcceptsOrders(node) {
   return ["test", "live"].includes(getOrderMode(node));
+}
+
+function createClientRequestId() {
+  if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== "function") {
+    throw new Error("Secure request identifiers are not available in this browser.");
+  }
+  return `p4p-web-${globalThis.crypto.randomUUID()}`;
+}
+
+function orderPayloadWithRequestId(payload, endpoint) {
+  const fingerprint = `${endpoint}:${JSON.stringify(payload)}`;
+  if (!pendingOrderSubmission || pendingOrderSubmission.fingerprint !== fingerprint) {
+    pendingOrderSubmission = {
+      fingerprint,
+      clientRequestId: createClientRequestId()
+    };
+  }
+  return {
+    client_request_id: pendingOrderSubmission.clientRequestId,
+    ...payload
+  };
 }
 
 function orderModeLabel(node) {
@@ -623,7 +645,7 @@ async function placeOrder() {
     return;
   }
 
-  const payload = {
+  const payload = orderPayloadWithRequestId({
     customer_name: document.getElementById("customer-name").value,
     customer_contact: document.getElementById("customer-contact").value,
     fulfillment: "pickup",
@@ -635,7 +657,7 @@ async function placeOrder() {
     ],
     note: document.getElementById("note").value,
     client_version: "p4p-web-0.1"
-  };
+  }, selectedNode.endpoint);
 
   orderStatusEl.textContent = "Submitting direct order to node...";
   orderStatusEl.className = "status";
@@ -644,6 +666,7 @@ async function placeOrder() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  pendingOrderSubmission = null;
   orderStatusEl.textContent = data.accepted ? "Direct order accepted." : "Direct order rejected.";
   orderStatusEl.className = `status ${data.accepted ? "good" : "error"}`;
   setLog(data);
@@ -699,5 +722,6 @@ window.__P4PClientTestHooks = {
   mergeDirectoryNodes,
   moduleEntriesForNode,
   normalizeRegistries,
+  orderPayloadWithRequestId,
   selectNode
 };

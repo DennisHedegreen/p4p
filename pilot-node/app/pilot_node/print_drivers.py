@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from p4p_core import StoredOrder
+from p4p_core import StoredOrder, format_money_minor
 
 
 @dataclass(frozen=True)
@@ -59,10 +60,22 @@ class FileSpoolPrintDriver(PrintDriver):
         spool_path = Path(self._spool_dir)
         ticket_path = spool_path / f"{order.order_id}.txt"
         try:
-            spool_path.mkdir(parents=True, exist_ok=True)
-            reused = ticket_path.exists()
-            if not reused:
-                ticket_path.write_text(render_ticket(target_id=target_id, order=order, action_id=action_id), encoding="utf-8")
+            spool_path.mkdir(mode=0o700, parents=True, exist_ok=True)
+            spool_path.chmod(0o700)
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+            try:
+                file_descriptor = os.open(ticket_path, flags, 0o600)
+            except FileExistsError:
+                if ticket_path.is_symlink() or not ticket_path.is_file():
+                    raise OSError("unsafe existing spool target")
+                ticket_path.chmod(0o600)
+                reused = True
+            else:
+                reused = False
+                with os.fdopen(file_descriptor, "w", encoding="utf-8") as handle:
+                    handle.write(render_ticket(target_id=target_id, order=order, action_id=action_id))
+                    handle.flush()
+                    os.fsync(handle.fileno())
         except OSError:
             return PrintDriverResult(
                 success=False,
@@ -205,19 +218,44 @@ class EscPosRawPrintDriver(PrintDriver):
         )
 
 
+def safe_ticket_text(value: object) -> str:
+    sanitized_parts: list[str] = []
+    for character in str(value):
+        if character in "\r\n\t":
+            sanitized_parts.append(" ")
+        elif ord(character) >= 32 and not 127 <= ord(character) <= 159:
+            sanitized_parts.append(character)
+    sanitized = "".join(sanitized_parts)
+    return " ".join(sanitized.split())
+
+
 def render_ticket(*, target_id: str, order: StoredOrder, action_id: str) -> str:
-    item_lines = [f"- {item.quantity}x {item.id}" for item in order.items]
+    if order.pricing_snapshot is not None:
+        currency = order.pricing_snapshot.currency
+        item_lines = [
+            (
+                f"- {line.quantity}x {safe_ticket_text(line.name)} [{safe_ticket_text(line.id)}] "
+                f"@ {format_money_minor(line.unit_price, currency)} = "
+                f"{format_money_minor(line.line_total, currency)}"
+            )
+            for line in order.pricing_snapshot.lines
+        ]
+        total_line = f"total: {format_money_minor(order.pricing_snapshot.total_minor, currency)}"
+    else:
+        item_lines = [f"- {item.quantity}x {safe_ticket_text(item.id)}" for item in order.items]
+        total_line = "total: legacy order without price snapshot"
     return "\n".join(
         [
-            f"P4P operator ticket ({target_id})",
-            f"action_id: {action_id}",
-            f"order_id: {order.order_id}",
-            f"customer_name: {order.customer_name}",
-            f"customer_contact: {order.customer_contact}",
-            f"fulfillment: {order.fulfillment}",
+            f"P4P operator ticket ({safe_ticket_text(target_id)})",
+            f"action_id: {safe_ticket_text(action_id)}",
+            f"order_id: {safe_ticket_text(order.order_id)}",
+            f"customer_name: {safe_ticket_text(order.customer_name)}",
+            f"customer_contact: {safe_ticket_text(order.customer_contact)}",
+            f"fulfillment: {safe_ticket_text(order.fulfillment)}",
             "items:",
             *item_lines,
-            f"note: {order.note or '-'}",
+            total_line,
+            f"note: {safe_ticket_text(order.note) or '-'}",
             f"requested_at: {order.requested_at.isoformat()}",
         ]
     )

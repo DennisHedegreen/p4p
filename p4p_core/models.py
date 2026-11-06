@@ -264,6 +264,24 @@ class OrderItem(BaseModel):
     quantity: int = Field(ge=1, le=99)
 
 
+class OrderLineSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(max_length=64, pattern=CATEGORY_PATTERN)
+    name: str = Field(min_length=1, max_length=200)
+    quantity: int = Field(ge=1, le=99)
+    unit_price: int = Field(ge=0)
+    line_total: int = Field(ge=0)
+
+
+class OrderPricingSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    currency: str = Field(pattern=CURRENCY_CODE_PATTERN)
+    lines: list[OrderLineSnapshot] = Field(min_length=1, max_length=50)
+    total_minor: int = Field(ge=0)
+
+
 class OrderRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -308,6 +326,7 @@ class StoredOrder(BaseModel):
     customer_contact: str
     fulfillment: str
     items: list[OrderItem]
+    pricing_snapshot: OrderPricingSnapshot | None = None
     note: str
     client_version: str
     status: OrderStatus

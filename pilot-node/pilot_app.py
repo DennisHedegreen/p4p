@@ -28,6 +28,7 @@ from p4p_core import (
 
 from pilot_node.config import (
     OperatorModuleSetUpdate,
+    OperatorOrderActionResolution,
     OperatorPaymentModuleUpdate,
     OperatorSetupUpdate,
     OperatorStateUpdate,
@@ -58,6 +59,9 @@ from pilot_node.routes import (
     operator_module_view_page as _operator_module_view_page,
     operator_modules as _operator_modules,
     operator_order_events as _operator_order_events,
+    operator_order_actions as _operator_order_actions,
+    operator_resolve_order_action as _operator_resolve_order_action,
+    operator_resume_order as _operator_resume_order,
     operator_orders as _operator_orders,
     operator_pickup_board_data as _operator_pickup_board_data,
     operator_pickup_board_page as _operator_pickup_board_page,
@@ -395,6 +399,39 @@ def operator_order_events(
     return _operator_order_events(RUNTIME, order_id)
 
 
+def operator_order_actions(order_id: str, authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_order_actions(RUNTIME, order_id)
+
+
+def operator_resolve_order_action(
+    order_id: str,
+    action_id: str,
+    payload: OperatorOrderActionResolution,
+    authorization=None,
+    x_p4p_operator_token=None,
+):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_resolve_order_action(RUNTIME, order_id, action_id, payload)
+
+
+def operator_resume_order(order_id: str, authorization=None, x_p4p_operator_token=None):
+    _require_operator_token(
+        RUNTIME,
+        authorization=authorization,
+        x_p4p_operator_token=x_p4p_operator_token,
+    )
+    return _operator_resume_order(RUNTIME, order_id)
+
+
 def operator_module_self_test(module_id: str, authorization=None, x_p4p_operator_token=None):
     _require_operator_token(
         RUNTIME,
@@ -433,6 +470,7 @@ __all__ = [
     "OrderStatusUpdate",
     "ModuleResultEvent",
     "OperatorModuleSetUpdate",
+    "OperatorOrderActionResolution",
     "OperatorPaymentModuleUpdate",
     "OperatorSetupUpdate",
     "PublicOrderStatus",
@@ -463,6 +501,9 @@ __all__ = [
     "operator_module_view_page",
     "operator_modules",
     "operator_order_events",
+    "operator_order_actions",
+    "operator_resolve_order_action",
+    "operator_resume_order",
     "operator_orders",
     "operator_pickup_board_data",
     "operator_pickup_board_page",

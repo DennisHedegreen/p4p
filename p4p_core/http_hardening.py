@@ -5,6 +5,7 @@ import threading
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from ipaddress import ip_address, ip_network
 from typing import Any, Awaitable, Callable
 
 
@@ -97,15 +98,59 @@ class RequestBodyTooLarge(Exception):
 
 
 class InMemoryRateLimitMiddleware:
-    def __init__(self, app: ASGIApp, *, rules: tuple[RateLimitRule, ...]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        rules: tuple[RateLimitRule, ...],
+        trusted_proxy_cidrs: tuple[str, ...] = (),
+    ) -> None:
         if any(rule.requests < 1 or rule.window_seconds < 1 for rule in rules):
             raise ValueError("rate-limit requests and windows must be positive")
         self.app = app
         self.rules = tuple(rules)
+        self._trusted_proxy_networks = tuple(
+            ip_network(cidr, strict=False) for cidr in trusted_proxy_cidrs
+        )
         self._buckets: dict[tuple[str, str, str], deque[float]] = defaultdict(deque)
         self._lock = threading.Lock()
         self._cleanup_interval = max((rule.window_seconds for rule in rules), default=60)
         self._last_cleanup = time.monotonic()
+
+    def _is_trusted_proxy(self, host: str) -> bool:
+        try:
+            address = ip_address(host)
+        except ValueError:
+            return False
+        return any(address in network for network in self._trusted_proxy_networks)
+
+    def _client_host(self, scope: dict[str, Any]) -> str:
+        client = scope.get("client")
+        peer_host = str(client[0]) if client else "unknown"
+        if not self._is_trusted_proxy(peer_host):
+            return peer_host
+
+        forwarded_hosts: list[str] = []
+        for name, value in scope.get("headers", []):
+            if name.lower() != b"x-forwarded-for":
+                continue
+            try:
+                forwarded_hosts.extend(part.strip() for part in value.decode("ascii").split(","))
+            except UnicodeDecodeError:
+                return peer_host
+
+        if not forwarded_hosts or any(not host for host in forwarded_hosts):
+            return peer_host
+
+        chain = [*forwarded_hosts, peer_host]
+        for host in reversed(chain):
+            try:
+                canonical_host = str(ip_address(host))
+            except ValueError:
+                return peer_host
+            if not self._is_trusted_proxy(canonical_host):
+                return canonical_host
+        return peer_host
 
     async def __call__(self, scope, receive, send) -> None:
         if scope["type"] != "http":
@@ -130,8 +175,7 @@ class InMemoryRateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        client = scope.get("client")
-        client_host = str(client[0]) if client else "unknown"
+        client_host = self._client_host(scope)
         now = time.monotonic()
         cutoff = now - rule.window_seconds
         key = (client_host, method, rule.path)
@@ -197,6 +241,7 @@ def configure_http_hardening(
     default_max_body_bytes: int,
     route_body_limits: dict[str, int] | None = None,
     rate_limit_rules: tuple[RateLimitRule, ...] = (),
+    trusted_proxy_cidrs: tuple[str, ...] = (),
 ) -> None:
     """Add shared API defenses. Add CORS after calling this helper."""
     app.add_middleware(
@@ -205,7 +250,11 @@ def configure_http_hardening(
         route_limits=route_body_limits,
     )
     if rate_limit_rules:
-        app.add_middleware(InMemoryRateLimitMiddleware, rules=rate_limit_rules)
+        app.add_middleware(
+            InMemoryRateLimitMiddleware,
+            rules=rate_limit_rules,
+            trusted_proxy_cidrs=trusted_proxy_cidrs,
+        )
     app.add_middleware(SecurityHeadersMiddleware)
 
 

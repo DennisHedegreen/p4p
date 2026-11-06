@@ -239,6 +239,20 @@ Example:
 
 Use Caddy or nginx as the public HTTPS reverse proxy.
 
+The reference service binds the pilot node to loopback and the Caddy example
+replaces any incoming `X-Forwarded-For` value with Caddy's direct client address.
+Keep the matching node setting narrow:
+
+```bash
+P4P_TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128
+```
+
+If Caddy and the node move onto separate hosts or containers, replace those
+loopback ranges with the exact proxy network. Never configure `0.0.0.0/0` or
+`::/0`; doing so lets public clients choose the identity used by the limiter.
+The in-process limiter is local to one Uvicorn process. Multiple workers or node
+replicas require a shared limiter or a verified limit at the reverse proxy.
+
 `caddy.live-pilot.example` shows the intended host-to-local-port mapping.
 
 ## Railway Container Candidate

@@ -20,6 +20,8 @@ from p4p_core import (
     ModuleResultEvent,
     NodeDescriptor,
     OrderItem,
+    OrderLineSnapshot,
+    OrderPricingSnapshot,
     OrderRequest,
     OrderStatusUpdate,
     RegistrationSnapshot,
@@ -55,6 +57,13 @@ from pilot_node.state_keys import (
     SETUP_SELF_TEST_RESULTS_STATE_KEY,
     SETUP_STARTED_AT_STATE_KEY,
 )
+
+
+class OrderAdmissionError(ValueError):
+    def __init__(self, reason: str, message: str) -> None:
+        super().__init__(message)
+        self.reason = reason
+        self.message = message
 
 
 class PilotStore:
@@ -144,6 +153,39 @@ class PilotStore:
             )
             self._connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS order_action_outbox (
+                    action_id TEXT PRIMARY KEY,
+                    order_id TEXT NOT NULL,
+                    lane TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    attempts INTEGER NOT NULL,
+                    last_error TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            self._connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS order_action_outbox_order_idx
+                ON order_action_outbox(order_id, created_at)
+                """
+            )
+            claimed = self._connection.execute(
+                """
+                UPDATE order_action_outbox
+                SET status = 'unknown',
+                    last_error = CASE
+                        WHEN last_error = '' THEN 'runtime_restarted_before_completion'
+                        ELSE last_error
+                    END,
+                    updated_at = ?
+                WHERE status = 'running'
+                """,
+                (serialize_datetime(utc_now()),),
+            )
+            self._connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS imported_module_manifests (
                     module_id TEXT PRIMARY KEY,
                     provider_id TEXT NOT NULL,
@@ -177,6 +219,7 @@ class PilotStore:
             "client_request_id": "TEXT",
             "request_fingerprint": "TEXT",
             "status_token": "TEXT",
+            "pricing_snapshot_json": "TEXT",
         }
         for name, column_type in additions.items():
             if name not in columns:
@@ -316,6 +359,98 @@ class PilotStore:
         ).encode("utf-8")
         return hashlib.sha256(canonical).hexdigest()
 
+    def _enforce_order_admission(self, payload: OrderRequest) -> OrderPricingSnapshot:
+        if len(payload.items) > self._config.order_max_lines:
+            raise OrderAdmissionError(
+                "too_many_lines",
+                f"This restaurant accepts at most {self._config.order_max_lines} product lines per order.",
+            )
+
+        item_ids = [item.id for item in payload.items]
+        if len(set(item_ids)) != len(item_ids):
+            raise OrderAdmissionError(
+                "duplicate_items",
+                "Combine repeated products into one order line before submitting.",
+            )
+
+        total_units = sum(item.quantity for item in payload.items)
+        if total_units > self._config.order_max_units:
+            raise OrderAdmissionError(
+                "too_many_units",
+                f"This restaurant accepts at most {self._config.order_max_units} units per order.",
+            )
+
+        menu_rows = self._connection.execute(
+            "SELECT id, name, price FROM menu_items WHERE active = 1"
+        ).fetchall()
+        menu_by_id = {str(row["id"]): row for row in menu_rows}
+        unknown = [item.id for item in payload.items if item.id not in menu_by_id]
+        if unknown:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown or inactive menu item: {unknown[0]}",
+            )
+
+        snapshot_lines = [
+            OrderLineSnapshot(
+                id=item.id,
+                name=str(menu_by_id[item.id]["name"]),
+                quantity=item.quantity,
+                unit_price=int(menu_by_id[item.id]["price"]),
+                line_total=int(menu_by_id[item.id]["price"]) * item.quantity,
+            )
+            for item in payload.items
+        ]
+        total_value = sum(line.line_total for line in snapshot_lines)
+        if total_value > self._config.order_max_value_minor:
+            raise OrderAdmissionError(
+                "order_value_too_high",
+                "This order exceeds the restaurant's configured order-value limit.",
+            )
+
+        active_count = int(
+            self._connection.execute(
+                "SELECT COUNT(*) FROM orders WHERE status IN ('new', 'accepted', 'ready')"
+            ).fetchone()[0]
+        )
+        if active_count >= self._config.order_max_active:
+            raise OrderAdmissionError(
+                "restaurant_capacity_reached",
+                "The restaurant has reached its active-order capacity. Please try again later.",
+            )
+
+        pending_count = int(
+            self._connection.execute(
+                "SELECT COUNT(*) FROM orders WHERE status = 'new'"
+            ).fetchone()[0]
+        )
+        if pending_count >= self._config.order_max_pending:
+            raise OrderAdmissionError(
+                "pending_queue_full",
+                "The restaurant's pending-order queue is full. Please try again later.",
+            )
+
+        normalized_contact = payload.customer_contact.strip().lower()
+        pending_for_contact = int(
+            self._connection.execute(
+                """
+                SELECT COUNT(*) FROM orders
+                WHERE status = 'new' AND lower(trim(customer_contact)) = ?
+                """,
+                (normalized_contact,),
+            ).fetchone()[0]
+        )
+        if pending_for_contact >= self._config.order_max_pending_per_contact:
+            raise OrderAdmissionError(
+                "contact_pending_limit",
+                "This contact already has the maximum number of pending orders.",
+            )
+        return OrderPricingSnapshot(
+            currency=self._config.menu_currency,
+            lines=snapshot_lines,
+            total_minor=total_value,
+        )
+
     def create_order_once(self, payload: OrderRequest) -> tuple[StoredOrder, bool]:
         with self._lock, self._connection:
             fingerprint = self._order_request_fingerprint(payload)
@@ -331,13 +466,7 @@ class PilotStore:
                     )
                 return self._row_to_order(existing_row), False
 
-            active_ids = self.active_menu_item_ids()
-            unknown = [item.id for item in payload.items if item.id not in active_ids]
-            if unknown:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Unknown or inactive menu item: {unknown[0]}",
-                )
+            pricing_snapshot = self._enforce_order_admission(payload)
             now = utc_now()
             order = StoredOrder(
                 order_id=f"p4p-{now.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(8)}",
@@ -347,6 +476,7 @@ class PilotStore:
                 customer_contact=payload.customer_contact,
                 fulfillment=payload.fulfillment,
                 items=payload.items,
+                pricing_snapshot=pricing_snapshot,
                 note=payload.note,
                 client_version=payload.client_version,
                 status="new",
@@ -358,10 +488,10 @@ class PilotStore:
                 """
                 INSERT INTO orders(
                     order_id, client_request_id, request_fingerprint, status_token,
-                    customer_name, customer_contact, fulfillment, items_json,
+                    customer_name, customer_contact, fulfillment, items_json, pricing_snapshot_json,
                     note, client_version, status, payment_method, status_message,
                     requested_at, updated_at, estimated_ready
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     order.order_id,
@@ -372,6 +502,7 @@ class PilotStore:
                     order.customer_contact,
                     order.fulfillment,
                     json.dumps([item.model_dump(mode="json") for item in order.items]),
+                    json.dumps(order.pricing_snapshot.model_dump(mode="json")),
                     order.note,
                     order.client_version,
                     order.status,
@@ -438,6 +569,97 @@ class PilotStore:
                 ),
             )
             return True
+
+    @staticmethod
+    def _order_action_row(row: sqlite3.Row) -> dict[str, object]:
+        return {
+            "action_id": str(row["action_id"]),
+            "order_id": str(row["order_id"]),
+            "lane": str(row["lane"]),
+            "status": str(row["status"]),
+            "attempts": int(row["attempts"]),
+            "last_error": str(row["last_error"]),
+            "created_at": str(row["created_at"]),
+            "updated_at": str(row["updated_at"]),
+        }
+
+    def ensure_order_action(self, *, order_id: str, action_id: str, lane: str) -> dict[str, object]:
+        now = serialize_datetime(utc_now())
+        with self._lock, self._connection:
+            self._connection.execute(
+                """
+                INSERT OR IGNORE INTO order_action_outbox(
+                    action_id, order_id, lane, status, attempts, last_error, created_at, updated_at
+                ) VALUES(?, ?, ?, 'pending', 0, '', ?, ?)
+                """,
+                (action_id, order_id, lane, now, now),
+            )
+            row = self._connection.execute(
+                "SELECT * FROM order_action_outbox WHERE action_id = ?",
+                (action_id,),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError(f"Order action was not stored: {action_id}")
+            if str(row["order_id"]) != order_id or str(row["lane"]) != lane:
+                raise ValueError(f"Order action identity conflict: {action_id}")
+            return self._order_action_row(row)
+
+    def claim_order_action(self, *, order_id: str, action_id: str, lane: str) -> dict[str, object]:
+        self.ensure_order_action(order_id=order_id, action_id=action_id, lane=lane)
+        now = serialize_datetime(utc_now())
+        with self._lock, self._connection:
+            claimed = self._connection.execute(
+                """
+                UPDATE order_action_outbox
+                SET status = 'running', attempts = attempts + 1, last_error = '', updated_at = ?
+                WHERE action_id = ? AND status IN ('pending', 'failed')
+                """,
+                (now, action_id),
+            )
+            row = self._connection.execute(
+                "SELECT * FROM order_action_outbox WHERE action_id = ?",
+                (action_id,),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError(f"Order action was not found: {action_id}")
+            action = self._order_action_row(row)
+            action["claimed"] = claimed.rowcount == 1
+            return action
+
+    def finish_order_action(self, action_id: str, *, status: str, last_error: str = "") -> dict[str, object]:
+        if status not in {"succeeded", "failed", "unknown"}:
+            raise ValueError(f"Unsupported order action status: {status}")
+        now = serialize_datetime(utc_now())
+        with self._lock, self._connection:
+            updated = self._connection.execute(
+                """
+                UPDATE order_action_outbox
+                SET status = ?, last_error = ?, updated_at = ?
+                WHERE action_id = ?
+                """,
+                (status, last_error[:500], now, action_id),
+            )
+            if updated.rowcount == 0:
+                raise KeyError(action_id)
+            row = self._connection.execute(
+                "SELECT * FROM order_action_outbox WHERE action_id = ?",
+                (action_id,),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError(f"Order action was not found after update: {action_id}")
+            return self._order_action_row(row)
+
+    def list_order_actions(self, order_id: str) -> list[dict[str, object]]:
+        with self._lock:
+            rows = self._connection.execute(
+                """
+                SELECT * FROM order_action_outbox
+                WHERE order_id = ?
+                ORDER BY created_at ASC, action_id ASC
+                """,
+                (order_id,),
+            ).fetchall()
+            return [self._order_action_row(row) for row in rows]
 
     def list_order_events(self, order_id: str, *, limit: int = 100) -> list[ModuleResultEvent]:
         with self._lock:
@@ -648,6 +870,11 @@ class PilotStore:
             customer_contact=row["customer_contact"],
             fulfillment=row["fulfillment"],
             items=[OrderItem(**item) for item in json.loads(row["items_json"])],
+            pricing_snapshot=(
+                OrderPricingSnapshot(**json.loads(str(row["pricing_snapshot_json"])))
+                if row["pricing_snapshot_json"]
+                else None
+            ),
             note=row["note"],
             client_version=row["client_version"],
             status=row["status"],
@@ -979,7 +1206,23 @@ def set_effective_payment_module_id(runtime: PilotRuntime, module_id: str) -> st
     return normalized_module_id
 
 
+def live_configuration_blockers(runtime: PilotRuntime) -> list[str]:
+    blockers: list[str] = []
+    if not runtime.config.persistent_database:
+        blockers.append("persistent_database_required")
+    if not runtime.config.persistent_node_identity:
+        blockers.append("persistent_node_identity_required")
+    if not runtime.config.strong_operator_token:
+        blockers.append("strong_operator_token_required")
+    return blockers
+
+
 def node_state(runtime: PilotRuntime) -> NodeDescriptor:
+    persisted_order_mode = runtime.store.get_state("order_mode", "").strip()
+    order_mode = persisted_order_mode or runtime.config.node_order_mode_default
+    if order_mode == "live" and persisted_order_mode:
+        if live_configuration_blockers(runtime) or not setup_state(runtime).get("completed_at"):
+            order_mode = "menu_only"
     return NodeDescriptor(
         node_id=runtime.config.node_id,
         name=runtime.config.node_name,
@@ -993,7 +1236,7 @@ def node_state(runtime: PilotRuntime) -> NodeDescriptor:
             "true" if runtime.config.node_open_default else "false",
         ).lower()
         == "true",
-        order_mode=runtime.store.get_state("order_mode", runtime.config.node_order_mode_default),
+        order_mode=order_mode,
         modules=runtime.config.public_node_modules,
         node_public_key=runtime.config.node_public_key,
     )
@@ -1063,6 +1306,7 @@ def build_pilot_runtime(config: PilotConfig | None = None) -> PilotRuntime:
 
 
 __all__ = [
+    "OrderAdmissionError",
     "PilotRuntime",
     "PilotStore",
     "build_pilot_runtime",
@@ -1073,6 +1317,7 @@ __all__ = [
     "enabled_module_declarations",
     "module_restart_required",
     "module_is_payment",
+    "live_configuration_blockers",
     "node_accepts_orders",
     "node_state",
     "public_module_projection",
