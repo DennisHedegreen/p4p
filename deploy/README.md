@@ -99,8 +99,8 @@ If a registry should automatically mirror another registry, also configure:
 
 ```bash
 P4P_REGISTRY_METADATA='{"registry_type":"country","capabilities":{"can_onboard_nodes":true,"can_relay_sources":true,"can_curate_active_index":true,"can_reexport_sources":false},"scope":{"vertical_id":"pizza4people","country_code":"DK"}}'
-P4P_MIRROR_UPSTREAMS=https://registry-a.pizza4people.com
-P4P_MIRROR_TRUSTED_UPSTREAMS=https://registry-a.pizza4people.com
+P4P_MIRROR_UPSTREAMS='[{"url":"https://registry-a.pizza4people.com","public_key":"ed25519:replace-with-registry-a-public-key"}]'
+P4P_MIRROR_TRUSTED_UPSTREAMS='[{"url":"https://registry-a.pizza4people.com","public_key":"ed25519:replace-with-registry-a-public-key"}]'
 P4P_MIRROR_DISCOVERY_POLICY=trusted_only
 P4P_CURATED_INDEX_PROMOTION_POLICY=trusted_mirrors
 P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors

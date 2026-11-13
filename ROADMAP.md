@@ -102,7 +102,11 @@ This means the old roadmap understated the system.
 
 But the system is not yet production-grade because:
 
-- trusted registry URLs are not yet pinned to expected registry public keys
+- automatic mirror sync now requires the fetched snapshot's declared
+  `registry_url` to match the configured upstream URL; public trusted entries
+  require a public-key pin, trusted relay identity is key-checked, and unpinned
+  public polling remains raw-evidence-only; loopback development is the narrow
+  URL-only exception
 - signed trust claims are currently valid signatures, not yet trusted issuer guarantees
 - the web client must treat all registry, node, and menu data as untrusted input
 - docs still mix old version language with newer runtime reality

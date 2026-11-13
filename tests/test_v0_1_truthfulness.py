@@ -274,6 +274,11 @@ class P4PTruthfulnessTests(unittest.TestCase):
     def make_registry_admin_env(self) -> dict[str, str]:
         return {"P4P_REGISTRY_ADMIN_TOKEN": "registry-admin-secret"}
 
+    def pinned_upstreams(self, *entries: tuple[str, str]) -> str:
+        return json.dumps(
+            [{"url": url, "public_key": public_key} for url, public_key in entries]
+        )
+
     def registry_admin_authorization(self) -> str:
         return "Bearer registry-admin-secret"
 
@@ -1927,7 +1932,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_REGISTRY_URL": "http://127.0.0.1:8003",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -1984,7 +1991,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -1996,7 +2005,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2116,7 +2127,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2129,7 +2142,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com,https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY),
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY),
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2196,7 +2212,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2209,7 +2227,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2346,7 +2366,41 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Imported registry source must be newer than the cached snapshot",
         )
 
-    def test_registry_sync_fetches_configured_upstream_and_updates_sync_status(self) -> None:
+    def test_public_trusted_upstream_requires_public_key_pin(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            "Public P4P_MIRROR_TRUSTED_UPSTREAMS entries require public_key pins",
+        ):
+            load_module(
+                "registry/main.py",
+                {
+                    "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                },
+            )
+
+    def test_duplicate_trusted_upstream_pins_must_match(self) -> None:
+        identity = load_module("p4p_identity.py")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Duplicate trusted upstream public_key pins must match",
+        ):
+            load_module(
+                "registry/main.py",
+                {
+                    "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                        (
+                            "https://registry-a.pizza4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                        (
+                            "https://registry-a.pizza4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                    ),
+                },
+            )
+
+    def test_unpinned_public_upstream_syncs_as_raw_evidence_only(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
             "registry/main.py",
@@ -2359,6 +2413,165 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
+                "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True},
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+
+        with patch.object(
+            mirror.httpx,
+            "AsyncClient",
+            new=lambda *args, **kwargs: RegistrySourceAsyncClient(
+                {"https://registry-a.pizza4people.com": source}
+            ),
+        ):
+            sync_result = asyncio.run(
+                mirror.registry_sync(authorization=self.registry_admin_authorization())
+            )
+
+        discover_result = mirror.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        mirror_status = mirror.registry_mirrors(
+            authorization=self.registry_admin_authorization()
+        )
+        sync_status = mirror.registry_sync_status(
+            authorization=self.registry_admin_authorization()
+        )
+
+        self.assertEqual(sync_result.upstreams[0].status, "imported")
+        self.assertEqual(discover_result.nodes, [])
+        self.assertEqual(sync_status.trusted_upstreams, [])
+        self.assertEqual(len(mirror_status.sources), 1)
+        self.assertFalse(mirror_status.sources[0].discovery_eligible)
+        self.assertEqual(mirror_status.sources[0].discovery_basis, "not_trusted")
+        self.assertEqual(mirror.health()["curated_active_index_entries"], 0)
+        promotions = mirror.curated_promotions(
+            authorization=self.registry_admin_authorization()
+        )
+        self.assertEqual(promotions.records[0].decision, "deny")
+        self.assertEqual(promotions.records[0].decision_basis, "untrusted_upstream")
+
+    def test_wrong_relay_key_pin_keeps_reexported_source_out_of_discovery(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        wrong_relay_key = identity.public_key_from_private(identity.generate_private_key())
+        downstream = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", wrong_relay_key)
+                ),
+                "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True},
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        relay.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+        downstream.registry_source_import(
+            relay.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+
+        discover_result = downstream.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        mirror_status = downstream.registry_mirrors(
+            authorization=self.registry_admin_authorization()
+        )
+        nested_status = next(
+            entry
+            for entry in mirror_status.sources
+            if str(entry.registry_url) == "https://registry-a.pizza4people.com/"
+        )
+
+        self.assertEqual(discover_result.nodes, [])
+        self.assertFalse(nested_status.discovery_eligible)
+        self.assertEqual(nested_status.discovery_basis, "not_trusted")
+
+    def test_registry_sync_fetches_configured_upstream_and_updates_sync_status(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": json.dumps(
+                    [
+                        {
+                            "url": "https://registry-a.pizza4people.com",
+                            "public_key": source.REGISTRY_PUBLIC_KEY,
+                        }
+                    ]
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2422,6 +2635,87 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertIsNotNone(sync_status.last_run_at)
         self.assertEqual(sync_status.last_results[0].status, "imported")
 
+    def test_registry_sync_rejects_snapshot_with_mismatched_registry_url(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-b.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                **self.make_registry_admin_env(),
+            },
+        )
+        routes = {"https://registry-a.pizza4people.com": source}
+
+        with patch.object(
+            mirror.httpx,
+            "AsyncClient",
+            new=lambda *args, **kwargs: RegistrySourceAsyncClient(routes),
+        ):
+            sync_result = asyncio.run(
+                mirror.registry_sync(authorization=self.registry_admin_authorization())
+            )
+
+        self.assertEqual(sync_result.upstreams[0].status, "error")
+        self.assertEqual(
+            sync_result.upstreams[0].detail,
+            "Upstream registry_url does not match the configured mirror URL",
+        )
+        self.assertEqual(mirror.health()["mirrored_registries"], 0)
+
+    def test_registry_sync_rejects_snapshot_with_mismatched_public_key_pin(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": json.dumps(
+                    [
+                        {
+                            "url": "https://registry-a.pizza4people.com",
+                            "public_key": identity.public_key_from_private(
+                                identity.generate_private_key()
+                            ),
+                        }
+                    ]
+                ),
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                **self.make_registry_admin_env(),
+            },
+        )
+        routes = {"https://registry-a.pizza4people.com": source}
+
+        with patch.object(
+            mirror.httpx,
+            "AsyncClient",
+            new=lambda *args, **kwargs: RegistrySourceAsyncClient(routes),
+        ):
+            sync_result = asyncio.run(
+                mirror.registry_sync(authorization=self.registry_admin_authorization())
+            )
+
+        self.assertEqual(sync_result.upstreams[0].status, "error")
+        self.assertEqual(
+            sync_result.upstreams[0].detail,
+            "Upstream registry public key does not match the configured pin",
+        )
+        self.assertEqual(mirror.health()["mirrored_registries"], 0)
+
     def test_registry_sync_skips_unchanged_upstream_snapshot(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
@@ -2434,7 +2728,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         mirror = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2492,7 +2788,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
@@ -2556,7 +2854,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
@@ -2630,7 +2930,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-b.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    (
+                        "https://registry-b.pizza4people.com",
+                        identity.public_key_from_private(identity.generate_private_key()),
+                    )
+                ),
                 "P4P_MIRROR_UPSTREAMS": "",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -2709,7 +3014,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2773,7 +3080,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2841,8 +3150,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": (
-                    "https://registry-a.pizza4people.com,https://registry-b.pizza4people.com"
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source_a.REGISTRY_PUBLIC_KEY),
+                    ("https://registry-b.pizza4people.com", source_b.REGISTRY_PUBLIC_KEY),
                 ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
@@ -2985,7 +3295,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -3062,7 +3374,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -3137,7 +3451,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -3256,7 +3572,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_REGISTRY_URL": "https://mirror.example",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4799,7 +5117,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4888,7 +5208,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4964,7 +5286,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4977,7 +5301,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5069,7 +5395,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5126,7 +5454,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5139,7 +5469,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com,https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY),
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY),
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5210,7 +5543,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5223,7 +5558,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5306,6 +5643,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -5317,7 +5657,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com,https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY),
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY),
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5380,7 +5723,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-b.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    (
+                        "https://registry-b.pizza4people.com",
+                        identity.public_key_from_private(identity.generate_private_key()),
+                    )
+                ),
                 "P4P_MIRROR_UPSTREAMS": "",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -5447,7 +5795,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_MIRROR_UPSTREAMS": "",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -5715,7 +6065,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_MIRROR_UPSTREAMS": "",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(

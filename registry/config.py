@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from ipaddress import ip_address
 from pathlib import Path
+from urllib.parse import urlparse
 
 from p4p_core import RegistryEntry
 from p4p_identity import load_or_create_private_key, public_key_from_private
@@ -19,6 +21,16 @@ from registry.models import (
 
 def normalized_registry_url(value: str | object) -> str:
     return str(value).rstrip("/")
+
+
+def is_loopback_registry_url(value: str | object) -> bool:
+    host = (urlparse(str(value)).hostname or "").lower()
+    if host == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def load_backup_registries() -> list[RegistryEntry]:
@@ -77,16 +89,45 @@ def resolve_trusted_mirror_upstreams(
     configured_upstreams: list[MirrorUpstream],
     explicit_trusted_upstreams: list[MirrorUpstream],
 ) -> list[MirrorUpstream]:
+    explicit = bool(explicit_trusted_upstreams)
     source = explicit_trusted_upstreams or configured_upstreams
     deduped: list[MirrorUpstream] = []
-    seen: set[str] = set()
+    seen: dict[str, str | None] = {}
     for upstream in source:
         normalized = normalized_registry_url(upstream.url)
-        if normalized in seen:
+        if not upstream.public_key and not is_loopback_registry_url(upstream.url):
+            if explicit:
+                raise ValueError(
+                    "Public P4P_MIRROR_TRUSTED_UPSTREAMS entries require public_key pins"
+                )
             continue
-        seen.add(normalized)
+        if normalized in seen:
+            if seen[normalized] != upstream.public_key:
+                raise ValueError("Duplicate trusted upstream public_key pins must match")
+            continue
+        seen[normalized] = upstream.public_key
         deduped.append(upstream)
     return deduped
+
+
+def apply_trusted_mirror_pins(
+    *,
+    configured_upstreams: list[MirrorUpstream],
+    trusted_upstreams: list[MirrorUpstream],
+) -> list[MirrorUpstream]:
+    trusted_by_url = {
+        normalized_registry_url(upstream.url): upstream for upstream in trusted_upstreams
+    }
+    resolved: list[MirrorUpstream] = []
+    for upstream in configured_upstreams:
+        trusted = trusted_by_url.get(normalized_registry_url(upstream.url))
+        if trusted is None or trusted.public_key is None:
+            resolved.append(upstream)
+            continue
+        if upstream.public_key and upstream.public_key != trusted.public_key:
+            raise ValueError("Configured and trusted upstream public_key pins must match")
+        resolved.append(upstream.model_copy(update={"public_key": trusted.public_key}))
+    return resolved
 
 
 def resolve_registry_source_reexport_policy() -> RegistryExportScope:
@@ -137,6 +178,7 @@ class RegistryConfig:
     mirror_upstreams: list[MirrorUpstream]
     mirror_trusted_upstreams: list[MirrorUpstream]
     trusted_mirror_upstream_urls: set[str]
+    trusted_mirror_upstream_keys: dict[str, str]
     mirror_discovery_policy: MirrorDiscoveryPolicy
     registry_source_reexport_policy: RegistryExportScope
     curated_index_promotion_policy: CuratedIndexPromotionPolicy
@@ -156,6 +198,10 @@ def build_registry_config() -> RegistryConfig:
         configured_upstreams=mirror_upstreams,
         explicit_trusted_upstreams=explicit_trusted,
     )
+    mirror_upstreams = apply_trusted_mirror_pins(
+        configured_upstreams=mirror_upstreams,
+        trusted_upstreams=mirror_trusted_upstreams,
+    )
     registry_private_key = load_registry_private_key()
     return RegistryConfig(
         registry_url=registry_url,
@@ -165,6 +211,11 @@ def build_registry_config() -> RegistryConfig:
         mirror_trusted_upstreams=mirror_trusted_upstreams,
         trusted_mirror_upstream_urls={
             normalized_registry_url(upstream.url) for upstream in mirror_trusted_upstreams
+        },
+        trusted_mirror_upstream_keys={
+            normalized_registry_url(upstream.url): upstream.public_key
+            for upstream in mirror_trusted_upstreams
+            if upstream.public_key
         },
         mirror_discovery_policy=resolve_mirror_discovery_policy(
             configured_upstreams=mirror_upstreams,
@@ -194,6 +245,8 @@ def build_registry_config() -> RegistryConfig:
 __all__ = [
     "RegistryConfig",
     "build_registry_config",
+    "apply_trusted_mirror_pins",
+    "is_loopback_registry_url",
     "load_backup_registries",
     "load_mirror_trusted_upstreams",
     "load_mirror_upstream_list",
