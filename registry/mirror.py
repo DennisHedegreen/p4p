@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from p4p_core import utc_now
 
-from registry.config import RegistryConfig
+from registry.config import RegistryConfig, normalized_registry_url
 from registry.models import RegistrySourceResponse, RegistrySyncResponse, RegistrySyncUpstreamResult
 from registry.store import MirrorSyncState, RegistryStore
 from registry.validation import require_registry_capability, require_valid_registry_source
@@ -35,6 +35,16 @@ async def sync_registry_source_from_upstream(
         response = await client.get(f"{upstream_url}/registry-source")
         response.raise_for_status()
         snapshot = RegistrySourceResponse(**response.json())
+        if normalized_registry_url(snapshot.registry_url) != upstream_url:
+            raise HTTPException(
+                status_code=400,
+                detail="Upstream registry_url does not match the configured mirror URL",
+            )
+        if upstream.public_key and snapshot.registry_public_key != upstream.public_key:
+            raise HTTPException(
+                status_code=403,
+                detail="Upstream registry public key does not match the configured pin",
+            )
         verified_signature = require_valid_registry_source(snapshot)
         require_allowed_unsigned_registry_source_import(
             verified_signature=verified_signature,

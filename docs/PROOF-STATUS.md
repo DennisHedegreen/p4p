@@ -1,6 +1,6 @@
 # P4P Proof Status
 
-Current checkpoint: 6 November 2026
+Current checkpoint: 12 November 2026
 
 This file is the dated proof checkpoint for the public P4P surface.
 
@@ -13,6 +13,30 @@ If documents overlap:
 - `PROOF.md` wins on what is publicly claimed right now
 - `docs/PROOF-STATUS.md` wins on dated hosted-proof facts
 - `SPEC.md` wins on contract details
+
+## 13 November 2026 registry-sync review checkpoint
+
+Verified locally on the current `public-main` working branch:
+
+- automatic mirror sync now rejects a signed snapshot when its declared
+  `registry_url` differs from the configured upstream URL
+- automatic mirror upstream entries may now pin the expected registry public
+  key, and sync rejects otherwise valid snapshots signed by a different key
+- public trusted-upstream entries now require both URL and public-key pin;
+  URL-only trust remains available only for loopback development
+- an unpinned public polling target may still be cached as raw evidence but is
+  excluded from trusted-only discovery and automatic curated promotion
+- relayed trust now includes the signed relay public key, so a relay cannot
+  change identity while retaining trust through the same URL
+- the mismatch path leaves the mirror cache unchanged and reports an explicit
+  sync error
+- all five registry-sync regression tests passed
+- `bash scripts/check-local.sh` completed `318` tests with `2` intentional skips
+- the public audit, JavaScript syntax and Python compile gates remained green
+
+This closes endpoint-to-snapshot URL confusion and makes public trust
+key-bound. Public URL-only polling remains compatible as raw evidence, but it
+does not grant discovery or relay trust.
 
 ## 6 November 2026 local runtime-health checkpoint
 

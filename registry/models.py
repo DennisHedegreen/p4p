@@ -90,6 +90,7 @@ class MirrorUpstream(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     url: HttpUrl
+    public_key: str | None = Field(default=None, pattern=r"^ed25519:")
 
 
 class RegistryCapabilities(BaseModel):

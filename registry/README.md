@@ -66,7 +66,7 @@ python3 -m venv .venv
 P4P_REGISTRY_URL=http://127.0.0.1:8000 \
 P4P_BACKUP_REGISTRIES='[{"tier":0,"url":"http://127.0.0.1:8000"},{"tier":1,"url":"http://127.0.0.1:8002"}]' \
 P4P_REGISTRY_DB_PATH=/tmp/p4p-registry.sqlite3 \
-P4P_MIRROR_UPSTREAMS=http://127.0.0.1:8002 \
+P4P_MIRROR_UPSTREAMS='[{"url":"http://127.0.0.1:8002","public_key":"ed25519:replace-with-registry-public-key"}]' \
 P4P_MIRROR_TRUSTED_UPSTREAMS=http://127.0.0.1:8002 \
 P4P_MIRROR_DISCOVERY_POLICY=trusted_only \
 P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors \
@@ -130,8 +130,8 @@ Then open:
 - mirrored nodes become discoverable, but local node state still wins on `node_id` collisions
 - discover results now carry provenance fields so clients can distinguish `local` vs `mirrored` nodes and see whether a mirrored result is visible via `trusted_upstream` or the looser `all_active_policy`
 - mirrored discovery may also report `trusted_relayed_upstream` when the original upstream snapshot arrived through a trusted umbrella or country relay
-- `P4P_MIRROR_UPSTREAMS` configures which upstream registries are polled for `GET /registry-source`
-- `P4P_MIRROR_TRUSTED_UPSTREAMS` can pin which mirrored sources are allowed into ordinary discovery
+- `P4P_MIRROR_UPSTREAMS` configures which upstream registries are polled for `GET /registry-source`; JSON object entries may include `public_key`, which makes automatic sync reject a snapshot signed by any other registry key; an unpinned public upstream may still be cached as raw evidence but is not trusted
+- public entries in `P4P_MIRROR_TRUSTED_UPSTREAMS` must use JSON objects with both `url` and `public_key`; URL-only trust is allowed only for loopback development, and relay trust is checked against the relay's signed key before nested sources become discoverable
 - if `P4P_MIRROR_DISCOVERY_POLICY` is unset, the runtime defaults to `trusted_only` when upstream config exists and falls back to `all_active` only when no trust list or upstream set exists
 - `P4P_CURATED_INDEX_PROMOTION_POLICY` decides whether trusted mirrored evidence stays raw-only (`manual_only`) or may be promoted into the curated active index (`trusted_mirrors`)
 - `P4P_REGISTRY_METADATA` declares runtime scope and capability metadata such as `local`, `country`, `vertical`, or `umbrella`
