@@ -1,6 +1,6 @@
 # P4P Proof Status
 
-Current checkpoint: 12 November 2026
+Current checkpoint: 15 November 2026
 
 This file is the dated proof checkpoint for the public P4P surface.
 
@@ -13,6 +13,28 @@ If documents overlap:
 - `PROOF.md` wins on what is publicly claimed right now
 - `docs/PROOF-STATUS.md` wins on dated hosted-proof facts
 - `SPEC.md` wins on contract details
+
+## 15 November 2026 trust-claim issuer checkpoint
+
+Verified locally on the current `public-main` working branch:
+
+- trusted claim issuers may be configured as URL and Ed25519 public-key pins
+- duplicate issuer URLs fail closed when their configured keys conflict
+- imported trust claims expose separate `valid_signature` and `trusted_issuer`
+  evaluations in the administrative status response
+- valid claims from unpinned issuers remain stored as inspectable evidence but
+  are excluded from public directory projection and active trust counts
+- claims issued by the current registry are trusted only when both its canonical
+  URL and configured signing key match the claim
+- the specification, trust-claim response schema, example, registry guide and
+  deployment guide describe the pinned-issuer boundary
+- `bash scripts/check-local.sh` completed `320` tests with `2` intentional skips
+- the whitespace, tracked-filename, hard-secret, JavaScript syntax and public
+  audit gates remained green
+
+This is local contract and regression evidence. It does not establish a hosted
+federation, independent issuer operation, deployed client wording, or external
+verification of any claim.
 
 ## 13 November 2026 registry-sync review checkpoint
 

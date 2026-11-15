@@ -82,7 +82,7 @@ fi
 echo
 echo "== python tests =="
 if [ -x demo-node/.venv/bin/python ]; then
-  demo-node/.venv/bin/python -m unittest discover -s tests -q
+  demo-node/.venv/bin/python -m unittest discover -s tests
 else
   echo "demo-node/.venv/bin/python not found; skipped"
 fi

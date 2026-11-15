@@ -153,10 +153,11 @@ Then open:
 - `GET /directory` is a separate moderated public directory layered on top of `GET /discover`
 - `GET /directory-claims` requires the registry admin token and shows persisted directory-level claims such as `reviewed`, `verified`, `hidden`, `spam`, or `local_only`
 - `POST /directory-claims` requires the registry admin token plus `can_moderate_directory` and may annotate or hide discoverable nodes without rewriting source truth
-- `GET /trust-claims` requires the registry admin token and shows signed trust claims currently stored by the registry
+- `GET /trust-claims` requires the registry admin token and shows signed trust claims currently stored by the registry plus separate `valid_signature` and `trusted_issuer` evaluations
 - `POST /trust-claims` requires the registry admin token, `can_issue_trust_claims`, and a configured registry signing key
 - signed trust-claim issuance also requires a canonical `P4P_REGISTRY_URL`, so the issuer URL comes from registry config rather than request-host fallback
-- `POST /trust-claims/import` requires the registry admin token plus `can_moderate_directory` and only imports signed trust claims for moderated-directory projection
+- `POST /trust-claims/import` requires the registry admin token plus `can_moderate_directory`; a valid signature is required for storage, but only claims whose issuer URL and public key match `P4P_TRUSTED_CLAIM_ISSUERS` are projected into the public directory
+- `P4P_TRUSTED_CLAIM_ISSUERS` is a JSON list of `{url, public_key}` pins; a URL match alone is never enough, while claims issued by this registry's own configured URL and signing key are trusted locally
 - `can_curate_active_index`, `can_moderate_directory`, and `can_issue_trust_claims` are intentionally separate powers in the runtime metadata
 - mirrored source cache expires from discovery after `P4P_MIRROR_SOURCE_TTL_SECONDS`
 - imported mirror records always land in raw mirror cache first
@@ -164,7 +165,7 @@ Then open:
 - curated promotion records persist the decision path between raw mirrored evidence and the curated active index
 - curated overrides sit above automatic promotion records but cannot revive stale, revoked, or invalid upstream evidence
 - moderated directory claims sit above `GET /discover` and do not change raw evidence, curated promotion, or curated override history
-- signed trust claims sit above the moderated directory as transportable positive annotations and do not change node identity or `GET /discover`
+- signed trust claims sit above the moderated directory as transportable positive annotations and do not change node identity or `GET /discover`; valid but unpinned claims remain admin-visible evidence and contribute no public trust label
 - stale or revoked upstream evidence is de-promoted out of the curated active index during sync/import and guarded again at read time
 - a mirrored source only counts as having visible/promotable nodes when those nodes are also fresh enough for ordinary discovery; mirror-status and curated promotion now use the same heartbeat freshness boundary as `discover()`
 - a mirrored source only counts as `discovery_eligible` when it is fresh/trusted under the current policy and still has at least one manifest-valid visible node; trusted raw source snapshots with `no_visible_nodes` stay cached for proof and downstream sync, but do not count as discoverable

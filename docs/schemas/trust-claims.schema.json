@@ -4,7 +4,7 @@
   "title": "P4P Trust Claim Status Response",
   "type": "object",
   "additionalProperties": false,
-  "required": ["registry_version", "query_time", "registry_metadata", "records"],
+  "required": ["registry_version", "query_time", "registry_metadata", "records", "evaluations"],
   "properties": {
     "registry_version": {
       "type": "string",
@@ -66,6 +66,36 @@
           "signature": {
             "type": "string",
             "pattern": "^ed25519:"
+          }
+        }
+      }
+    },
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "issuer_registry_url",
+          "node_id",
+          "valid_signature",
+          "trusted_issuer"
+        ],
+        "properties": {
+          "issuer_registry_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z]{2}-[a-z0-9]+(?:-[a-z0-9]+)*-\\d{3,}$"
+          },
+          "valid_signature": {
+            "type": "boolean"
+          },
+          "trusted_issuer": {
+            "type": "boolean"
           }
         }
       }

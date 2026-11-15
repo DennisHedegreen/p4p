@@ -468,7 +468,7 @@ See [`docs/REFERENCE-HARDWARE-KIT.md`](docs/REFERENCE-HARDWARE-KIT.md).
 
 ## 9. Gate F: Trust Hardening
 
-Status: prototype exists; hardening required.
+Status: issuer pinning is implemented locally; client wording and state documentation remain.
 
 Purpose:
 
@@ -476,11 +476,11 @@ make signed registry and trust data mean what the words imply.
 
 Required before broad trust/federation claims:
 
-- trusted upstream entries bind registry URL to expected registry public key
-- registry source import verifies both signature and expected key when configured
-- trust-claim issuer lists bind issuer URL to expected public key
-- imported trust claims distinguish `valid_signature` from `trusted_issuer`
-- directory projection only shows trust claims from trusted issuers by default
+- done locally: trusted upstream entries bind registry URL to expected registry public key
+- done locally: registry source import verifies both signature and expected key when configured
+- done locally: trust-claim issuer lists bind issuer URL to expected public key
+- done locally: imported trust claims distinguish `valid_signature` from `trusted_issuer`
+- done locally: directory projection only shows trust claims from trusted issuers by default
 - client-facing labels avoid overclaiming trust
 - docs describe self-signed, signed, trusted, and verified as separate states
 

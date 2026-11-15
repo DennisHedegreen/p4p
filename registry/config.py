@@ -16,6 +16,7 @@ from registry.models import (
     MirrorUpstream,
     RegistryExportScope,
     RegistryMetadata,
+    TrustedClaimIssuer,
 )
 
 
@@ -66,6 +67,27 @@ def load_mirror_upstreams() -> list[MirrorUpstream]:
 
 def load_mirror_trusted_upstreams() -> list[MirrorUpstream]:
     return load_mirror_upstream_list("P4P_MIRROR_TRUSTED_UPSTREAMS")
+
+
+def load_trusted_claim_issuers() -> list[TrustedClaimIssuer]:
+    raw = os.environ.get("P4P_TRUSTED_CLAIM_ISSUERS", "").strip()
+    if not raw:
+        return []
+
+    parsed = json.loads(raw)
+    issuers = [TrustedClaimIssuer(**entry) for entry in parsed]
+    deduped: list[TrustedClaimIssuer] = []
+    seen: dict[str, str] = {}
+    for issuer in issuers:
+        normalized = normalized_registry_url(issuer.url)
+        existing_key = seen.get(normalized)
+        if existing_key is not None:
+            if existing_key != issuer.public_key:
+                raise ValueError("Duplicate trusted claim issuer public_key pins must match")
+            continue
+        seen[normalized] = issuer.public_key
+        deduped.append(issuer)
+    return deduped
 
 
 def resolve_mirror_discovery_policy(
@@ -179,6 +201,8 @@ class RegistryConfig:
     mirror_trusted_upstreams: list[MirrorUpstream]
     trusted_mirror_upstream_urls: set[str]
     trusted_mirror_upstream_keys: dict[str, str]
+    trusted_claim_issuers: list[TrustedClaimIssuer]
+    trusted_claim_issuer_keys: dict[str, str]
     mirror_discovery_policy: MirrorDiscoveryPolicy
     registry_source_reexport_policy: RegistryExportScope
     curated_index_promotion_policy: CuratedIndexPromotionPolicy
@@ -202,6 +226,7 @@ def build_registry_config() -> RegistryConfig:
         configured_upstreams=mirror_upstreams,
         trusted_upstreams=mirror_trusted_upstreams,
     )
+    trusted_claim_issuers = load_trusted_claim_issuers()
     registry_private_key = load_registry_private_key()
     return RegistryConfig(
         registry_url=registry_url,
@@ -216,6 +241,11 @@ def build_registry_config() -> RegistryConfig:
             normalized_registry_url(upstream.url): upstream.public_key
             for upstream in mirror_trusted_upstreams
             if upstream.public_key
+        },
+        trusted_claim_issuers=trusted_claim_issuers,
+        trusted_claim_issuer_keys={
+            normalized_registry_url(issuer.url): issuer.public_key
+            for issuer in trusted_claim_issuers
         },
         mirror_discovery_policy=resolve_mirror_discovery_policy(
             configured_upstreams=mirror_upstreams,
@@ -253,6 +283,7 @@ __all__ = [
     "load_mirror_upstreams",
     "load_registry_metadata",
     "load_registry_private_key",
+    "load_trusted_claim_issuers",
     "resolve_curated_index_promotion_policy",
     "resolve_mirror_discovery_policy",
     "resolve_registry_source_reexport_policy",

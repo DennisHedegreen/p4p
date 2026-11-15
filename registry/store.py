@@ -43,6 +43,7 @@ from registry.models import (
     RegistrySyncStatusResponse,
     RegistrySyncUpstreamResult,
     TrustClaimImportResponse,
+    TrustClaimEvaluation,
     TrustClaimIssueRequest,
     TrustClaimRecord,
     TrustClaimStatusResponse,
@@ -932,6 +933,8 @@ class RegistryStore:
                     1
                     for record in self._trust_claims.values()
                     if (record.expires_at is None or record.expires_at > now)
+                    and self._trust_claim_signature_is_valid(record)
+                    and self._trust_claim_issuer_is_trusted(record)
                     and self._node_is_directory_visible_for_moderation(record.node_id, now=now)
                 ),
             }
@@ -960,6 +963,7 @@ class RegistryStore:
                 "active_directory_claims": directory_claim_counts["active"],
                 "trust_claim_records": trust_claim_counts["records"],
                 "active_trust_claims": trust_claim_counts["active"],
+                "trusted_claim_issuers": len(self._config.trusted_claim_issuer_keys),
                 "reexportable_mirrored_registries": len(reexportable_mirrors),
                 "mirror_sync_interval_seconds": self._config.mirror_sync_interval_seconds,
                 "mirror_ttl_seconds": self._config.mirror_source_ttl_seconds,
@@ -1078,6 +1082,10 @@ class RegistryStore:
                 continue
             if record.expires_at is not None and record.expires_at <= now:
                 continue
+            if not self._trust_claim_signature_is_valid(record):
+                continue
+            if not self._trust_claim_issuer_is_trusted(record):
+                continue
             active.append(record)
         active.sort(
             key=lambda record: (
@@ -1086,6 +1094,29 @@ class RegistryStore:
             )
         )
         return active
+
+    def _trust_claim_signature_is_valid(self, record: TrustClaimRecord) -> bool:
+        from registry.validation import require_valid_trust_claim
+
+        try:
+            require_valid_trust_claim(record)
+        except HTTPException:
+            return False
+        return True
+
+    def _trust_claim_issuer_is_trusted(self, record: TrustClaimRecord) -> bool:
+        issuer_url = normalized_registry_url(record.issuer_registry_url)
+        issuer_key = record.issuer_registry_public_key
+        expected_key = self._config.trusted_claim_issuer_keys.get(issuer_url)
+        if expected_key is not None:
+            return expected_key == issuer_key
+
+        if not self._config.registry_url or not self._config.registry_public_key:
+            return False
+        return (
+            normalized_registry_url(self._config.registry_url) == issuer_url
+            and self._config.registry_public_key == issuer_key
+        )
 
     def _node_known_for_moderation(self, node_id: str, *, now: datetime) -> bool:
         return self._node_has_current_moderation_effect(node_id, now=now)
@@ -1176,6 +1207,8 @@ class RegistryStore:
                 1
                 for record in self._trust_claims.values()
                 if (record.expires_at is None or record.expires_at > now)
+                and self._trust_claim_signature_is_valid(record)
+                and self._trust_claim_issuer_is_trusted(record)
                 and self._node_is_directory_visible_for_moderation(record.node_id, now=now)
             )
             return {"records": records, "active": active}
@@ -1193,6 +1226,15 @@ class RegistryStore:
                 query_time=utc_now(),
                 registry_metadata=self._config.registry_metadata,
                 records=records,
+                evaluations=[
+                    TrustClaimEvaluation(
+                        issuer_registry_url=record.issuer_registry_url,
+                        node_id=record.node_id,
+                        valid_signature=self._trust_claim_signature_is_valid(record),
+                        trusted_issuer=self._trust_claim_issuer_is_trusted(record),
+                    )
+                    for record in records
+                ],
             )
 
     def set_directory_claim(self, payload: DirectoryClaimRequest) -> DirectoryClaimRecord:

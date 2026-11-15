@@ -16,7 +16,6 @@ from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException, Response
-from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from starlette.requests import Request
 
@@ -42,6 +41,22 @@ def load_module(relative_path: str, env: dict[str, str] | None = None):
         spec.loader.exec_module(module)
 
     return module
+
+
+async def asgi_responses(app, requests: list[dict[str, object]]) -> list[httpx.Response]:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+    ) as client:
+        return [
+            await client.request(
+                str(request.pop("method")),
+                str(request.pop("url")),
+                **request,
+            )
+            for request in (dict(item) for item in requests)
+        ]
 
 
 class RegistryBridgeAsyncClient:
@@ -2394,6 +2409,28 @@ class P4PTruthfulnessTests(unittest.TestCase):
                         ),
                         (
                             "https://registry-a.pizza4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                    ),
+                },
+            )
+
+    def test_duplicate_trusted_claim_issuer_pins_must_match(self) -> None:
+        identity = load_module("p4p_identity.py")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Duplicate trusted claim issuer public_key pins must match",
+        ):
+            load_module(
+                "registry/main.py",
+                {
+                    "P4P_TRUSTED_CLAIM_ISSUERS": self.pinned_upstreams(
+                        (
+                            "https://trust.protocols4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                        (
+                            "https://trust.protocols4people.com",
                             identity.public_key_from_private(identity.generate_private_key()),
                         ),
                     ),
@@ -6514,6 +6551,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_REGISTRY_URL": "https://directory.registry.test",
+                "P4P_TRUSTED_CLAIM_ISSUERS": self.pinned_upstreams(
+                    (
+                        "https://issuer.registry.test",
+                        identity.public_key_from_private(issuer_private_key),
+                    )
+                ),
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_moderate_directory": True}
@@ -6568,8 +6611,77 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertNotIn("trust_claims", discover_result.nodes[0].model_dump(mode="json", exclude_none=True))
         self.assertEqual(len(trust_claims.records), 1)
         self.assertEqual(str(trust_claims.records[0].issuer_registry_url), "https://issuer.registry.test/")
+        self.assertTrue(trust_claims.evaluations[0].valid_signature)
+        self.assertTrue(trust_claims.evaluations[0].trusted_issuer)
         self.assertEqual(directory.health()["trust_claim_records"], 1)
         self.assertEqual(directory.health()["active_trust_claims"], 1)
+
+    def test_valid_claim_from_unpinned_key_is_cached_but_not_projected(self) -> None:
+        identity = load_module("p4p_identity.py")
+        issuer_private_key = identity.generate_private_key()
+        issuer = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://issuer.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": issuer_private_key,
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_issue_trust_claims": True}
+                ),
+            },
+        )
+        directory = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://directory.registry.test",
+                "P4P_TRUSTED_CLAIM_ISSUERS": self.pinned_upstreams(
+                    (
+                        "https://issuer.registry.test",
+                        identity.public_key_from_private(identity.generate_private_key()),
+                    )
+                ),
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_moderate_directory": True}
+                ),
+            },
+        )
+        demo = load_module("demo-node/demo_node.py")
+        signed_node = demo.sign_node_announcement()
+        issuer.announce(issuer.Node(**signed_node))
+        directory.announce(directory.Node(**signed_node))
+
+        issued = issuer.trust_claim_issue(
+            issuer.TrustClaimIssueRequest(
+                node_id=demo.NODE.node_id,
+                claims=["verified"],
+            ),
+            SimpleNamespace(base_url="https://issuer.registry.test/"),
+            authorization=self.registry_admin_authorization(),
+        )
+        directory.trust_claim_import(
+            issued.claim,
+            authorization=self.registry_admin_authorization(),
+        )
+
+        directory_result = directory.directory(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        status_result = directory.trust_claims(
+            authorization=self.registry_admin_authorization()
+        )
+
+        self.assertEqual(directory_result.nodes[0].trust_claims, [])
+        self.assertEqual(directory_result.nodes[0].trust_claim_issuers, [])
+        self.assertEqual(len(status_result.records), 1)
+        self.assertTrue(status_result.evaluations[0].valid_signature)
+        self.assertFalse(status_result.evaluations[0].trusted_issuer)
+        self.assertEqual(directory.health()["trust_claim_records"], 1)
+        self.assertEqual(directory.health()["active_trust_claims"], 0)
 
     def test_health_active_claim_counts_hide_claims_for_nodes_no_longer_current(self) -> None:
         identity = load_module("p4p_identity.py")
@@ -7188,7 +7300,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(sync_status_error.exception.status_code, 503)
         self.assertEqual(sync_status_error.exception.detail, "Registry admin token is not configured")
 
-    def test_registry_http_public_surfaces_stay_open_while_admin_reads_require_token(self) -> None:
+    def test_registry_public_surfaces_stay_open_while_admin_reads_require_token(self) -> None:
         identity = load_module("p4p_identity.py")
         registry_app = load_module(
             "registry/registry_app.py",
@@ -7210,30 +7322,37 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            health = client.get("/health")
-            identity_log = client.get("/identity-log")
-            registry_source = client.get("/registry-source")
-            registry_info = client.get("/registry-info")
-            admin_read = client.get("/registry-mirrors")
-            admin_read_ok = client.get(
-                "/registry-mirrors",
-                headers={"Authorization": self.registry_admin_authorization()},
-            )
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "https",
+                "server": ("local.registry.test", 443),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/",
+                "query_string": b"",
+                "headers": [(b"host", b"local.registry.test")],
+            }
+        )
+        health = registry_app.health()
+        identity_log = registry_app.identity_log()
+        registry_source = registry_app.registry_source(request)
+        registry_info = registry_app.registry_info(request)
+        with self.assertRaises(HTTPException) as admin_read:
+            registry_app.registry_mirrors()
+        admin_read_ok = registry_app.registry_mirrors(
+            authorization=self.registry_admin_authorization(),
+        )
 
-        self.assertEqual(health.status_code, 200)
-        self.assertEqual(health.json()["status"], "ok")
-        self.assertEqual(identity_log.status_code, 200)
-        self.assertIn("records", identity_log.json())
-        self.assertEqual(registry_source.status_code, 200)
-        self.assertIn("registry_url", registry_source.json())
-        self.assertEqual(registry_info.status_code, 200)
-        self.assertEqual(admin_read.status_code, 401)
-        self.assertEqual(admin_read.json()["detail"], "Invalid registry admin token")
-        self.assertEqual(admin_read_ok.status_code, 200)
-        self.assertEqual(admin_read_ok.json()["sources"], [])
+        self.assertEqual(health["status"], "ok")
+        self.assertEqual(identity_log.records, [])
+        self.assertEqual(str(registry_source.registry_url), "https://local.registry.test/")
+        self.assertEqual(str(registry_info.registry_url), "https://local.registry.test/")
+        self.assertEqual(admin_read.exception.status_code, 401)
+        self.assertEqual(admin_read.exception.detail, "Invalid registry admin token")
+        self.assertEqual(admin_read_ok.sources, [])
 
-    def test_registry_http_signed_outputs_require_configured_registry_url(self) -> None:
+    def test_registry_signed_outputs_require_configured_registry_url(self) -> None:
         identity = load_module("p4p_identity.py")
         registry_app = load_module(
             "registry/registry_app.py",
@@ -7250,35 +7369,42 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            registry_source = client.get(
-                "/registry-source",
-                headers={"Host": "spoofed.example"},
-            )
-            trust_claim_issue = client.post(
-                "/trust-claims",
-                headers={
-                    "Authorization": self.registry_admin_authorization(),
-                    "Host": "spoofed.example",
-                },
-                json={
-                    "node_id": "dk-test-001",
-                    "claims": ["reviewed"],
-                },
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "https",
+                "server": ("spoofed.example", 443),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/",
+                "query_string": b"",
+                "headers": [(b"host", b"spoofed.example")],
+            }
+        )
+        with self.assertRaises(HTTPException) as registry_source:
+            registry_app.registry_source(request)
+        with self.assertRaises(HTTPException) as trust_claim_issue:
+            registry_app.trust_claim_issue(
+                registry_app.TrustClaimIssueRequest(
+                    node_id="dk-test-001",
+                    claims=["reviewed"],
+                ),
+                request,
+                authorization=self.registry_admin_authorization(),
             )
 
-        self.assertEqual(registry_source.status_code, 503)
+        self.assertEqual(registry_source.exception.status_code, 503)
         self.assertEqual(
-            registry_source.json()["detail"],
+            registry_source.exception.detail,
             "Signed registry source export requires P4P_REGISTRY_URL",
         )
-        self.assertEqual(trust_claim_issue.status_code, 503)
+        self.assertEqual(trust_claim_issue.exception.status_code, 503)
         self.assertEqual(
-            trust_claim_issue.json()["detail"],
+            trust_claim_issue.exception.detail,
             "Signed trust claim issuance requires P4P_REGISTRY_URL",
         )
 
-    def test_registry_http_unsigned_registry_source_export_rejects_public_host_fallback(self) -> None:
+    def test_registry_unsigned_registry_source_export_rejects_public_host_fallback(self) -> None:
         registry_app = load_module(
             "registry/registry_app.py",
             {
@@ -7289,19 +7415,28 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            registry_source = client.get(
-                "/registry-source",
-                headers={"Host": "spoofed.example"},
-            )
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "https",
+                "server": ("spoofed.example", 443),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/registry-source",
+                "query_string": b"",
+                "headers": [(b"host", b"spoofed.example")],
+            }
+        )
+        with self.assertRaises(HTTPException) as registry_source:
+            registry_app.registry_source(request)
 
-        self.assertEqual(registry_source.status_code, 503)
+        self.assertEqual(registry_source.exception.status_code, 503)
         self.assertEqual(
-            registry_source.json()["detail"],
+            registry_source.exception.detail,
             "Unsigned registry source export without P4P_REGISTRY_URL requires a loopback request base",
         )
 
-    def test_registry_http_loopback_self_import_is_rejected_without_canonical_url(self) -> None:
+    def test_registry_loopback_self_import_is_rejected_without_canonical_url(self) -> None:
         registry_app = load_module(
             "registry/registry_app.py",
             {
@@ -7316,24 +7451,30 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            registry_source = client.get(
-                "/registry-source",
-                headers={"Host": "127.0.0.1:8001"},
-            )
-            self_import = client.post(
-                "/registry-source/import",
-                headers={
-                    "Authorization": self.registry_admin_authorization(),
-                    "Host": "127.0.0.1:8001",
-                },
-                json=registry_source.json(),
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "http",
+                "server": ("127.0.0.1", 8001),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/registry-source",
+                "query_string": b"",
+                "headers": [(b"host", b"127.0.0.1:8001")],
+            }
+        )
+        registry_source = registry_app.registry_source(request)
+
+        with self.assertRaises(HTTPException) as self_import:
+            registry_app.registry_source_import(
+                registry_source,
+                request=request,
+                authorization=self.registry_admin_authorization(),
             )
 
-        self.assertEqual(registry_source.status_code, 200)
-        self.assertEqual(self_import.status_code, 409)
+        self.assertEqual(self_import.exception.status_code, 409)
         self.assertEqual(
-            self_import.json()["detail"],
+            self_import.exception.detail,
             "Registry cannot import its own source snapshot",
         )
 
@@ -7358,17 +7499,20 @@ class P4PTruthfulnessTests(unittest.TestCase):
         def fail_async_client(*args, **kwargs):
             raise AssertionError("Mirror sync should not start automatically when interval is 0")
 
-        with patch.object(registry_app.httpx, "AsyncClient", new=fail_async_client):
-            with TestClient(registry_app.app) as client:
-                health = client.get("/health")
-                sync_status = client.get(
-                    "/registry-sync",
-                    headers={"Authorization": self.registry_admin_authorization()},
+        async def exercise_lifespan():
+            async with registry_app.app.router.lifespan_context(registry_app.app):
+                return (
+                    registry_app.health(),
+                    registry_app.registry_sync_status(
+                        authorization=self.registry_admin_authorization(),
+                    ),
                 )
 
-        self.assertEqual(health.status_code, 200)
-        self.assertEqual(sync_status.status_code, 200)
-        self.assertEqual(sync_status.json()["last_results"], [])
+        with patch.object(registry_app.httpx, "AsyncClient", new=fail_async_client):
+            health, sync_status = asyncio.run(exercise_lifespan())
+
+        self.assertEqual(health["status"], "ok")
+        self.assertEqual(sync_status.last_results, [])
 
     def test_registry_http_admin_token_headers_work_for_write_and_read_routes(self) -> None:
         identity = load_module("p4p_identity.py")
@@ -7393,23 +7537,28 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            blocked_sync = client.post("/registry-sync")
-            sync_via_token_header = client.post(
-                "/registry-sync",
-                headers={"X-P4P-Registry-Token": "registry-admin-secret"},
+        blocked_sync, sync_via_token_header = asyncio.run(
+            asgi_responses(
+                registry_app.app,
+                [
+                    {"method": "POST", "url": "/registry-sync"},
+                    {
+                        "method": "POST",
+                        "url": "/registry-sync",
+                        "headers": {"X-P4P-Registry-Token": "registry-admin-secret"},
+                    },
+                ],
             )
-            sync_status_via_bearer = client.get(
-                "/registry-sync",
-                headers={"Authorization": self.registry_admin_authorization()},
-            )
+        )
+        sync_status_via_bearer = registry_app.registry_sync_status(
+            authorization=self.registry_admin_authorization(),
+        )
 
         self.assertEqual(blocked_sync.status_code, 401)
         self.assertEqual(blocked_sync.json()["detail"], "Invalid registry admin token")
         self.assertEqual(sync_via_token_header.status_code, 200)
         self.assertEqual(sync_via_token_header.json()["upstreams"], [])
-        self.assertEqual(sync_status_via_bearer.status_code, 200)
-        self.assertEqual(sync_status_via_bearer.json()["last_results"], [])
+        self.assertEqual(sync_status_via_bearer.last_results, [])
 
     def test_scope_and_capability_gating_blocks_onboard_relay_and_reexport(self) -> None:
         identity = load_module("p4p_identity.py")
