@@ -93,6 +93,13 @@ class MirrorUpstream(BaseModel):
     public_key: str | None = Field(default=None, pattern=r"^ed25519:")
 
 
+class TrustedClaimIssuer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: HttpUrl
+    public_key: str = Field(pattern=r"^ed25519:")
+
+
 class RegistryCapabilities(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -443,6 +450,15 @@ class TrustClaimResponse(BaseModel):
     claim: TrustClaimRecord
 
 
+class TrustClaimEvaluation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    issuer_registry_url: HttpUrl
+    node_id: str = Field(min_length=1, pattern=NODE_ID_PATTERN)
+    valid_signature: bool
+    trusted_issuer: bool
+
+
 class TrustClaimStatusResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -450,6 +466,7 @@ class TrustClaimStatusResponse(BaseModel):
     query_time: datetime
     registry_metadata: RegistryMetadata
     records: list[TrustClaimRecord]
+    evaluations: list[TrustClaimEvaluation] = Field(default_factory=list)
 
 
 class TrustClaimImportResponse(BaseModel):
@@ -583,6 +600,8 @@ __all__ = [
     "RegistrySyncUpstreamResult",
     "RegistryType",
     "StorageBackend",
+    "TrustedClaimIssuer",
+    "TrustClaimEvaluation",
     "TrustClaimImportResponse",
     "TrustClaimIssueRequest",
     "TrustClaimRecord",

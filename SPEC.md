@@ -418,6 +418,14 @@ The reference runtime may also persist directory-level claims per `node_id`. Tha
 
 The reference runtime may also persist signed trust claims as a separate transportable annotation layer above the moderated directory. Trust claims may be issued by one registry, imported by another, and projected into `GET /directory`, but they must not change node identity, raw source evidence, or `GET /discover`.
 
+A valid trust-claim signature proves only that the claim matches its embedded
+issuer key. Public directory projection additionally requires the issuer's
+canonical registry URL and Ed25519 public key to match an accepted issuer pin.
+The issuing registry may accept its own claim only when the claim matches both
+its configured canonical URL and its configured signing key. Valid claims from
+unpinned issuers may remain stored as inspectable evidence, but they must not
+produce public trust labels.
+
 Nested `mirrored_sources` are deliberately stricter than ordinary mirrored discovery:
 
 - only `trusted_upstream` mirrored sources may be re-exported
@@ -445,7 +453,7 @@ This surface is intentionally separate from `GET /discover`.
 
 **`POST /directory-claims`**: Reference control endpoint that stores directory-level claims per `node_id`. This endpoint is only valid for registries whose metadata declares `can_moderate_directory: true`.
 
-**`GET /trust-claims`**: Reference inspection endpoint that returns signed trust claims currently stored by this registry.
+**`GET /trust-claims`**: Reference inspection endpoint that returns signed trust claims currently stored by this registry. Each stored record has a corresponding evaluation containing `valid_signature` and `trusted_issuer`; these states must remain separate.
 
 **`POST /trust-claims`**: Reference control endpoint that issues a signed trust claim for one `node_id`. This endpoint is only valid for registries whose metadata declares `can_issue_trust_claims: true`, and it requires a configured registry signing key.
 
