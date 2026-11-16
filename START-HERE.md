@@ -29,7 +29,7 @@ The registry helps the two sides find each other. It does not receive the order,
 
 ### Node
 
-The restaurant-owned endpoint or computer where its menu, orders, and local state live.
+The restaurant-controlled endpoint or computer where its menu, orders, and local state live.
 
 ### Registry
 
@@ -69,7 +69,7 @@ The current public `v0.1` proof demonstrates:
 - direct order submission to the restaurant node
 - failover between registries for discovery
 
-This is an advanced prototype with real code and tests. The next gate is a controlled live pilot on a restaurant-owned node.
+This is an advanced prototype with real code and tests. The next gate is a controlled live pilot on a restaurant-controlled node.
 
 It is not yet a broad production service.
 
