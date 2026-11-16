@@ -2,6 +2,8 @@
 
 P4P is an open protocol for direct restaurant-customer discovery and ordering.
 
+**New here? Start with [`START-HERE.md`](START-HERE.md), the plain-language route through the project.**
+
 The shortest honest version is:
 
 - the restaurant node announces itself to a registry
@@ -59,9 +61,10 @@ Short answers:
 
 If you want the shortest route in:
 
-1. [`PROOF.md`](PROOF.md)
-2. [`docs/WHITEPAPER-v0.1.md`](docs/WHITEPAPER-v0.1.md)
-3. [`docs/PROOF-STATUS.md`](docs/PROOF-STATUS.md)
+1. [`START-HERE.md`](START-HERE.md)
+2. [`PROOF.md`](PROOF.md)
+3. [`docs/WHITEPAPER-v0.1.md`](docs/WHITEPAPER-v0.1.md)
+4. [`docs/PROOF-STATUS.md`](docs/PROOF-STATUS.md)
 
 If you want to click something public before reading code:
 
@@ -157,7 +160,7 @@ P4P is not currently claiming:
 
 If you only want the current public claim:
 
-1. `README.md`
+1. `START-HERE.md`
 2. `PROOF.md`
 3. `docs/WHITEPAPER-v0.1.md`
 4. `docs/PROOF-STATUS.md`

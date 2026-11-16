@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="{{lang_attr}}" dir="{{dir_attr}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="{{author_name}}">
+  <title>{{page_title}}</title>
+  <meta name="description" content="{{page_description}}">
+  <link rel="canonical" href="{{canonical_url}}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{page_title}}">
+  <meta property="og:description" content="{{page_description}}">
+  <meta property="og:url" content="{{canonical_url}}">
+  <meta property="og:site_name" content="Pizza4People">
+  <meta property="og:image" content="https://pizza4people.com/assets/card.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://pizza4people.com/assets/card.png">
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    .locale-switcher { display: grid; gap: 0.45rem; margin-bottom: 1rem; }
+    .locale-switcher-label { color: var(--muted); font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .locale-switcher-links { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .locale-link { display: inline-flex; align-items: center; min-height: 2rem; padding: 0.28rem 0.68rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; }
+    .locale-link.active { border-color: rgba(240, 90, 79, 0.45); background: rgba(240, 90, 79, 0.08); color: var(--white); }
+    .start-hero { grid-template-columns: minmax(0, 1.05fr) minmax(18rem, 0.95fr); }
+    .start-hero h1 { max-width: 12ch; }
+    .route-card { display: flex; min-height: 14rem; flex-direction: column; }
+    .route-card .source-list { margin-top: auto; }
+    .faq-list { display: grid; gap: 0.85rem; }
+    .faq-list article { border-top: 1px solid var(--line); padding-top: 1rem; }
+    .faq-list p { margin-bottom: 0; color: var(--muted); }
+    @media (max-width: 860px) { .start-hero { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- {{generated_comment}} -->
+  <a class="skip-link" href="#main">{{skip_link}}</a>
+  <header class="site-header">
+    <a class="brand" href="../" aria-label="{{brand_home_aria}}">
+      <span class="brand-mark">P4P</span>
+      <span class="brand-copy">Pizza4People</span>
+    </a>
+    <nav class="top-nav" aria-label="{{nav_label}}">
+      <a href="#flow">Flow</a>
+      <a href="#terms">{{nav_terms}}</a>
+      <a href="#status">Status</a>
+      <a href="#routes">{{nav_routes}}</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero hero-compact start-hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        {{locale_switcher_html}}
+        <p class="eyebrow">{{eyebrow}}</p>
+        <h1 id="hero-title">{{title}}</h1>
+        <p class="hero-lede">{{lede}}</p>
+        <div class="hero-tags" aria-label="{{status_label}}">
+          <span>{{tag_protocol}}</span>
+          <span>{{tag_status}}</span>
+          <span>{{tag_next}}</span>
+        </div>
+        <div class="hero-actions">
+          <a class="button" href="#flow">{{flow_kicker}}</a>
+          <a class="button button-secondary" href="{{repo_start_url}}" rel="noopener noreferrer">{{github_action}}</a>
+        </div>
+      </div>
+      <figure class="proof-figure">
+        <img src="../assets/protocol-proof-map.svg" alt="{{proof_alt}}">
+        <figcaption>{{proof_caption}}</figcaption>
+      </figure>
+    </section>
+
+    <section class="plain-demo" id="flow" aria-labelledby="flow-title">
+      <div class="section-heading"><p class="section-kicker">{{flow_kicker}}</p><h2 id="flow-title">{{flow_title}}</h2></div>
+      <div class="plain-grid">
+        <article class="plain-card"><span class="plain-number">01</span><h3>{{flow_1_title}}</h3><p>{{flow_1_body}}</p></article>
+        <article class="plain-card"><span class="plain-number">02</span><h3>{{flow_2_title}}</h3><p>{{flow_2_body}}</p></article>
+        <article class="plain-card"><span class="plain-number">03</span><h3>{{flow_3_title}}</h3><p>{{flow_3_body}}</p></article>
+        <article class="plain-card"><span class="plain-number">04</span><h3>{{flow_4_title}}</h3><p>{{flow_4_body}}</p></article>
+      </div>
+    </section>
+
+    <section class="module-section" id="terms" aria-labelledby="terms-title">
+      <div class="section-heading"><p class="section-kicker">{{terms_kicker}}</p><h2 id="terms-title">{{terms_title}}</h2></div>
+      <div class="module-route-grid">
+        <article class="module-route-card"><h3>{{node_title}}</h3><p>{{node_body}}</p></article>
+        <article class="module-route-card"><h3>{{registry_title}}</h3><p>{{registry_body}}</p></article>
+        <article class="module-route-card"><h3>{{module_title}}</h3><p>{{module_body}}</p></article>
+      </div>
+    </section>
+
+    <section class="two-column" aria-label="{{boundary_kicker}}">
+      <article class="fact-panel"><p class="section-kicker">{{does_title}}</p><ul class="check-list"><li>{{does_1}}</li><li>{{does_2}}</li><li>{{does_3}}</li></ul></article>
+      <article class="fact-panel"><p class="section-kicker warning">{{does_not_title}}</p><ul class="check-list muted-list"><li>{{not_1}}</li><li>{{not_2}}</li><li>{{not_3}}</li></ul></article>
+    </section>
+
+    <section class="section-grid" id="status" aria-labelledby="status-title">
+      <div><p class="section-kicker">{{status_kicker}}</p><h2 id="status-title">{{status_title}}</h2></div>
+      <div class="section-body"><p>{{status_body_1}}</p><p>{{status_body_2}}</p><div class="source-list"><a href="{{repo_proof_url}}" rel="noopener noreferrer">{{proof_action}}</a></div></div>
+    </section>
+
+    <section class="module-section" id="routes" aria-labelledby="routes-title">
+      <div class="section-heading"><p class="section-kicker">{{routes_kicker}}</p><h2 id="routes-title">{{routes_title}}</h2></div>
+      <div class="module-route-grid">
+        <article class="module-route-card route-card"><h3>{{owner_title}}</h3><p>{{owner_body}}</p><div class="source-list"><a href="{{repo_pilot_url}}" rel="noopener noreferrer">{{open_route}}</a></div></article>
+        <article class="module-route-card route-card"><h3>{{developer_title}}</h3><p>{{developer_body}}</p><div class="source-list"><a href="{{repo_spec_url}}" rel="noopener noreferrer">SPEC.md</a><a href="{{repo_architecture_url}}" rel="noopener noreferrer">ARCHITECTURE.md</a></div></article>
+        <article class="module-route-card route-card"><h3>{{reviewer_title}}</h3><p>{{reviewer_body}}</p><div class="source-list"><a href="{{repo_review_url}}" rel="noopener noreferrer">REVIEW-ME.md</a><a href="{{repo_proof_url}}" rel="noopener noreferrer">PROOF.md</a></div></article>
+      </div>
+    </section>
+
+    <section class="section-grid" id="faq" aria-labelledby="faq-title">
+      <div><p class="section-kicker">{{faq_kicker}}</p><h2 id="faq-title">{{faq_title}}</h2></div>
+      <div class="faq-list">
+        <article><h3>{{faq_app_q}}</h3><p>{{faq_app_a}}</p></article>
+        <article><h3>{{faq_now_q}}</h3><p>{{faq_now_a}}</p></article>
+        <article><h3>{{faq_pizza_q}}</h3><p>{{faq_pizza_a}}</p></article>
+        <article><h3>{{faq_payment_q}}</h3><p>{{faq_payment_a}}</p></article>
+      </div>
+    </section>
+
+    <section class="contact-section"><div class="hero-actions"><a class="button" href="../">{{home_action}}</a><a class="button button-secondary" href="{{repo_start_url}}" rel="noopener noreferrer">{{github_action}}</a></div></section>
+  </main>
+  <footer class="site-footer"><span>Pizza4People / P4P</span><span>{{footer_status}}</span></footer>
+</body>
+</html>
