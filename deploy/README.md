@@ -99,8 +99,9 @@ If a registry should automatically mirror another registry, also configure:
 
 ```bash
 P4P_REGISTRY_METADATA='{"registry_type":"country","capabilities":{"can_onboard_nodes":true,"can_relay_sources":true,"can_curate_active_index":true,"can_reexport_sources":false},"scope":{"vertical_id":"pizza4people","country_code":"DK"}}'
-P4P_MIRROR_UPSTREAMS=https://registry-a.pizza4people.com
-P4P_MIRROR_TRUSTED_UPSTREAMS=https://registry-a.pizza4people.com
+P4P_MIRROR_UPSTREAMS='[{"url":"https://registry-a.pizza4people.com","public_key":"ed25519:replace-with-registry-a-public-key"}]'
+P4P_MIRROR_TRUSTED_UPSTREAMS='[{"url":"https://registry-a.pizza4people.com","public_key":"ed25519:replace-with-registry-a-public-key"}]'
+P4P_TRUSTED_CLAIM_ISSUERS='[{"url":"https://trust.protocols4people.com","public_key":"ed25519:replace-with-trust-issuer-public-key"}]'
 P4P_MIRROR_DISCOVERY_POLICY=trusted_only
 P4P_CURATED_INDEX_PROMOTION_POLICY=trusted_mirrors
 P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors
@@ -238,6 +239,20 @@ Example:
 - pilot node: `127.0.0.1:8201`
 
 Use Caddy or nginx as the public HTTPS reverse proxy.
+
+The reference service binds the pilot node to loopback and the Caddy example
+replaces any incoming `X-Forwarded-For` value with Caddy's direct client address.
+Keep the matching node setting narrow:
+
+```bash
+P4P_TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128
+```
+
+If Caddy and the node move onto separate hosts or containers, replace those
+loopback ranges with the exact proxy network. Never configure `0.0.0.0/0` or
+`::/0`; doing so lets public clients choose the identity used by the limiter.
+The in-process limiter is local to one Uvicorn process. Multiple workers or node
+replicas require a shared limiter or a verified limit at the reverse proxy.
 
 `caddy.live-pilot.example` shows the intended host-to-local-port mapping.
 

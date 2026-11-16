@@ -376,6 +376,32 @@ Then verify this sequence:
 8. After a restart, the stored order is still present in SQLite.
 9. The operator can quickly return the node to `menu_only` or set `open=false`.
 
+Before changing the node to `live`, run the read-only readiness gate from the
+repository root. Keep the operator token in an environment variable so it does
+not appear in the process list:
+
+```bash
+P4P_OPERATOR_TOKEN=change-this \
+python3 scripts/check-pilot-readiness.py \
+  --node-url http://127.0.0.1:8201
+```
+
+The default expected mode is `menu_only`. The checker does not submit an order
+or change node state. It verifies dual registration, the operator auth boundary,
+the active menu, the pickup/pay-at-pickup boundary, baseline modules, setup
+completion, restart parity, and operator queue access.
+
+After the restaurant has explicitly activated real orders, the same read-only
+receipt can verify the resulting state with:
+
+```bash
+P4P_OPERATOR_TOKEN=change-this \
+python3 scripts/check-pilot-readiness.py \
+  --node-url http://127.0.0.1:8201 \
+  --expect-mode live \
+  --json
+```
+
 Useful local commands:
 
 ```bash
@@ -391,7 +417,7 @@ curl -sS -X PATCH http://127.0.0.1:8201/operator/state \
 
 curl -sS -X POST http://127.0.0.1:8201/p4p/order \
   -H 'Content-Type: application/json' \
-  -d '{"customer_name":"Anna Hansen","customer_contact":"+4512345678","fulfillment":"pickup","items":[{"id":"kebab-pita","quantity":1}],"note":"Pilot dry run","client_version":"p4p-web-0.1"}'
+  -d '{"client_request_id":"p4p-check-pilot-dry-run-0001","customer_name":"Anna Hansen","customer_contact":"+4512345678","fulfillment":"pickup","items":[{"id":"kebab-pita","quantity":1}],"note":"Pilot dry run","client_version":"p4p-web-0.1"}'
 
 curl -sS http://127.0.0.1:8201/operator/orders \
   -H 'Authorization: Bearer change-this'

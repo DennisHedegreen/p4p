@@ -1,6 +1,6 @@
 # P4P Proof Status
 
-Current checkpoint: 15 October 2026
+Current checkpoint: 15 November 2026
 
 This file is the dated proof checkpoint for the public P4P surface.
 
@@ -13,6 +13,85 @@ If documents overlap:
 - `PROOF.md` wins on what is publicly claimed right now
 - `docs/PROOF-STATUS.md` wins on dated hosted-proof facts
 - `SPEC.md` wins on contract details
+
+## 15 November 2026 trust-claim issuer checkpoint
+
+Verified locally on the current `public-main` working branch:
+
+- trusted claim issuers may be configured as URL and Ed25519 public-key pins
+- duplicate issuer URLs fail closed when their configured keys conflict
+- imported trust claims expose separate `valid_signature` and `trusted_issuer`
+  evaluations in the administrative status response
+- valid claims from unpinned issuers remain stored as inspectable evidence but
+  are excluded from public directory projection and active trust counts
+- claims issued by the current registry are trusted only when both its canonical
+  URL and configured signing key match the claim
+- the specification, trust-claim response schema, example, registry guide and
+  deployment guide describe the pinned-issuer boundary
+- `bash scripts/check-local.sh` completed `320` tests with `2` intentional skips
+- the whitespace, tracked-filename, hard-secret, JavaScript syntax and public
+  audit gates remained green
+
+This is local contract and regression evidence. It does not establish a hosted
+federation, independent issuer operation, deployed client wording, or external
+verification of any claim.
+
+## 13 November 2026 registry-sync review checkpoint
+
+Verified locally on the current `public-main` working branch:
+
+- automatic mirror sync now rejects a signed snapshot when its declared
+  `registry_url` differs from the configured upstream URL
+- automatic mirror upstream entries may now pin the expected registry public
+  key, and sync rejects otherwise valid snapshots signed by a different key
+- public trusted-upstream entries now require both URL and public-key pin;
+  URL-only trust remains available only for loopback development
+- an unpinned public polling target may still be cached as raw evidence but is
+  excluded from trusted-only discovery and automatic curated promotion
+- relayed trust now includes the signed relay public key, so a relay cannot
+  change identity while retaining trust through the same URL
+- the mismatch path leaves the mirror cache unchanged and reports an explicit
+  sync error
+- all five registry-sync regression tests passed
+- `bash scripts/check-local.sh` completed `318` tests with `2` intentional skips
+- the public audit, JavaScript syntax and Python compile gates remained green
+
+This closes endpoint-to-snapshot URL confusion and makes public trust
+key-bound. Public URL-only polling remains compatible as raw evidence, but it
+does not grant discovery or relay trust.
+
+## 6 November 2026 local runtime-health checkpoint
+
+Verified locally from a clean `public-main` base plus the health-check fixes in
+the current working branch:
+
+- `bash scripts/check-local.sh` completed `312` tests with `2` intentional skips
+- the documented default `python3 scripts/health-check.py --mode local` command
+  passed against the reference client on port `8765`, two registries, and one
+  dual-registered test node
+- with the primary registry stopped, the backup registry still discovered the
+  same node, the menu remained available directly from the node, and a valid
+  test order was accepted directly by the node
+- a controlled pilot passed the read-only `menu_only` readiness gate with
+  `22 PASS`, `0 WARN`, and `0 FAIL`
+- after explicit local activation, the same pilot passed the `live` readiness
+  gate with `22 PASS`, `0 WARN`, and `0 FAIL`
+- one synthetic pilot order was stored in SQLite and remained present after the
+  pilot process restarted with the same database and persistent node identity
+- reusing a node id with a changed signing identity correctly produced
+  `503 not_ready` until the temporary in-memory registries were reset and the
+  persistent identity was reannounced
+
+Two local check-path defects were corrected during this pass:
+
+- `scripts/health-check.py` defaulted to client port `8768` even though the lab
+  and test guide use `8765`
+- the manual pilot order example omitted the now-required
+  `client_request_id`
+
+This is local runtime evidence only. The registries used for this pass were
+temporary in-memory processes, and no hosted DNS, TLS, independent Registry B,
+public node, physical hardware, or real restaurant order was verified.
 
 ## 15 October 2026 restart checkpoint
 

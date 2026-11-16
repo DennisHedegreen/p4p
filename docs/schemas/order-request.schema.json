@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "client_request_id",
     "customer_name",
     "customer_contact",
     "fulfillment",
@@ -13,13 +14,21 @@
     "client_version"
   ],
   "properties": {
+    "client_request_id": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]+$"
+    },
     "customer_name": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 120
     },
     "customer_contact": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 254
     },
     "fulfillment": {
       "type": "string",
@@ -28,6 +37,7 @@
     "items": {
       "type": "array",
       "minItems": 1,
+      "maxItems": 50,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -35,21 +45,25 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 64,
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
           },
           "quantity": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 99
           }
         }
       }
     },
     "note": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 1000
     },
     "client_version": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 100
     }
   }
 }

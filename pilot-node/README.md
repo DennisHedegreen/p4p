@@ -160,6 +160,45 @@ The first pilot order-state set is:
 - `completed`
 - `cancelled`
 
+Hosted pilot nodes always boot in `menu_only`. Moving to `live` requires a
+persistent SQLite database, a persistent node identity, a strong operator token,
+and a completed setup receipt. New hosted orders remain `new`; payment and print
+lanes run only after the operator changes the order to `accepted`. Loopback-only
+lab nodes retain automatic processing for deterministic simulation tests.
+
+The node also enforces atomic admission limits before storing a new order. The
+defaults are 20 product lines, 20 total units, 250,000 currency minor units,
+50 active orders, 25 pending orders, and 3 pending orders per customer contact.
+Configure them with `P4P_ORDER_MAX_LINES`, `P4P_ORDER_MAX_UNITS`,
+`P4P_ORDER_MAX_VALUE_MINOR`, `P4P_ORDER_MAX_ACTIVE`,
+`P4P_ORDER_MAX_PENDING`, and `P4P_ORDER_MAX_PENDING_PER_CONTACT`. Idempotent
+retries of an existing order remain readable after a queue limit is reached.
+
+`POST /p4p/order` is also throttled per resolved client address. Configure the
+window with `P4P_ORDER_RATE_LIMIT_REQUESTS` and
+`P4P_ORDER_RATE_LIMIT_WINDOW_SECONDS`. The node ignores `X-Forwarded-For` by
+default. When a known reverse proxy is used, list only its exact networks in
+`P4P_TRUSTED_PROXY_CIDRS`; the limiter walks the chain from the node backwards
+and selects the first address that is not a trusted proxy. A browser-generated
+device id is not a security identity and is not used to bypass or partition
+this limit.
+
+Every newly stored order includes an immutable pricing snapshot with product
+id, name, quantity, unit price, line total, currency, and total. Payment and
+print adapters consume that snapshot, so editing the live menu cannot reprice a
+pending order. Rows created by older pilot versions remain readable without a
+snapshot and use the legacy compatibility path.
+
+Accepted-order work is persisted in the SQLite `order_action_outbox` before a
+stock, payment, or print lane runs. Completed lanes are skipped on a retry. A
+lane left `running` by a process restart becomes `unknown` and is not repeated
+automatically, because the external side effect may already have happened. The
+operator can inspect `GET /operator/orders/{order_id}/actions` and reconcile an
+unknown action with `PATCH /operator/orders/{order_id}/actions/{action_id}` as
+either `succeeded` or `failed`; `POST /operator/orders/{order_id}/resume` then
+continues at the next unfinished lane. Normal order-status edits do not trigger
+or repeat outbox work. Only the atomic claim owner executes a lane.
+
 ## Public Endpoints
 
 - `GET /`

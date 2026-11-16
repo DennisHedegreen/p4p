@@ -43,6 +43,7 @@ from registry.models import (
     RegistrySyncStatusResponse,
     RegistrySyncUpstreamResult,
     TrustClaimImportResponse,
+    TrustClaimEvaluation,
     TrustClaimIssueRequest,
     TrustClaimRecord,
     TrustClaimStatusResponse,
@@ -90,6 +91,7 @@ class StoredMirrorSource:
     imported_at: datetime
     verified_signature: bool
     relayed_by_registry_url: str | None = None
+    relayed_by_registry_public_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -245,6 +247,7 @@ class RegistryStore:
                 imported_at=self._deserialize_datetime(stored["imported_at"]) or utc_now(),
                 verified_signature=bool(stored["verified_signature"]),
                 relayed_by_registry_url=stored.get("relayed_by_registry_url"),
+                relayed_by_registry_public_key=stored.get("relayed_by_registry_public_key"),
             )
             for registry_url, stored in mirrors_payload.items()
         }
@@ -303,6 +306,7 @@ class RegistryStore:
                     "imported_at": self._serialize_datetime(stored.imported_at),
                     "verified_signature": stored.verified_signature,
                     "relayed_by_registry_url": stored.relayed_by_registry_url,
+                    "relayed_by_registry_public_key": stored.relayed_by_registry_public_key,
                 }
                 for registry_url, stored in self._mirror_sources.items()
             },
@@ -420,6 +424,7 @@ class RegistryStore:
                 verified_signature=verified_signature,
                 imported_at=now,
                 relayed_by_registry_url=None,
+                relayed_by_registry_public_key=None,
                 allow_stale_skip=allow_stale_skip,
             )
             if not top_level_decision.stored:
@@ -443,6 +448,7 @@ class RegistryStore:
                     verified_signature=mirrored_source.verified_signature,
                     imported_at=mirrored_source.imported_at,
                     relayed_by_registry_url=str(payload.registry_url),
+                    relayed_by_registry_public_key=payload.registry_public_key,
                     allow_stale_skip=True,
                 )
                 if decision.stored:
@@ -469,6 +475,7 @@ class RegistryStore:
         verified_signature: bool,
         imported_at: datetime,
         relayed_by_registry_url: str | None,
+        relayed_by_registry_public_key: str | None,
         allow_stale_skip: bool,
     ) -> MirrorSourceStoreDecision:
         payload = self._snapshot_to_response(payload)
@@ -496,13 +503,17 @@ class RegistryStore:
             existing_content_hash = registry_source_content_hash(existing.snapshot)
             incoming_provenance_priority = self._mirror_source_provenance_priority(
                 registry_url=payload.registry_url,
+                registry_public_key=payload.registry_public_key,
                 verified_signature=verified_signature,
                 relayed_by_registry_url=relayed_by_registry_url,
+                relayed_by_registry_public_key=relayed_by_registry_public_key,
             )
             existing_provenance_priority = self._mirror_source_provenance_priority(
                 registry_url=existing.snapshot.registry_url,
+                registry_public_key=existing.snapshot.registry_public_key,
                 verified_signature=existing.verified_signature,
                 relayed_by_registry_url=existing.relayed_by_registry_url,
+                relayed_by_registry_public_key=existing.relayed_by_registry_public_key,
             )
             incoming_priority = (
                 payload.exported_at,
@@ -560,6 +571,7 @@ class RegistryStore:
             imported_at=imported_at,
             verified_signature=verified_signature,
             relayed_by_registry_url=relayed_by_registry_url,
+            relayed_by_registry_public_key=relayed_by_registry_public_key,
         )
         self._mirror_sources[registry_url] = stored
         return MirrorSourceStoreDecision(stored=True)
@@ -568,8 +580,10 @@ class RegistryStore:
         self,
         *,
         registry_url: str,
+        registry_public_key: str | None,
         verified_signature: bool,
         relayed_by_registry_url: str | None,
+        relayed_by_registry_public_key: str | None,
     ) -> tuple[int, int, int]:
         source_url = normalized_registry_url(registry_url)
         relay_url = (
@@ -581,15 +595,32 @@ class RegistryStore:
         if self._config.mirror_discovery_policy == "all_active":
             discovery_rank = 1
         if relay_url is not None:
-            if relay_url in self._config.trusted_mirror_upstream_urls and verified_signature:
+            if self._trusted_upstream_identity_matches(
+                relay_url,
+                relayed_by_registry_public_key,
+            ) and verified_signature:
                 discovery_rank = max(discovery_rank, 2)
-        elif source_url in self._config.trusted_mirror_upstream_urls and verified_signature:
+        elif self._trusted_upstream_identity_matches(
+            source_url,
+            registry_public_key,
+        ) and verified_signature:
             discovery_rank = max(discovery_rank, 3)
         return (
             discovery_rank,
             1 if verified_signature else 0,
             1 if relayed_by_registry_url is None else 0,
         )
+
+    def _trusted_upstream_identity_matches(
+        self,
+        registry_url: str,
+        registry_public_key: str | None,
+    ) -> bool:
+        normalized = normalized_registry_url(registry_url)
+        if normalized not in self._config.trusted_mirror_upstream_urls:
+            return False
+        expected_key = self._config.trusted_mirror_upstream_keys.get(normalized)
+        return expected_key is None or registry_public_key == expected_key
 
     def _snapshot_to_response(self, payload: RegistrySourceSnapshot) -> RegistrySourceResponse:
         return RegistrySourceResponse(**payload.model_dump(mode="json", exclude_none=True))
@@ -729,19 +760,24 @@ class RegistryStore:
         else:
             source_url = normalized_registry_url(source_registry_url)
             relay_url = normalized_registry_url(source_relay_registry_url) if source_relay_registry_url else None
-            trust_urls_configured = bool(self._config.trusted_mirror_upstream_urls)
             if relay_url:
-                if trust_urls_configured and relay_url not in self._config.trusted_mirror_upstream_urls:
+                if not self._trusted_upstream_identity_matches(
+                    relay_url,
+                    stored.relayed_by_registry_public_key,
+                ):
                     automatic_decision_basis = "untrusted_relay"
-                    automatic_decision_reason = "Relayed mirror source is not in the trusted upstream set"
+                    automatic_decision_reason = "Relayed mirror source does not match the trusted upstream identity"
                 else:
                     automatic_decision = "promote"
                     automatic_decision_basis = "trusted_relayed_upstream"
                     automatic_decision_reason = "Verified relayed upstream is allowed by current curated promotion policy"
                     promotion_eligible = True
-            elif trust_urls_configured and source_url not in self._config.trusted_mirror_upstream_urls:
+            elif not self._trusted_upstream_identity_matches(
+                source_url,
+                stored.snapshot.registry_public_key,
+            ):
                 automatic_decision_basis = "untrusted_upstream"
-                automatic_decision_reason = "Upstream registry is not in the trusted upstream set"
+                automatic_decision_reason = "Upstream registry does not match the trusted upstream identity"
             else:
                 automatic_decision = "promote"
                 automatic_decision_basis = "trusted_upstream"
@@ -897,6 +933,8 @@ class RegistryStore:
                     1
                     for record in self._trust_claims.values()
                     if (record.expires_at is None or record.expires_at > now)
+                    and self._trust_claim_signature_is_valid(record)
+                    and self._trust_claim_issuer_is_trusted(record)
                     and self._node_is_directory_visible_for_moderation(record.node_id, now=now)
                 ),
             }
@@ -925,6 +963,7 @@ class RegistryStore:
                 "active_directory_claims": directory_claim_counts["active"],
                 "trust_claim_records": trust_claim_counts["records"],
                 "active_trust_claims": trust_claim_counts["active"],
+                "trusted_claim_issuers": len(self._config.trusted_claim_issuer_keys),
                 "reexportable_mirrored_registries": len(reexportable_mirrors),
                 "mirror_sync_interval_seconds": self._config.mirror_sync_interval_seconds,
                 "mirror_ttl_seconds": self._config.mirror_source_ttl_seconds,
@@ -1043,6 +1082,10 @@ class RegistryStore:
                 continue
             if record.expires_at is not None and record.expires_at <= now:
                 continue
+            if not self._trust_claim_signature_is_valid(record):
+                continue
+            if not self._trust_claim_issuer_is_trusted(record):
+                continue
             active.append(record)
         active.sort(
             key=lambda record: (
@@ -1051,6 +1094,29 @@ class RegistryStore:
             )
         )
         return active
+
+    def _trust_claim_signature_is_valid(self, record: TrustClaimRecord) -> bool:
+        from registry.validation import require_valid_trust_claim
+
+        try:
+            require_valid_trust_claim(record)
+        except HTTPException:
+            return False
+        return True
+
+    def _trust_claim_issuer_is_trusted(self, record: TrustClaimRecord) -> bool:
+        issuer_url = normalized_registry_url(record.issuer_registry_url)
+        issuer_key = record.issuer_registry_public_key
+        expected_key = self._config.trusted_claim_issuer_keys.get(issuer_url)
+        if expected_key is not None:
+            return expected_key == issuer_key
+
+        if not self._config.registry_url or not self._config.registry_public_key:
+            return False
+        return (
+            normalized_registry_url(self._config.registry_url) == issuer_url
+            and self._config.registry_public_key == issuer_key
+        )
 
     def _node_known_for_moderation(self, node_id: str, *, now: datetime) -> bool:
         return self._node_has_current_moderation_effect(node_id, now=now)
@@ -1141,6 +1207,8 @@ class RegistryStore:
                 1
                 for record in self._trust_claims.values()
                 if (record.expires_at is None or record.expires_at > now)
+                and self._trust_claim_signature_is_valid(record)
+                and self._trust_claim_issuer_is_trusted(record)
                 and self._node_is_directory_visible_for_moderation(record.node_id, now=now)
             )
             return {"records": records, "active": active}
@@ -1158,6 +1226,15 @@ class RegistryStore:
                 query_time=utc_now(),
                 registry_metadata=self._config.registry_metadata,
                 records=records,
+                evaluations=[
+                    TrustClaimEvaluation(
+                        issuer_registry_url=record.issuer_registry_url,
+                        node_id=record.node_id,
+                        valid_signature=self._trust_claim_signature_is_valid(record),
+                        trusted_issuer=self._trust_claim_issuer_is_trusted(record),
+                    )
+                    for record in records
+                ],
             )
 
     def set_directory_claim(self, payload: DirectoryClaimRequest) -> DirectoryClaimRecord:
@@ -1512,7 +1589,10 @@ class RegistryStore:
             if stored.relayed_by_registry_url:
                 continue
             if (
-                source_registry_url in self._config.trusted_mirror_upstream_urls
+                self._trusted_upstream_identity_matches(
+                    source_registry_url,
+                    stored.snapshot.registry_public_key,
+                )
                 and stored.verified_signature
             ):
                 reexportable[registry_url] = (stored, "trusted_upstream")
@@ -1539,14 +1619,23 @@ class RegistryStore:
         if stored.relayed_by_registry_url:
             relayed_by_registry_url = normalized_registry_url(stored.relayed_by_registry_url)
             if (
-                relayed_by_registry_url in self._config.trusted_mirror_upstream_urls
+                self._trusted_upstream_identity_matches(
+                    relayed_by_registry_url,
+                    stored.relayed_by_registry_public_key,
+                )
                 and stored.verified_signature
             ):
                 if not visible_nodes:
                     return True, False, "no_visible_nodes"
                 return True, True, "trusted_relayed_upstream"
             return True, False, "not_trusted"
-        if registry_url in self._config.trusted_mirror_upstream_urls and stored.verified_signature:
+        if (
+            self._trusted_upstream_identity_matches(
+                registry_url,
+                stored.snapshot.registry_public_key,
+            )
+            and stored.verified_signature
+        ):
             if not visible_nodes:
                 return True, False, "no_visible_nodes"
             return True, True, "trusted_upstream"

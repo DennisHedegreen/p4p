@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pizza4People / P4P - Brussels 2026 Non-Technical One-Pager</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    :root {
+      --paper: #fbf5e7;
+      --ink: #171513;
+      --muted: #6d6458;
+      --line: #d6c8b2;
+      --accent: #f04a2a;
+      --accent-soft: #ffefe5;
+      --dark: #1f1a16;
+      --green: #2d8b58;
+      --green-soft: #e6f4ea;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #d9d2c5;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+    }
+
+    .sheet {
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      padding: 10mm;
+      background:
+        radial-gradient(circle at 85% 11%, rgba(240, 74, 42, 0.08) 0 14mm, transparent 14.2mm),
+        radial-gradient(circle at 14% 92%, rgba(45, 139, 88, 0.06) 0 12mm, transparent 12.2mm),
+        var(--paper);
+      overflow: hidden;
+    }
+
+    .frame {
+      height: 100%;
+      padding: 8mm;
+      border: 0.45mm solid rgba(214, 200, 178, 0.95);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 4.5mm;
+    }
+
+    .eyebrow {
+      margin: 0 0 3mm;
+      font-size: 3mm;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1,
+    h2,
+    h3,
+    p,
+    ul,
+    ol {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 10.3mm;
+      line-height: 0.96;
+      margin-bottom: 2.5mm;
+    }
+
+    .lead {
+      font-size: 4.35mm;
+      line-height: 1.2;
+      max-width: 150mm;
+    }
+
+    .hero-band {
+      padding: 3.4mm 4mm;
+      border-radius: 3mm;
+      background: var(--accent);
+      color: #fff7f2;
+      font-size: 3.7mm;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 4mm;
+      align-content: start;
+    }
+
+    .col {
+      display: grid;
+      gap: 4mm;
+      align-content: start;
+    }
+
+    .card {
+      padding: 3.7mm 4mm;
+      border: 0.35mm solid rgba(214, 200, 178, 0.98);
+      border-radius: 3mm;
+      background: rgba(255, 252, 246, 0.88);
+    }
+
+    h2 {
+      margin-bottom: 2mm;
+      font-size: 3.85mm;
+      line-height: 1.1;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    p,
+    li {
+      font-size: 3.18mm;
+      line-height: 1.28;
+    }
+
+    ul,
+    ol {
+      padding-left: 4.5mm;
+      display: grid;
+      gap: 1.2mm;
+    }
+
+    .flow {
+      padding: 3.5mm 4mm;
+      border-radius: 3mm;
+      background: var(--dark);
+      color: #fffaf3;
+      font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 3.05mm;
+      line-height: 1.32;
+      font-weight: 700;
+    }
+
+    .good {
+      background: var(--green-soft);
+      color: #193423;
+      font-weight: 700;
+    }
+
+    .scope {
+      background: var(--accent-soft);
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 6mm;
+      padding-top: 1.6mm;
+      border-top: 0.35mm solid rgba(214, 200, 178, 0.95);
+      color: var(--muted);
+      font-size: 2.55mm;
+    }
+
+    .footer strong {
+      color: var(--ink);
+    }
+
+    @media print {
+      body {
+        background: none;
+      }
+
+      .sheet {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <section class="frame">
+      <header>
+        <p class="eyebrow">Brussels 2026 Hackathon / Pizza4People / Non-Technical</p>
+        <h1>DIRECT PICKUP ORDERS<br>WITHOUT MARKETPLACE CAPTURE.</h1>
+        <p class="lead">Use this when the group needs the shortest version first: the customer finds the shop, sees the menu, places a pickup order, and the shop receives it directly.</p>
+      </header>
+
+      <div class="hero-band">
+        The core claim is simple: the customer should be able to reach the shop directly without a marketplace owning first contact.
+      </div>
+
+      <section class="grid">
+        <div class="col">
+          <article class="card">
+            <h2>The Problem</h2>
+            <p>Food platforms look convenient, but they become permanent middlemen. The shop pays fees, loses visibility, and the customer remembers the app instead of the place that makes the food.</p>
+          </article>
+
+          <article class="card">
+            <h2>Who It Is For</h2>
+            <ul>
+              <li>small pizza, kebab, grill, burger, and takeaway shops</li>
+              <li>owner-run places that need a simple direct channel</li>
+              <li>nearby customers who just need menu, order, and pickup</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>What The Group Can Show</h2>
+            <ul>
+              <li>one shop page with menu and opening state</li>
+              <li>QR code or direct link to the shop page</li>
+              <li>simple pickup-order flow</li>
+              <li>small operator screen for incoming orders</li>
+              <li><code>received</code> and <code>ready</code> order status</li>
+              <li>payment at pickup first</li>
+            </ul>
+          </article>
+
+          <article class="flow">QR/link -&gt; menu -&gt; order -&gt; shop screen -&gt; received -&gt; ready -&gt; pickup</article>
+
+          <article class="card good">
+            <h2>Why This Is Strong In A Hackathon</h2>
+            <ul>
+              <li>concrete user and visible pain</li>
+              <li>easy to explain in one minute</li>
+              <li>visual live demo instead of abstract slides</li>
+              <li>small enough to scope honestly</li>
+              <li>deeper protocol story exists if the team wants ambition</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="col">
+          <article class="card">
+            <h2>How A 5-Person Team Can Split It</h2>
+            <ol>
+              <li>customer flow and menu page</li>
+              <li>operator screen and status UI</li>
+              <li>backend and order transport</li>
+              <li>design and pitch</li>
+              <li>integration and live demo</li>
+            </ol>
+          </article>
+
+          <article class="card scope">
+            <h2>Hard Scope Boundary</h2>
+            <p>In the hackathon we do not build delivery logistics, online payment processing, customer accounts, loyalty systems, full federation, or a production-security story.</p>
+            <p style="margin-top:2mm;"><strong>Not:</strong> "Uber Eats but open source."</p>
+          </article>
+
+          <article class="card">
+            <h2>Honest Claim</h2>
+            <p>This is a direct pickup-ordering proof for local shops. If it works, it shows that a small shop can have a direct digital route back to the customer without handing the relationship to a marketplace.</p>
+          </article>
+
+          <article class="card">
+            <h2>What The Team Already Has</h2>
+            <ul>
+              <li><strong>Owner-facing concept:</strong> pizza4people.com</li>
+              <li><strong>Repo and protocol layer:</strong> github.com/DennisHedegreen/p4p</li>
+              <li><strong>Boundary:</strong> use what already exists, but keep the demo smaller than the full repo story</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span><strong>Pizza4People / P4P</strong><br>Direct route, not platform capture.</span>
+        <span>Hedegreen Research<br>Brussels hackathon prep · 2026 · non-technical</span>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

@@ -102,7 +102,11 @@ This means the old roadmap understated the system.
 
 But the system is not yet production-grade because:
 
-- trusted registry URLs are not yet pinned to expected registry public keys
+- automatic mirror sync now requires the fetched snapshot's declared
+  `registry_url` to match the configured upstream URL; public trusted entries
+  require a public-key pin, trusted relay identity is key-checked, and unpinned
+  public polling remains raw-evidence-only; loopback development is the narrow
+  URL-only exception
 - signed trust claims are currently valid signatures, not yet trusted issuer guarantees
 - the web client must treat all registry, node, and menu data as untrusted input
 - docs still mix old version language with newer runtime reality
@@ -279,6 +283,46 @@ Stop conditions:
 - live/test state is unclear to customers
 - restaurant cannot turn ordering off quickly
 
+### Live-order safety gate
+
+Review added 2026-11-05. Do not accept real customer orders until every P0 item
+is implemented and verified across the public client, node, schemas and pilot
+deployment.
+
+P0 - blocks live ordering (`done` means implemented and regression-tested):
+
+- **done 2026-11-05:** align the order wire contract, including required `client_request_id`, across
+  the shared model, protocol schema, specification, implementer kit, reference
+  client and `scripts/check-node.py`; add one cross-surface contract test
+- **done 2026-11-05:** fail closed before `live`: require persistent SQLite, a persistent node key,
+  a strong non-placeholder operator token and a completed readiness check
+- **done 2026-11-05:** introduce a pending/manual restaurant acceptance step before payment,
+  printing or kitchen processing; public submission must not auto-accept
+- **partly done 2026-11-06:** atomically enforce line, unit, value, active-queue,
+  pending-queue and repeated-contact limits; the in-process order throttle now
+  resolves client IPs through an explicit trusted-proxy CIDR policy and ignores
+  spoofed forwarding headers from other peers. Real reverse-proxy configuration,
+  shared multi-process limits and load verification still block production use;
+  unauthenticated device ids are deliberately not treated as customer identity
+- **done 2026-11-05:** strip or reject control characters before customer text reaches ESC/POS or
+  another print/spool output
+
+P1 - required for a trustworthy pilot:
+
+- **done 2026-11-05:** snapshot product id, name, unit price, currency and totals when an order is
+  first stored; never recalculate an existing order from the current menu
+- **done 2026-11-06:** persist stock, payment and print actions in a SQLite
+  outbox; atomically claim each lane, skip succeeded lanes, convert interrupted
+  running actions to `unknown`, and require explicit operator reconciliation
+  before resuming. External adapters must still honor the stable idempotency key
+- add order pagination and filtering, enforced state transitions, and a clear
+  retention and personal-data deletion policy
+- **done 2026-11-05:** enforce private spool permissions (`0700` directories and `0600` files)
+- keep external payment adapters explicitly sandbox-only until a separate
+  production payment gate is approved
+- state the trust boundary clearly: a signed node proves key control, not that
+  the operator is a verified restaurant
+
 ## 6. Gate C: Pilot Node
 
 Status: foundation built.
@@ -294,7 +338,7 @@ Required capabilities:
 - persistent menu configuration: first version exists
 - persistent order storage: first version exists
 - operator login: token-protected endpoints exist
-- order dashboard: API exists, UI still needed
+- order dashboard: operator UI and API exist; real-counter usability still needs a restaurant pass
 - order states: `new`, `accepted`, `rejected`, `ready`, `completed`, `cancelled`: first version exists
 - order timestamp and order id: first version exists
 - order ingress retry idempotency: implemented and verified locally; shared multi-process coordination is still a scale gate
@@ -302,7 +346,7 @@ Required capabilities:
 - customer name and contact stored only in node: first version exists
 - clear pickup/payment wording: first version exists
 - live/test/menu-only/closed controls: first version exists
-- registry health view: API exists, UI still needed
+- registry health view: operator node UI and API exist; hosted readback still needs a real pilot host
 - manual reannounce: first version exists
 - signed announcements and heartbeats: first version exists
 - root key and operational key support
@@ -373,6 +417,8 @@ Required deployment pieces:
   handoff, dual-registry discovery, and container restart-persistence smoke
 - done locally: pull-request security gate with dependency, static-analysis, test,
   container-build, and high/critical image-vulnerability checks
+- done locally: read-only pilot readiness checker for dual registration, operator
+  auth, menu, pickup/pay-at-pickup, baseline modules, setup and restart parity
 - still hosted: proxy limits, HSTS, monitoring, log inspection, and recovery drill
 
 Target topology:
@@ -385,9 +431,44 @@ The first live pilot may still use a hosted node if the restaurant cannot host y
 
 If that happens, document it honestly as a hosted restaurant node, not as full self-hosting.
 
+### Gate E2: Physical Restaurant Node
+
+Status: software hardware profiles and print lanes exist; no physical reference
+kit has passed the bench acceptance matrix.
+
+Purpose:
+
+turn the restaurant-controlled host from a deployment shape into a tested local
+counter appliance without making one board or vendor part of the protocol.
+
+Current candidate:
+
+- Raspberry Pi 4 reference node
+- existing phone or tablet as the private operator screen
+- Ethernet preferred for the first physical test
+- optional USB ESC/POS printer after the screen-only node is stable
+- file-spool backup before printer output is treated as reliable
+
+Required before calling any physical shape a reference kit:
+
+- unattended cold boot
+- restart and power-loss persistence
+- real operator authentication check
+- dual-registry discovery and failure test
+- visible network-failure behavior
+- counter noticeability test
+- physical printer matrix when printing is enabled
+- dated hardware and software receipt
+
+The Pi Zero 2 W remains a lower-bound experiment until it passes the same gate.
+A phone hotspot is not the reference network because it does not by itself
+provide stable public HTTPS reachability.
+
+See [`docs/REFERENCE-HARDWARE-KIT.md`](docs/REFERENCE-HARDWARE-KIT.md).
+
 ## 9. Gate F: Trust Hardening
 
-Status: prototype exists; hardening required.
+Status: issuer pinning is implemented locally; client wording and state documentation remain.
 
 Purpose:
 
@@ -395,11 +476,11 @@ make signed registry and trust data mean what the words imply.
 
 Required before broad trust/federation claims:
 
-- trusted upstream entries bind registry URL to expected registry public key
-- registry source import verifies both signature and expected key when configured
-- trust-claim issuer lists bind issuer URL to expected public key
-- imported trust claims distinguish `valid_signature` from `trusted_issuer`
-- directory projection only shows trust claims from trusted issuers by default
+- done locally: trusted upstream entries bind registry URL to expected registry public key
+- done locally: registry source import verifies both signature and expected key when configured
+- done locally: trust-claim issuer lists bind issuer URL to expected public key
+- done locally: imported trust claims distinguish `valid_signature` from `trusted_issuer`
+- done locally: directory projection only shows trust claims from trusted issuers by default
 - client-facing labels avoid overclaiming trust
 - docs describe self-signed, signed, trusted, and verified as separate states
 

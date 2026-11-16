@@ -231,6 +231,7 @@ ingredients, allergens, availability, or price.
 
 ```json
 {
+  "client_request_id": "p4p-web-550e8400-e29b-41d4-a716-446655440000",
   "customer_name": "Anna Hansen",
   "customer_contact": "+4512345678",
   "fulfillment": "pickup",
@@ -241,6 +242,13 @@ ingredients, allergens, availability, or price.
   "client_version": "p4p-web-0.1"
 }
 ```
+
+`client_request_id` is a client-generated idempotency key. It must be 16 to 128
+characters, match `^[A-Za-z0-9][A-Za-z0-9._:-]+$`, and remain unchanged when a
+client retries the same logical order after a timeout or unknown response. A new
+logical order must use a new value. Nodes must return the original result when
+the same key and payload are repeated, and must reject reuse of the key with a
+different payload.
 
 `fulfillment` supports `pickup` in the v0.1 reference implementation. The field remains extensible for later delivery flows.
 
@@ -266,6 +274,40 @@ Rejected:
   "message": "Vi lukker om 5 minutter."
 }
 ```
+
+`accepted: true` means that the node stored the submission and returned a stable
+order reference. It does not by itself mean that the kitchen accepted the order.
+A live order begins in `new`. Payment, printing, and other operational side
+effects must wait until a local operator explicitly moves it to `accepted`.
+Local `test` mode may process automatically when that behavior is clearly marked
+as simulation. `estimated_ready` is provisional while the order remains `new`.
+
+Nodes must enforce local capacity limits atomically with order creation. The
+reference pilot limits product lines, total units, order value, active orders,
+pending orders, and repeated pending orders for one customer contact. A retry
+with the same `client_request_id` and unchanged payload returns the original
+order even if capacity has since been reached.
+
+Public order ingress should also be throttled per resolved client address. A
+node behind a reverse proxy must ignore forwarding headers from untrusted peers
+and trust only explicitly configured proxy networks. Implementations should
+walk the forwarded chain from the node backwards and use the first untrusted
+address. An unauthenticated browser device id is not a reliable anti-abuse
+identity.
+
+At ingress, the node must snapshot each product id, display name, quantity,
+unit price, line total, currency, and order total. Later menu edits must not
+change an existing order's payment amount, operator ticket, or stored pricing.
+
+Live-directed nodes should persist each side-effecting lane before execution.
+On retry, completed actions must be skipped. An action interrupted while its
+side effect may have happened must be treated as unknown and held for operator
+reconciliation rather than repeated blindly. Downstream payment or print
+adapters should also honor the stable action idempotency key; local outbox state
+cannot alone prove whether an unreachable external system completed an action.
+Legacy stored orders that predate this field may be read through an explicitly
+identified compatibility path; new orders must never depend on current-menu
+prices after creation.
 
 ## 5. Endpoints
 
@@ -376,6 +418,14 @@ The reference runtime may also persist directory-level claims per `node_id`. Tha
 
 The reference runtime may also persist signed trust claims as a separate transportable annotation layer above the moderated directory. Trust claims may be issued by one registry, imported by another, and projected into `GET /directory`, but they must not change node identity, raw source evidence, or `GET /discover`.
 
+A valid trust-claim signature proves only that the claim matches its embedded
+issuer key. Public directory projection additionally requires the issuer's
+canonical registry URL and Ed25519 public key to match an accepted issuer pin.
+The issuing registry may accept its own claim only when the claim matches both
+its configured canonical URL and its configured signing key. Valid claims from
+unpinned issuers may remain stored as inspectable evidence, but they must not
+produce public trust labels.
+
 Nested `mirrored_sources` are deliberately stricter than ordinary mirrored discovery:
 
 - only `trusted_upstream` mirrored sources may be re-exported
@@ -403,7 +453,7 @@ This surface is intentionally separate from `GET /discover`.
 
 **`POST /directory-claims`**: Reference control endpoint that stores directory-level claims per `node_id`. This endpoint is only valid for registries whose metadata declares `can_moderate_directory: true`.
 
-**`GET /trust-claims`**: Reference inspection endpoint that returns signed trust claims currently stored by this registry.
+**`GET /trust-claims`**: Reference inspection endpoint that returns signed trust claims currently stored by this registry. Each stored record has a corresponding evaluation containing `valid_signature` and `trusted_issuer`; these states must remain separate.
 
 **`POST /trust-claims`**: Reference control endpoint that issues a signed trust claim for one `node_id`. This endpoint is only valid for registries whose metadata declares `can_issue_trust_claims: true`, and it requires a configured registry signing key.
 

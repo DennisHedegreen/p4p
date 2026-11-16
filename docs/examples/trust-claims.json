@@ -26,5 +26,13 @@
       "expires_at": "2026-05-30T18:09:00Z",
       "signature": "ed25519:example-trust-claim-signature"
     }
+  ],
+  "evaluations": [
+    {
+      "issuer_registry_url": "https://trust.protocols4people.com",
+      "node_id": "dk-brondby-test-001",
+      "valid_signature": true,
+      "trusted_issuer": true
+    }
   ]
 }

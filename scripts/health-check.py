@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from typing import Any
 
 
+DEFAULT_CLIENT_URL = "http://127.0.0.1:8765"
+
+
 @dataclass(frozen=True)
 class Result:
     status: int
@@ -101,7 +104,7 @@ def check_security_headers(url: str, label: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check a running P4P proof stack.")
     parser.add_argument("--mode", choices=("local", "hosted"), default="local")
-    parser.add_argument("--client", default="http://127.0.0.1:8768")
+    parser.add_argument("--client", default=DEFAULT_CLIENT_URL)
     parser.add_argument("--registry-a", default="http://127.0.0.1:8000")
     parser.add_argument("--registry-b", default="http://127.0.0.1:8002")
     parser.add_argument("--node", default="http://127.0.0.1:8101")

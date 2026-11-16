@@ -12,5 +12,8 @@ registry-b.pizza4people.com {
 }
 
 node.example-restaurant.dk {
-	reverse_proxy 127.0.0.1:8201
+	reverse_proxy 127.0.0.1:8201 {
+		# Replace any client-supplied forwarding chain with Caddy's direct peer.
+		header_up X-Forwarded-For {remote_host}
+	}
 }

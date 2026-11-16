@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pizza4People First Contact</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+
+    :root {
+      --paper: #fbf4e6;
+      --ink: #171513;
+      --muted: #726757;
+      --line: #ccbca2;
+      --accent: #f04a2a;
+      --accent-dark: #cf3d20;
+      --accent-soft: #ffeddc;
+      --dark: #1b1714;
+      --green: #2d8b58;
+      --green-soft: #e6f4ea;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background: #ddd8cd;
+    }
+
+    .sheet {
+      width: 297mm;
+      height: 210mm;
+      margin: 0 auto 8mm;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--paper);
+      box-shadow: 0 2mm 8mm rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      break-after: page;
+    }
+
+    .page {
+      position: relative;
+      padding: 12mm 10mm 11mm;
+      background:
+        radial-gradient(circle at 20% 82%, rgba(240, 74, 42, 0.04) 0 7mm, transparent 7.1mm),
+        radial-gradient(circle at 78% 22%, rgba(240, 74, 42, 0.04) 0 9mm, transparent 9.1mm),
+        radial-gradient(circle at 66% 72%, rgba(240, 74, 42, 0.03) 0 13mm, transparent 13.1mm),
+        var(--paper);
+    }
+
+    .page + .page {
+      border-left: 0.35mm dotted rgba(114, 103, 87, 0.5);
+    }
+
+    .page::after {
+      content: "";
+      position: absolute;
+      inset: 6mm;
+      border: 0.35mm solid rgba(204, 188, 162, 0.55);
+      pointer-events: none;
+    }
+
+    .page.page--cover,
+    .page.page--back {
+      background:
+        radial-gradient(circle at 18% 84%, rgba(240, 74, 42, 0.05) 0 8mm, transparent 8.1mm),
+        radial-gradient(circle at 77% 24%, rgba(240, 74, 42, 0.05) 0 10mm, transparent 10.1mm),
+        linear-gradient(180deg, rgba(255, 247, 231, 0.9), rgba(251, 244, 230, 0.9)),
+        var(--paper);
+    }
+
+    .eyebrow {
+      margin: 0 0 4mm;
+      font-size: 3mm;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p,
+    ul,
+    ol {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 10.6mm;
+      line-height: 0.95;
+      margin-bottom: 4mm;
+    }
+
+    h2 {
+      font-size: 7mm;
+      line-height: 0.98;
+      margin-bottom: 4mm;
+    }
+
+    h3 {
+      font-size: 4mm;
+      line-height: 1.1;
+      margin-bottom: 2mm;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+
+    p,
+    li {
+      font-size: 3.85mm;
+      line-height: 1.34;
+    }
+
+    .lead {
+      font-size: 4.8mm;
+      line-height: 1.22;
+      margin-bottom: 5mm;
+    }
+
+    .stack {
+      display: grid;
+      gap: 4mm;
+    }
+
+    ul,
+    ol {
+      padding-left: 5mm;
+      display: grid;
+      gap: 1.8mm;
+    }
+
+    .quote-box,
+    .card,
+    .contact-box,
+    .flow-box,
+    .step-list {
+      border: 0.4mm solid rgba(204, 188, 162, 0.95);
+      border-radius: 3mm;
+      background: rgba(255, 252, 246, 0.84);
+    }
+
+    .quote-box,
+    .card,
+    .contact-box,
+    .flow-box {
+      padding: 4.5mm;
+    }
+
+    .dark-band {
+      background: var(--dark);
+      color: #fffaf2;
+      border-radius: 2.5mm;
+      padding: 3.8mm 4.2mm;
+      font-size: 3.55mm;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .accent-band {
+      background: var(--accent);
+      color: #fff7f1;
+      border-radius: 2.5mm;
+      padding: 3.8mm 4.2mm;
+      font-size: 3.55mm;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .flow-box h3 {
+      margin-bottom: 3mm;
+    }
+
+    .flow-line {
+      font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 3.8mm;
+      line-height: 1.4;
+    }
+
+    .flow-line.flow-line--good {
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    .module-grid,
+    .need-grid,
+    .hardware-grid {
+      display: grid;
+      gap: 3mm;
+    }
+
+    .module-grid,
+    .need-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .hardware-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .mini-card {
+      min-height: 24mm;
+      padding: 4mm;
+      border: 0.35mm solid rgba(204, 188, 162, 0.95);
+      border-radius: 2.7mm;
+      background: rgba(255, 252, 246, 0.88);
+    }
+
+    .mini-card strong {
+      display: block;
+      margin-bottom: 1.5mm;
+      font-size: 3.8mm;
+      line-height: 1.15;
+    }
+
+    .step-list {
+      padding: 4.5mm;
+      display: grid;
+      gap: 3mm;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 8mm 1fr;
+      gap: 3mm;
+      align-items: start;
+    }
+
+    .step-num {
+      width: 8mm;
+      height: 8mm;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 3.4mm;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .ring {
+      width: 78mm;
+      height: 78mm;
+      margin: 2mm auto 0;
+      border: 1.8mm solid rgba(27, 23, 20, 0.28);
+      border-radius: 50%;
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+
+    .ring-core {
+      width: 38mm;
+      height: 38mm;
+      border-radius: 50%;
+      background: rgba(240, 74, 42, 0.08);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 3mm;
+    }
+
+    .ring-core strong {
+      display: block;
+      color: var(--accent);
+      font-size: 5mm;
+      margin-bottom: 1mm;
+    }
+
+    .ring-tag {
+      position: absolute;
+      min-width: 18mm;
+      padding: 1.7mm 2.4mm;
+      border: 0.55mm solid var(--accent);
+      border-radius: 999px;
+      background: rgba(255, 252, 246, 0.96);
+      text-align: center;
+      font-size: 3.2mm;
+      font-weight: 700;
+    }
+
+    .ring-tag.tag-top { top: -2mm; left: 50%; transform: translateX(-50%); }
+    .ring-tag.tag-right { top: 17mm; right: -5mm; }
+    .ring-tag.tag-bottom { bottom: 5mm; right: 10mm; }
+    .ring-tag.tag-left { top: 42mm; left: -5mm; }
+    .ring-tag.tag-left-low { bottom: 10mm; left: 6mm; }
+
+    .qr-box {
+      width: 29mm;
+      height: 29mm;
+      border: 1mm solid var(--accent);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: var(--accent);
+      background: #fffaf2;
+    }
+
+    .fill-line {
+      display: inline-block;
+      min-width: 28mm;
+      border-bottom: 0.35mm solid rgba(27, 23, 20, 0.42);
+      transform: translateY(-1mm);
+    }
+
+    .footer {
+      position: absolute;
+      left: 10mm;
+      right: 10mm;
+      bottom: 6mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      color: var(--muted);
+      font-size: 2.7mm;
+    }
+
+    .footer strong {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    @media print {
+      body {
+        background: none;
+      }
+
+      .sheet {
+        margin: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="sheet">
+    <article class="page page--back">
+      <p class="eyebrow">Pizza4People / First Contact</p>
+      <h2>En lille første pilot</h2>
+      <div class="stack">
+        <p>Det her er ikke et løfte om at ændre hele butikken på én gang. Det er en enkel første test af, om jeres butik kan få en kortere digital vej til kunden.</p>
+        <div class="contact-box">
+          <h3>Kontakt</h3>
+          <p><strong>Dennis Hedegreen</strong></p>
+          <p>pizza4people.com</p>
+          <p>Telefon: <span class="fill-line"></span></p>
+          <p>Mail: <span class="fill-line"></span></p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:5mm;align-items:end;">
+          <div class="stack">
+            <p><strong>Print. Fold. Klips.</strong> Giv den til den lokale pizza-, kebab- eller grillbutik, når samtalen skal være enkel og ærlig.</p>
+            <p style="font-size:3.2mm;color:var(--muted);">Protocols for people - not platforms over people.</p>
+          </div>
+          <div style="text-align:center;">
+            <div class="qr-box">QR</div>
+            <p style="margin-top:2mm;font-size:3.1mm;">Scan og se den direkte vej</p>
+          </div>
+        </div>
+        <div class="dark-band">Det her handler ikke om mere system for systemets skyld. Det handler om at gøre den direkte vej tilbage til butikken mulig igen.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 12</span>
+        <span>Back cover</span>
+      </div>
+    </article>
+
+    <article class="page page--cover">
+      <p class="eyebrow">Pizza4People</p>
+      <h1>KUNDEN BOR RUNDT<br>OM HJØRNET.</h1>
+      <p class="lead">Ikke langsommere mad. Mere lokal kontrol.</p>
+      <div class="stack">
+        <p>Pizza4People handler ikke om at gøre markedet hurtigere for enhver pris. Det handler om at gøre det mere læsbart, mere lokalt og mere fair.</p>
+        <p>Butikken skal kunne findes. Menuen skal kunne ejes af butikken. Kunden skal kunne handle direkte. Teknologien skal hjælpe - ikke overtage.</p>
+        <div class="quote-box">
+          <h3>Første version</h3>
+          <p>QR, menu, pickup, betaling ved afhentning og en enkel ordreskærm i butikken. Senere kan node, printer, klokke, lampe, pickup-tavle og lokale moduler bygges på.</p>
+        </div>
+        <div class="accent-band">En first-contact pilot for pizza, kebab, grill og takeaway-steder, der vil kunne findes, vise menu og møde kunder direkte - uden at relationen bliver ejet af en app.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 1</span>
+        <span>Cover</span>
+      </div>
+    </article>
+  </section>
+
+  <section class="sheet">
+    <article class="page">
+      <p class="eyebrow">2 / Platform problem</p>
+      <h2>PLATFORMENE GJORDE DET NEMT.<br><span style="color:var(--accent);">SÅ GJORDE DE SIG SELV NØDVENDIGE.</span></h2>
+      <div class="stack">
+        <p>Før fandt kunden butikken. Så fandt kunden portalen. Så blev portalen til markedet.</p>
+        <p>Det startede som hjælp: mere synlighed, flere kunder og nemmere bestilling. Men langsomt skiftede magten plads. Kunden lærte appen at kende - ikke butikken. Menuen blev vist gennem andres systemer. Kampagner, gebyrer og placeringer blev en del af hverdagen.</p>
+        <div class="quote-box">
+          <p style="font-size:5mm;line-height:1.18;font-weight:700;">I laver maden.<br>I betaler huslejen.<br>I tager risikoen.<br>I står med kunden.</p>
+          <p style="margin-top:3mm;color:var(--accent);font-size:4.3mm;font-weight:700;">Hvorfor skal en anden eje vejen mellem jer og kunden?</p>
+        </div>
+        <div class="accent-band">Pizza4People bygger ikke et nyt bur. Pizza4People bygger en kortere vej.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 2</span>
+        <span></span>
+      </div>
+    </article>
+
+    <article class="page">
+      <p class="eyebrow">11 / First pilot truth</p>
+      <h2>HVAD SKAL VI BRUGE FRA JER?</h2>
+      <p class="lead" style="color:var(--accent);font-size:5.2mm;">Ikke en strategiplan. Bare nok til at lave en ærlig første test.</p>
+      <div class="stack">
+        <p>Første kontakt skal være praktisk. Vi skal ikke sælge en drøm om fuld digital transformation. Vi skal bare finde ud af, om den direkte vej kan fungere i jeres hverdag.</p>
+        <div class="need-grid">
+          <div class="mini-card"><strong>Menu</strong><p>Hvilke retter skal med først? Start med de 10-20 vigtigste.</p></div>
+          <div class="mini-card"><strong>Tider</strong><p>Hvornår tager I imod pickup? Hvornår skal siden sige lukket?</p></div>
+          <div class="mini-card"><strong>Ordre</strong><p>Hvem ser nye ordrer? Mobil, tablet, PC eller node?</p></div>
+          <div class="mini-card"><strong>Pickup</strong><p>Hvordan ved kunden, at maden er modtaget eller klar?</p></div>
+          <div class="mini-card"><strong>Rettelser</strong><p>Hvad skal kunne ændres hurtigt: priser, udsolgt, åbningstid?</p></div>
+          <div class="mini-card"><strong>Stop-knap</strong><p>Hvis det bliver travlt: hvordan slukker vi midlertidigt?</p></div>
+        </div>
+        <div class="dark-band">Pilot betyder: lille nok til at starte, ærlig nok til at lære, nyttig nok til at fortsætte.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 11</span>
+        <span></span>
+      </div>
+    </article>
+  </section>
+
+  <section class="sheet">
+    <article class="page">
+      <p class="eyebrow">10 / Market reading</p>
+      <h2>DET ER IKKE JER, DER ER BLEVET GAMMELDAGS.<br><span style="color:var(--accent);">MARKEDET ER BLEVET MÆRKELIGT.</span></h2>
+      <div class="stack">
+        <p>Kunderne vil stadig have lokal mad. De vil stadig hente pizza, kebab, grillmad og burgere. Men vejen til jer er blevet pakket ind i apps, gebyrer, kampagner, login, algoritmer og “synlighedspakker”.</p>
+        <p>Det mærkelige er ikke, at butikker vil bruge teknologi. Det mærkelige er, at teknologien ofte kræver at butikken afleverer relationen til kunden.</p>
+        <div class="flow-box">
+          <h3>Platform-flow</h3>
+          <p class="flow-line">Kunde -> App -> Algoritme -> Gebyr -> Butik</p>
+        </div>
+        <div class="flow-box">
+          <h3 style="color:var(--green);">Pizza4People-flow</h3>
+          <p class="flow-line flow-line--good">Kunde -> Butik</p>
+        </div>
+        <div class="dark-band">Systemet skal kunne passe til butikken. Ikke omvendt.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 10</span>
+        <span></span>
+      </div>
+    </article>
+
+    <article class="page">
+      <p class="eyebrow">3 / The direct route</p>
+      <h2>FIND DEN DIREKTE VEJ.</h2>
+      <div class="stack">
+        <p>Ikke alt behøver login, abonnement, algoritme og syv notifikationer. Nogle gange skal kunden bare finde butikken, se menuen og hente maden.</p>
+        <div class="quote-box">
+          <p style="font-size:4.8mm;line-height:1.2;font-weight:700;">Kunden skal kunne finde stedet.<br>Se menuen.<br>Bestille direkte.<br>Hente maden.</p>
+        </div>
+        <div class="card">
+          <h3>Det simple løfte</h3>
+          <ul>
+            <li>kunden møder butikken - ikke først en portal</li>
+            <li>menuen kan holdes af butikken selv</li>
+            <li>ordren går direkte til butikken</li>
+            <li>butikken kan stadig starte helt småt</li>
+          </ul>
+        </div>
+        <div class="accent-band">Pizza4People er ikke spillet. Det er banen tilbage til butikken.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 3</span>
+        <span></span>
+      </div>
+    </article>
+  </section>
+
+  <section class="sheet">
+    <article class="page">
+      <p class="eyebrow">4 / Not another app</p>
+      <h2>IKKE ENDNU EN TAKEAWAY-APP.</h2>
+      <p class="lead" style="color:var(--accent);">Pizza4People er tættere på en moderne lokal telefonbog end en klassisk platform.</p>
+      <div class="stack">
+        <p>Kunden skal kunne finde lokale madsteder, se menuen og kontakte eller bestille direkte - uden at relationen bliver fanget af en platform.</p>
+        <p>Det betyder ikke, at alt skal være primitivt. Det betyder, at teknologien skal være en vej, ikke en ejer. En menu skal kunne vises. En ordre skal kunne sendes. Butikken skal kunne svare. Kunden skal kunne hente maden.</p>
+        <div class="ring">
+          <div class="ring-core"><div><strong>Kunde</strong><p>til butik</p></div></div>
+          <div class="ring-tag tag-top">Find</div>
+          <div class="ring-tag tag-right">Menu</div>
+          <div class="ring-tag tag-bottom">Ordre</div>
+          <div class="ring-tag tag-left">Pickup</div>
+          <div class="ring-tag tag-left-low">Svar</div>
+        </div>
+        <div class="accent-band">Ringen er ikke et bur. Den er en kortere vej: Kunde -> butik -> mad -> pickup.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 4</span>
+        <span></span>
+      </div>
+    </article>
+
+    <article class="page">
+      <p class="eyebrow">9 / No lock-in</p>
+      <h2>HVIS BUTIKKEN HAR EN SÆRLIG ARBEJDSGANG</h2>
+      <p class="lead" style="color:var(--accent);">Fint. Pizza4People skal ikke gøre Dennis til flaskehals.</p>
+      <div class="stack">
+        <p>Hvis en butik har en særlig arbejdsgang, kan der bygges et lille modul til netop det. Det kan være Dennis. Det kan være en lokal udvikler. Det kan være en hjælper omkring butikken.</p>
+        <p>Pointen er ikke, at alle skal bygge alt. Pointen er, at Pizza4People ikke skal låse butikken fast i én leverandør, én app eller ét dashboard.</p>
+        <div class="card">
+          <h3>Den lille modul-kontrakt</h3>
+          <ul>
+            <li>hvad modulet gør</li>
+            <li>hvad modulet rører</li>
+            <li>hvad modulet ikke ejer</li>
+            <li>hvordan butikken kan slukke det igen</li>
+            <li>hvordan det passer ind i ordreflowet</li>
+          </ul>
+        </div>
+        <div class="dark-band">Åben vej. Lokale moduler. Ingen ny konge.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 9</span>
+        <span></span>
+      </div>
+    </article>
+  </section>
+
+  <section class="sheet">
+    <article class="page">
+      <p class="eyebrow">8 / First setup</p>
+      <h2>DET FØRSTE PILOT-SÆT</h2>
+      <p>Første pilot skal ikke være en digital ombygning af hele butikken. Den skal bare bevise, at den direkte vej virker.</p>
+      <div class="step-list" style="margin-top:4mm;">
+        <div class="step"><div class="step-num">1</div><div><strong>Jeres egen menuside</strong><p>De vigtigste retter, priser og åbningstider. Ikke hele historien - bare nok til at starte.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div><strong>Eget link og QR</strong><p>Kunden scanner i vinduet, på disken eller fra jeres sociale medier.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div><strong>Pickup først</strong><p>Online ordre. Maden hentes. Betaling ved afhentning i første test.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div><strong>Ordreskærm</strong><p>Mobil, tablet, gammel PC eller laptop kan være nok.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div><strong>Ret hurtigt</strong><p>Hvis noget er uklart, retter vi det. Pilot betyder læring, ikke perfekt facade.</p></div></div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 8</span>
+        <span></span>
+      </div>
+    </article>
+
+    <article class="page">
+      <p class="eyebrow">5 / Start small</p>
+      <h2>START SMÅT. VIRK FØRST.</h2>
+      <div class="stack">
+        <p>Første pilot skal ikke være en stor installation. Den skal være lille nok til at starte, ærlig nok til at lære og nyttig nok til at fortsætte.</p>
+        <div class="quote-box">
+          <h3>Den første prøve</h3>
+          <p>En kunde scanner en QR eller åbner et link. Ser menuen. Sender en ordre. Butikken ser den direkte. Maden bliver klar til pickup. Betaling sker ved afhentning.</p>
+        </div>
+        <div class="card">
+          <h3>Hvis det virker</h3>
+          <ul>
+            <li>butikken kan findes direkte</li>
+            <li>menuen er læsbar og kan styres</li>
+            <li>ordren går ikke gennem en platform</li>
+            <li>butikken kan senere bygge mere på</li>
+          </ul>
+        </div>
+        <div class="accent-band">Ingen stor installation. Ingen salgstale. Bare den direkte vej testet i virkeligheden.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 5</span>
+        <span></span>
+      </div>
+    </article>
+  </section>
+
+  <section class="sheet">
+    <article class="page">
+      <p class="eyebrow">6 / Hardware truth</p>
+      <h2>HVAD KAN DET KØRE PÅ?</h2>
+      <div class="stack">
+        <p>I første omgang behøver I ikke dyrt nyt udstyr. Det vigtigste er bare, at butikken kan se nye ordrer og holde menuen læsbar.</p>
+        <div class="hardware-grid">
+          <div class="mini-card"><strong>Mobil eller tablet</strong><p>Nemt at starte med ved disken.</p></div>
+          <div class="mini-card"><strong>Gammel laptop eller PC</strong><p>God nok til første test, hvis den kan stå fast i butikken.</p></div>
+          <div class="mini-card"><strong>Sky i starten</strong><p>Hurtig opsætning hvis butikken bare vil i gang.</p></div>
+          <div class="mini-card"><strong>Lokal boks senere</strong><p>Kan komme senere hvis butikken vil have mere lokal kontrol.</p></div>
+        </div>
+        <div class="card">
+          <h3>Node uden drama</h3>
+          <p>En node er bare butikkens lille sted i systemet. I første pilot kan det være meget enkelt. Senere kan printer, klokke eller en lille lokal boks bygges på, hvis det faktisk hjælper.</p>
+        </div>
+        <div class="dark-band">Pointen er ikke hardwaren. Pointen er, at butikken får en kortere vej til kunden.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 6</span>
+        <span></span>
+      </div>
+    </article>
+
+    <article class="page">
+      <p class="eyebrow">7 / Modules</p>
+      <h2>SMÅ MODULER.<br><span style="color:var(--accent);">IKKE ÉT STORT BUR.</span></h2>
+      <div class="stack">
+        <p>En butik er ikke en skabelon. Nogle arbejder med papir. Nogle har tablet ved disken. Nogle vil have printer. Nogle vil bare have QR og betaling ved afhentning. Derfor skal Pizza4People kunne bygges af små moduler rundt om den direkte vej.</p>
+        <div class="module-grid">
+          <div class="mini-card"><strong>Menu</strong><p>Retter og priser.</p></div>
+          <div class="mini-card"><strong>Ordre</strong><p>Sendes til jer.</p></div>
+          <div class="mini-card"><strong>Ordreskærm</strong><p>Nye ordrer.</p></div>
+          <div class="mini-card"><strong>Pickup-status</strong><p>Modtaget / klar.</p></div>
+          <div class="mini-card"><strong>Klokke</strong><p>Ny ordre-alarm senere hvis det hjælper.</p></div>
+          <div class="mini-card"><strong>Printer</strong><p>Seddel i køkkenet senere hvis butikken vil.</p></div>
+        </div>
+        <div class="accent-band">I vælger ikke en pakke. I vælger det, der faktisk hjælper i hverdagen.</div>
+      </div>
+      <div class="footer">
+        <span>Pizza4People / 7</span>
+        <span></span>
+      </div>
+    </article>
+  </section>
+</body>
+</html>

@@ -54,6 +54,7 @@ from module_catalog import (
 from pilot_node.config import (
     OperatorModuleSetUpdate,
     OperatorModuleManifestImport,
+    OperatorOrderActionResolution,
     OperatorPaymentModuleUpdate,
     OperatorSetupUpdate,
     OperatorStateUpdate,
@@ -85,12 +86,14 @@ from pilot_node.hardware_lanes import (
 )
 from pilot_node.menu_import import preview_menu_import, preview_menu_import_from_image
 from pilot_node.runtime import (
+    OrderAdmissionError,
     PilotRuntime,
     desired_module_ids,
     desired_module_ids_updated_at,
     effective_flow_module_ids,
     effective_payment_module_id,
     enabled_module_declarations,
+    live_configuration_blockers,
     module_is_payment,
     module_restart_required,
     node_accepts_orders,
@@ -520,8 +523,11 @@ def public_order(runtime: PilotRuntime, payload: OrderRequest, *, locale: str | 
             reason="orders_disabled",
             message=customer_text(effective_locale, "customer.runtime.orders_disabled"),
         )
-    order, created = runtime.store.create_order_once(payload)
-    if created:
+    try:
+        order, created = runtime.store.create_order_once(payload)
+    except OrderAdmissionError as exc:
+        return OrderRejected(reason=exc.reason, message=exc.message)
+    if created and not runtime.config.manual_order_acceptance_required:
         order = process_accepted_order(runtime, order)
     return OrderAccepted(
         order_id=order.order_id,
@@ -1928,6 +1934,12 @@ def public_info(runtime: PilotRuntime) -> dict[str, Any]:
         "accepts_orders": node_accepts_orders(runtime, node),
         "payment_methods": public_payment_methods(runtime),
         "fulfillment": ["pickup"],
+        "order_limits": {
+            "max_lines": runtime.config.order_max_lines,
+            "max_units": runtime.config.order_max_units,
+            "max_value_minor": runtime.config.order_max_value_minor,
+            "currency": runtime.config.menu_currency,
+        },
         "node_public_key": runtime.config.node_public_key,
         **public_module_projection(runtime),
     }
@@ -1946,6 +1958,19 @@ def operator_state(
         "locale": operator_locale_response_payload(runtime, effective_locale, source=locale_source),
         "node": node.model_dump(mode="json", exclude_none=True),
         "accepts_orders": node_accepts_orders(runtime, node),
+        "order_admission": {
+            "manual_acceptance_required": runtime.config.manual_order_acceptance_required,
+            "max_lines": runtime.config.order_max_lines,
+            "max_units": runtime.config.order_max_units,
+            "max_value_minor": runtime.config.order_max_value_minor,
+            "max_active": runtime.config.order_max_active,
+            "max_pending": runtime.config.order_max_pending,
+            "max_pending_per_contact": runtime.config.order_max_pending_per_contact,
+            "rate_limit_requests": runtime.config.order_rate_limit_requests,
+            "rate_limit_window_seconds": runtime.config.order_rate_limit_window_seconds,
+            "trusted_proxy_cidrs": list(runtime.config.trusted_proxy_cidrs),
+            "currency": runtime.config.menu_currency,
+        },
         "hardware": {
             "profile": runtime.config.hardware_profile,
             "customized": runtime.config.hardware_profile_customized,
@@ -2049,6 +2074,21 @@ def operator_setup(
     restart_required = bool(modules.get("restart_required"))
     order_mode = str(node.get("node", {}).get("order_mode") or "").strip()
     accepts_orders = bool(node.get("accepts_orders"))
+    operational_prerequisites_ready = (
+        baseline_current
+        and hardware_profile_confirmed
+        and bool(payment_module_id)
+        and menu_count > 0
+        and catalog_reviewed
+        and local_tests_done
+        and not restart_required
+    )
+    live_activation_blockers = live_configuration_blockers(runtime)
+    if not operational_prerequisites_ready:
+        live_activation_blockers.append("operational_setup_incomplete")
+    if not persisted.get("completed_at"):
+        live_activation_blockers.append("readiness_receipt_missing")
+    live_activation_ready = not live_activation_blockers
 
     checklist = [
         {
@@ -2314,14 +2354,7 @@ def operator_setup(
                 },
                 locale,
             ),
-            "done": baseline_current
-            and hardware_profile_confirmed
-            and bool(payment_module_id)
-            and menu_count > 0
-            and catalog_reviewed
-            and local_tests_done
-            and not restart_required
-            and order_mode == "menu_only",
+            "done": operational_prerequisites_ready and order_mode == "menu_only",
             "href": "/operator",
             "source": "computed",
         },
@@ -2347,15 +2380,7 @@ def operator_setup(
                 },
                 locale,
             ),
-            "done": baseline_current
-            and hardware_profile_confirmed
-            and bool(payment_module_id)
-            and menu_count > 0
-            and catalog_reviewed
-            and local_tests_done
-            and not restart_required
-            and accepts_orders
-            and order_mode == "live",
+            "done": live_activation_ready and accepts_orders and order_mode == "live",
             "href": "/operator",
             "source": "computed",
         },
@@ -2380,6 +2405,8 @@ def operator_setup(
             "total_steps": len(checklist),
             "ready_for_menu_only": ready_for_menu_only,
             "ready_for_live": ready_for_live,
+            "live_activation_ready": live_activation_ready,
+            "live_activation_blockers": live_activation_blockers,
             "status": "live-ready" if ready_for_live else "menu_only-ready" if ready_for_menu_only else "incomplete",
         },
     }
@@ -3524,6 +3551,18 @@ def operator_update_module_set(
 
 
 async def operator_update_state(runtime: PilotRuntime, payload: OperatorStateUpdate) -> dict[str, Any]:
+    if payload.order_mode == "live":
+        setup = operator_setup(runtime)
+        blockers = list(setup["summary"]["live_activation_blockers"])
+        if blockers:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "live_activation_blocked",
+                    "message": "Complete the live readiness gate before accepting real orders.",
+                    "blockers": blockers,
+                },
+            )
     if payload.open is not None:
         runtime.store.set_state("open", "true" if payload.open else "false")
     if payload.order_mode is not None:
@@ -3643,6 +3682,40 @@ def operator_order_events(runtime: PilotRuntime, order_id: str) -> list[ModuleRe
     return runtime.store.list_order_events(order_id)
 
 
+def operator_order_actions(runtime: PilotRuntime, order_id: str) -> list[dict[str, object]]:
+    if runtime.store.get_order(order_id) is None:
+        raise HTTPException(status_code=404, detail=f"Unknown order_id: {order_id}")
+    return runtime.store.list_order_actions(order_id)
+
+
+def operator_resolve_order_action(
+    runtime: PilotRuntime,
+    order_id: str,
+    action_id: str,
+    payload: OperatorOrderActionResolution,
+) -> dict[str, object]:
+    actions = runtime.store.list_order_actions(order_id)
+    action = next((item for item in actions if item["action_id"] == action_id), None)
+    if action is None:
+        raise HTTPException(status_code=404, detail=f"Unknown order action: {action_id}")
+    if action["status"] != "unknown":
+        raise HTTPException(status_code=409, detail="Only an unknown order action can be reconciled")
+    return runtime.store.finish_order_action(
+        action_id,
+        status=payload.status,
+        last_error=payload.note or f"operator_reconciled_as_{payload.status}",
+    )
+
+
+def operator_resume_order(runtime: PilotRuntime, order_id: str) -> StoredOrder:
+    order = runtime.store.get_order(order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail=f"Unknown order_id: {order_id}")
+    if order.status != "accepted":
+        raise HTTPException(status_code=409, detail="Only an accepted order can resume its action outbox")
+    return process_accepted_order(runtime, order)
+
+
 def operator_update_order(
     runtime: PilotRuntime,
     order_id: str,
@@ -3651,7 +3724,10 @@ def operator_update_order(
     previous_order = runtime.store.get_order(order_id)
     if previous_order is None:
         raise HTTPException(status_code=404, detail=f"Unknown order_id: {order_id}")
-    updated_order = runtime.store.update_order_status(order_id, payload)
+    if payload.status == "accepted" and previous_order.status == "new":
+        updated_order = process_accepted_order(runtime, previous_order)
+    else:
+        updated_order = runtime.store.update_order_status(order_id, payload)
     if KITCHEN_SCREEN_MODULE_ID not in effective_flow_module_ids(runtime):
         return updated_order
     action_id = (
@@ -3703,9 +3779,15 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         default_max_body_bytes=1024 * 1024,
         route_body_limits={"/operator/menu/import-image-preview": 12 * 1024 * 1024},
         rate_limit_rules=(
-            RateLimitRule("POST", "/p4p/order", 30),
+            RateLimitRule(
+                "POST",
+                "/p4p/order",
+                runtime.config.order_rate_limit_requests,
+                runtime.config.order_rate_limit_window_seconds,
+            ),
             RateLimitRule("GET", "/p4p/order-status/*", 60),
         ),
+        trusted_proxy_cidrs=runtime.config.trusted_proxy_cidrs,
     )
     app.add_middleware(CORSMiddleware, **build_cors_middleware_options())
 
@@ -4064,6 +4146,35 @@ def build_app(runtime: PilotRuntime) -> FastAPI:
         require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
         return operator_order_events(runtime, order_id)
 
+    @app.get("/operator/orders/{order_id}/actions")
+    def operator_order_actions_route(
+        order_id: str,
+        authorization: str | None = Header(default=None),
+        x_p4p_operator_token: str | None = Header(default=None),
+    ) -> list[dict[str, object]]:
+        require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
+        return operator_order_actions(runtime, order_id)
+
+    @app.patch("/operator/orders/{order_id}/actions/{action_id}")
+    def operator_resolve_order_action_route(
+        order_id: str,
+        action_id: str,
+        payload: OperatorOrderActionResolution,
+        authorization: str | None = Header(default=None),
+        x_p4p_operator_token: str | None = Header(default=None),
+    ) -> dict[str, object]:
+        require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
+        return operator_resolve_order_action(runtime, order_id, action_id, payload)
+
+    @app.post("/operator/orders/{order_id}/resume", response_model=StoredOrder)
+    def operator_resume_order_route(
+        order_id: str,
+        authorization: str | None = Header(default=None),
+        x_p4p_operator_token: str | None = Header(default=None),
+    ) -> StoredOrder:
+        require_auth(authorization=authorization, x_p4p_operator_token=x_p4p_operator_token)
+        return operator_resume_order(runtime, order_id)
+
     @app.patch("/operator/orders/{order_id}", response_model=StoredOrder)
     def operator_update_order_route(
         order_id: str,
@@ -4105,6 +4216,9 @@ __all__ = [
     "operator_modules",
     "operator_modules_page",
     "operator_order_events",
+    "operator_order_actions",
+    "operator_resolve_order_action",
+    "operator_resume_order",
     "node_state",
     "operator_orders",
     "operator_pickup_board_data",

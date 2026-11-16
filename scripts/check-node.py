@@ -15,6 +15,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 
 ORDER_MODES = {"disabled", "menu_only", "test", "live"}
@@ -259,6 +260,7 @@ def build_test_order(menu: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(item_id, str) or not item_id:
         raise ValueError("first menu item has no usable id")
     return {
+        "client_request_id": f"p4p-check-{uuid4()}",
         "customer_name": "P4P Interop Test",
         "customer_contact": "+4500000000",
         "fulfillment": "pickup",

@@ -16,7 +16,6 @@ from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException, Response
-from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from starlette.requests import Request
 
@@ -42,6 +41,22 @@ def load_module(relative_path: str, env: dict[str, str] | None = None):
         spec.loader.exec_module(module)
 
     return module
+
+
+async def asgi_responses(app, requests: list[dict[str, object]]) -> list[httpx.Response]:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+    ) as client:
+        return [
+            await client.request(
+                str(request.pop("method")),
+                str(request.pop("url")),
+                **request,
+            )
+            for request in (dict(item) for item in requests)
+        ]
 
 
 class RegistryBridgeAsyncClient:
@@ -81,6 +96,18 @@ class RegistryBridgeAsyncClient:
             return httpx.Response(exc.status_code, request=request, text=str(exc.detail))
 
         return httpx.Response(200, request=request, json=result.model_dump(mode="json"))
+
+
+class HealthCheckDefaultsTests(unittest.TestCase):
+    def test_default_client_matches_the_local_lab_client(self) -> None:
+        health_check = load_module("scripts/health-check.py")
+        scenarios = json.loads((REPO_ROOT / "lab/scenarios.json").read_text(encoding="utf-8"))
+        client_service = scenarios["services"]["client-server"]
+
+        self.assertEqual(
+            health_check.DEFAULT_CLIENT_URL,
+            f"http://127.0.0.1:{client_service['port']}",
+        )
 
 
 class FailingAsyncClient:
@@ -262,6 +289,11 @@ class P4PTruthfulnessTests(unittest.TestCase):
     def make_registry_admin_env(self) -> dict[str, str]:
         return {"P4P_REGISTRY_ADMIN_TOKEN": "registry-admin-secret"}
 
+    def pinned_upstreams(self, *entries: tuple[str, str]) -> str:
+        return json.dumps(
+            [{"url": url, "public_key": public_key} for url, public_key in entries]
+        )
+
     def registry_admin_authorization(self) -> str:
         return "Bearer registry-admin-secret"
 
@@ -384,6 +416,36 @@ class P4PTruthfulnessTests(unittest.TestCase):
             OrderItem(id="a" * 65, quantity=1)
         with self.assertRaises(ValidationError):
             OrderItem(id="margherita", quantity=100)
+
+    def test_order_contract_is_aligned_across_public_surfaces(self) -> None:
+        from p4p_core import OrderRequest
+
+        schema = json.loads((REPO_ROOT / "docs/schemas/order-request.schema.json").read_text())
+        example = json.loads((REPO_ROOT / "docs/examples/order-request.json").read_text())
+        checker = load_module("scripts/check-node.py")
+        checker_payload = checker.build_test_order({"items": [{"id": "margherita"}]})
+
+        self.assertIn("client_request_id", schema["required"])
+        self.assertEqual(schema["properties"]["client_request_id"]["minLength"], 16)
+        self.assertEqual(schema["properties"]["client_request_id"]["maxLength"], 128)
+        self.assertEqual(
+            schema["properties"]["client_request_id"]["pattern"],
+            "^[A-Za-z0-9][A-Za-z0-9._:-]+$",
+        )
+        self.assertEqual(OrderRequest(**example).client_request_id, example["client_request_id"])
+        self.assertEqual(
+            OrderRequest(**checker_payload).client_request_id,
+            checker_payload["client_request_id"],
+        )
+
+        client = (REPO_ROOT / "client/app.js").read_text()
+        spec = (REPO_ROOT / "SPEC.md").read_text()
+        implementer_kit = (REPO_ROOT / "docs/NODE-IMPLEMENTER-KIT.md").read_text()
+        test_guide = (REPO_ROOT / "TEST-GUIDE.md").read_text()
+        self.assertIn("client_request_id: pendingOrderSubmission.clientRequestId", client)
+        self.assertIn('"client_request_id": "p4p-web-', spec)
+        self.assertIn('"client_request_id": "p4p-check-', implementer_kit)
+        self.assertIn('"client_request_id":"p4p-check-', test_guide)
 
     def test_single_registry_fallback_still_works(self) -> None:
         demo = load_module(
@@ -945,6 +1007,26 @@ class P4PTruthfulnessTests(unittest.TestCase):
 
         self.assertEqual(rotation_error.exception.status_code, 400)
         self.assertEqual(rotation_error.exception.detail, "Invalid root rotation signature")
+
+    @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
+    def test_node_control_error_labels_do_not_expose_exception_details(self) -> None:
+        control = load_module("node-control/node_control.py")
+        app_module = sys.modules[f"{control.__name__}_app"]
+        secret = "postgres://operator:password@internal.example/private"
+        request = httpx.Request("GET", "http://registry.test/health")
+
+        labels = {
+            app_module._error_text(httpx.ConnectError(secret, request=request)),
+            app_module._error_text(httpx.ReadTimeout(secret, request=request)),
+            app_module._error_text(json.JSONDecodeError(secret, "", 0)),
+            app_module._error_text(RuntimeError(secret)),
+        }
+
+        self.assertEqual(
+            labels,
+            {"connect_error", "timeout", "invalid_response", "unexpected_error"},
+        )
+        self.assertNotIn(secret, " ".join(labels))
 
     @unittest.skipUnless(NODE_CONTROL_PATH.is_file(), "requires the private node-control tool")
     def test_node_control_snapshot_aggregates_registry_and_operator_truth(self) -> None:
@@ -1865,7 +1947,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_REGISTRY_URL": "http://127.0.0.1:8003",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -1922,7 +2006,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -1934,7 +2020,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2054,7 +2142,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2067,7 +2157,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com,https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY),
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY),
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2134,7 +2227,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2147,7 +2242,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2284,7 +2381,63 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "Imported registry source must be newer than the cached snapshot",
         )
 
-    def test_registry_sync_fetches_configured_upstream_and_updates_sync_status(self) -> None:
+    def test_public_trusted_upstream_requires_public_key_pin(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            "Public P4P_MIRROR_TRUSTED_UPSTREAMS entries require public_key pins",
+        ):
+            load_module(
+                "registry/main.py",
+                {
+                    "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                },
+            )
+
+    def test_duplicate_trusted_upstream_pins_must_match(self) -> None:
+        identity = load_module("p4p_identity.py")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Duplicate trusted upstream public_key pins must match",
+        ):
+            load_module(
+                "registry/main.py",
+                {
+                    "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                        (
+                            "https://registry-a.pizza4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                        (
+                            "https://registry-a.pizza4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                    ),
+                },
+            )
+
+    def test_duplicate_trusted_claim_issuer_pins_must_match(self) -> None:
+        identity = load_module("p4p_identity.py")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Duplicate trusted claim issuer public_key pins must match",
+        ):
+            load_module(
+                "registry/main.py",
+                {
+                    "P4P_TRUSTED_CLAIM_ISSUERS": self.pinned_upstreams(
+                        (
+                            "https://trust.protocols4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                        (
+                            "https://trust.protocols4people.com",
+                            identity.public_key_from_private(identity.generate_private_key()),
+                        ),
+                    ),
+                },
+            )
+
+    def test_unpinned_public_upstream_syncs_as_raw_evidence_only(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
             "registry/main.py",
@@ -2297,6 +2450,165 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
+                "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_curate_active_index": True},
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+
+        with patch.object(
+            mirror.httpx,
+            "AsyncClient",
+            new=lambda *args, **kwargs: RegistrySourceAsyncClient(
+                {"https://registry-a.pizza4people.com": source}
+            ),
+        ):
+            sync_result = asyncio.run(
+                mirror.registry_sync(authorization=self.registry_admin_authorization())
+            )
+
+        discover_result = mirror.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        mirror_status = mirror.registry_mirrors(
+            authorization=self.registry_admin_authorization()
+        )
+        sync_status = mirror.registry_sync_status(
+            authorization=self.registry_admin_authorization()
+        )
+
+        self.assertEqual(sync_result.upstreams[0].status, "imported")
+        self.assertEqual(discover_result.nodes, [])
+        self.assertEqual(sync_status.trusted_upstreams, [])
+        self.assertEqual(len(mirror_status.sources), 1)
+        self.assertFalse(mirror_status.sources[0].discovery_eligible)
+        self.assertEqual(mirror_status.sources[0].discovery_basis, "not_trusted")
+        self.assertEqual(mirror.health()["curated_active_index_entries"], 0)
+        promotions = mirror.curated_promotions(
+            authorization=self.registry_admin_authorization()
+        )
+        self.assertEqual(promotions.records[0].decision, "deny")
+        self.assertEqual(promotions.records[0].decision_basis, "untrusted_upstream")
+
+    def test_wrong_relay_key_pin_keeps_reexported_source_out_of_discovery(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        relay = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
+                "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    registry_type="umbrella",
+                    capabilities={"can_reexport_sources": True},
+                ),
+            },
+        )
+        wrong_relay_key = identity.public_key_from_private(identity.generate_private_key())
+        downstream = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", wrong_relay_key)
+                ),
+                "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_relay_sources": True},
+                ),
+            },
+        )
+        demo = load_module(
+            "demo-node/demo_node.py",
+            {
+                "P4P_NODE_ROOT_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8001",
+            },
+        )
+        source.node_manifest(
+            source.NodeManifestRequest(**self.make_node_manifest_request(demo, manifest_version=1))
+        )
+        source.announce(source.Node(**demo.sign_node_announcement()))
+        relay.registry_source_import(
+            source.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+        downstream.registry_source_import(
+            relay.registry_source(SimpleNamespace(base_url="https://ignored.example/")),
+            authorization=self.registry_admin_authorization(),
+        )
+
+        discover_result = downstream.discover(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        mirror_status = downstream.registry_mirrors(
+            authorization=self.registry_admin_authorization()
+        )
+        nested_status = next(
+            entry
+            for entry in mirror_status.sources
+            if str(entry.registry_url) == "https://registry-a.pizza4people.com/"
+        )
+
+        self.assertEqual(discover_result.nodes, [])
+        self.assertFalse(nested_status.discovery_eligible)
+        self.assertEqual(nested_status.discovery_basis, "not_trusted")
+
+    def test_registry_sync_fetches_configured_upstream_and_updates_sync_status(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": json.dumps(
+                    [
+                        {
+                            "url": "https://registry-a.pizza4people.com",
+                            "public_key": source.REGISTRY_PUBLIC_KEY,
+                        }
+                    ]
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2360,6 +2672,87 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertIsNotNone(sync_status.last_run_at)
         self.assertEqual(sync_status.last_results[0].status, "imported")
 
+    def test_registry_sync_rejects_snapshot_with_mismatched_registry_url(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-b.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                **self.make_registry_admin_env(),
+            },
+        )
+        routes = {"https://registry-a.pizza4people.com": source}
+
+        with patch.object(
+            mirror.httpx,
+            "AsyncClient",
+            new=lambda *args, **kwargs: RegistrySourceAsyncClient(routes),
+        ):
+            sync_result = asyncio.run(
+                mirror.registry_sync(authorization=self.registry_admin_authorization())
+            )
+
+        self.assertEqual(sync_result.upstreams[0].status, "error")
+        self.assertEqual(
+            sync_result.upstreams[0].detail,
+            "Upstream registry_url does not match the configured mirror URL",
+        )
+        self.assertEqual(mirror.health()["mirrored_registries"], 0)
+
+    def test_registry_sync_rejects_snapshot_with_mismatched_public_key_pin(self) -> None:
+        identity = load_module("p4p_identity.py")
+        source = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://registry-a.pizza4people.com",
+                "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+            },
+        )
+        mirror = load_module(
+            "registry/main.py",
+            {
+                "P4P_MIRROR_UPSTREAMS": json.dumps(
+                    [
+                        {
+                            "url": "https://registry-a.pizza4people.com",
+                            "public_key": identity.public_key_from_private(
+                                identity.generate_private_key()
+                            ),
+                        }
+                    ]
+                ),
+                "P4P_MIRROR_SYNC_INTERVAL_SECONDS": "0",
+                **self.make_registry_admin_env(),
+            },
+        )
+        routes = {"https://registry-a.pizza4people.com": source}
+
+        with patch.object(
+            mirror.httpx,
+            "AsyncClient",
+            new=lambda *args, **kwargs: RegistrySourceAsyncClient(routes),
+        ):
+            sync_result = asyncio.run(
+                mirror.registry_sync(authorization=self.registry_admin_authorization())
+            )
+
+        self.assertEqual(sync_result.upstreams[0].status, "error")
+        self.assertEqual(
+            sync_result.upstreams[0].detail,
+            "Upstream registry public key does not match the configured pin",
+        )
+        self.assertEqual(mirror.health()["mirrored_registries"], 0)
+
     def test_registry_sync_skips_unchanged_upstream_snapshot(self) -> None:
         identity = load_module("p4p_identity.py")
         source = load_module(
@@ -2372,7 +2765,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         mirror = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2430,7 +2825,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
@@ -2494,7 +2891,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_curate_active_index": True}
@@ -2568,7 +2967,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-b.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    (
+                        "https://registry-b.pizza4people.com",
+                        identity.public_key_from_private(identity.generate_private_key()),
+                    )
+                ),
                 "P4P_MIRROR_UPSTREAMS": "",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -2647,7 +3051,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2711,7 +3117,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -2779,8 +3187,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": (
-                    "https://registry-a.pizza4people.com,https://registry-b.pizza4people.com"
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source_a.REGISTRY_PUBLIC_KEY),
+                    ("https://registry-b.pizza4people.com", source_b.REGISTRY_PUBLIC_KEY),
                 ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
@@ -2923,7 +3332,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -3000,7 +3411,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -3075,7 +3488,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -3194,7 +3609,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_REGISTRY_URL": "https://mirror.example",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4737,7 +5154,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4826,7 +5245,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4902,7 +5323,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -4915,7 +5338,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5007,7 +5432,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5064,7 +5491,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5077,7 +5506,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com,https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY),
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY),
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5148,7 +5580,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
-                "P4P_MIRROR_UPSTREAMS": "https://registry-a.pizza4people.com",
+                "P4P_MIRROR_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5161,7 +5595,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5244,6 +5680,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_REGISTRY_URL": "https://umbrella.protocols4people.com",
                 "P4P_REGISTRY_PRIVATE_KEY": identity.generate_private_key(),
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_REGISTRY_SOURCE_REEXPORT_POLICY": "local_plus_trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -5255,7 +5694,10 @@ class P4PTruthfulnessTests(unittest.TestCase):
         downstream = load_module(
             "registry/main.py",
             {
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-a.pizza4people.com,https://umbrella.protocols4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY),
+                    ("https://umbrella.protocols4people.com", relay.REGISTRY_PUBLIC_KEY),
+                ),
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
@@ -5318,7 +5760,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             {
                 "P4P_MIRROR_DISCOVERY_POLICY": "trusted_only",
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "https://registry-b.pizza4people.com",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    (
+                        "https://registry-b.pizza4people.com",
+                        identity.public_key_from_private(identity.generate_private_key()),
+                    )
+                ),
                 "P4P_MIRROR_UPSTREAMS": "",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -5385,7 +5832,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_MIRROR_UPSTREAMS": "",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -5653,7 +6102,9 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_MIRROR_UPSTREAMS": "",
-                "P4P_MIRROR_TRUSTED_UPSTREAMS": "",
+                "P4P_MIRROR_TRUSTED_UPSTREAMS": self.pinned_upstreams(
+                    ("https://registry-a.pizza4people.com", source.REGISTRY_PUBLIC_KEY)
+                ),
                 "P4P_CURATED_INDEX_PROMOTION_POLICY": "trusted_mirrors",
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
@@ -6100,6 +6551,12 @@ class P4PTruthfulnessTests(unittest.TestCase):
             "registry/main.py",
             {
                 "P4P_REGISTRY_URL": "https://directory.registry.test",
+                "P4P_TRUSTED_CLAIM_ISSUERS": self.pinned_upstreams(
+                    (
+                        "https://issuer.registry.test",
+                        identity.public_key_from_private(issuer_private_key),
+                    )
+                ),
                 **self.make_registry_admin_env(),
                 "P4P_REGISTRY_METADATA": self.make_registry_metadata(
                     capabilities={"can_moderate_directory": True}
@@ -6154,8 +6611,77 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertNotIn("trust_claims", discover_result.nodes[0].model_dump(mode="json", exclude_none=True))
         self.assertEqual(len(trust_claims.records), 1)
         self.assertEqual(str(trust_claims.records[0].issuer_registry_url), "https://issuer.registry.test/")
+        self.assertTrue(trust_claims.evaluations[0].valid_signature)
+        self.assertTrue(trust_claims.evaluations[0].trusted_issuer)
         self.assertEqual(directory.health()["trust_claim_records"], 1)
         self.assertEqual(directory.health()["active_trust_claims"], 1)
+
+    def test_valid_claim_from_unpinned_key_is_cached_but_not_projected(self) -> None:
+        identity = load_module("p4p_identity.py")
+        issuer_private_key = identity.generate_private_key()
+        issuer = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://issuer.registry.test",
+                "P4P_REGISTRY_PRIVATE_KEY": issuer_private_key,
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_issue_trust_claims": True}
+                ),
+            },
+        )
+        directory = load_module(
+            "registry/main.py",
+            {
+                "P4P_REGISTRY_URL": "https://directory.registry.test",
+                "P4P_TRUSTED_CLAIM_ISSUERS": self.pinned_upstreams(
+                    (
+                        "https://issuer.registry.test",
+                        identity.public_key_from_private(identity.generate_private_key()),
+                    )
+                ),
+                **self.make_registry_admin_env(),
+                "P4P_REGISTRY_METADATA": self.make_registry_metadata(
+                    capabilities={"can_moderate_directory": True}
+                ),
+            },
+        )
+        demo = load_module("demo-node/demo_node.py")
+        signed_node = demo.sign_node_announcement()
+        issuer.announce(issuer.Node(**signed_node))
+        directory.announce(directory.Node(**signed_node))
+
+        issued = issuer.trust_claim_issue(
+            issuer.TrustClaimIssueRequest(
+                node_id=demo.NODE.node_id,
+                claims=["verified"],
+            ),
+            SimpleNamespace(base_url="https://issuer.registry.test/"),
+            authorization=self.registry_admin_authorization(),
+        )
+        directory.trust_claim_import(
+            issued.claim,
+            authorization=self.registry_admin_authorization(),
+        )
+
+        directory_result = directory.directory(
+            lat=55.6517,
+            lng=12.4126,
+            radius=10,
+            category="pizza",
+            country="DK",
+        )
+        status_result = directory.trust_claims(
+            authorization=self.registry_admin_authorization()
+        )
+
+        self.assertEqual(directory_result.nodes[0].trust_claims, [])
+        self.assertEqual(directory_result.nodes[0].trust_claim_issuers, [])
+        self.assertEqual(len(status_result.records), 1)
+        self.assertTrue(status_result.evaluations[0].valid_signature)
+        self.assertFalse(status_result.evaluations[0].trusted_issuer)
+        self.assertEqual(directory.health()["trust_claim_records"], 1)
+        self.assertEqual(directory.health()["active_trust_claims"], 0)
 
     def test_health_active_claim_counts_hide_claims_for_nodes_no_longer_current(self) -> None:
         identity = load_module("p4p_identity.py")
@@ -6774,7 +7300,7 @@ class P4PTruthfulnessTests(unittest.TestCase):
         self.assertEqual(sync_status_error.exception.status_code, 503)
         self.assertEqual(sync_status_error.exception.detail, "Registry admin token is not configured")
 
-    def test_registry_http_public_surfaces_stay_open_while_admin_reads_require_token(self) -> None:
+    def test_registry_public_surfaces_stay_open_while_admin_reads_require_token(self) -> None:
         identity = load_module("p4p_identity.py")
         registry_app = load_module(
             "registry/registry_app.py",
@@ -6796,30 +7322,37 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            health = client.get("/health")
-            identity_log = client.get("/identity-log")
-            registry_source = client.get("/registry-source")
-            registry_info = client.get("/registry-info")
-            admin_read = client.get("/registry-mirrors")
-            admin_read_ok = client.get(
-                "/registry-mirrors",
-                headers={"Authorization": self.registry_admin_authorization()},
-            )
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "https",
+                "server": ("local.registry.test", 443),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/",
+                "query_string": b"",
+                "headers": [(b"host", b"local.registry.test")],
+            }
+        )
+        health = registry_app.health()
+        identity_log = registry_app.identity_log()
+        registry_source = registry_app.registry_source(request)
+        registry_info = registry_app.registry_info(request)
+        with self.assertRaises(HTTPException) as admin_read:
+            registry_app.registry_mirrors()
+        admin_read_ok = registry_app.registry_mirrors(
+            authorization=self.registry_admin_authorization(),
+        )
 
-        self.assertEqual(health.status_code, 200)
-        self.assertEqual(health.json()["status"], "ok")
-        self.assertEqual(identity_log.status_code, 200)
-        self.assertIn("records", identity_log.json())
-        self.assertEqual(registry_source.status_code, 200)
-        self.assertIn("registry_url", registry_source.json())
-        self.assertEqual(registry_info.status_code, 200)
-        self.assertEqual(admin_read.status_code, 401)
-        self.assertEqual(admin_read.json()["detail"], "Invalid registry admin token")
-        self.assertEqual(admin_read_ok.status_code, 200)
-        self.assertEqual(admin_read_ok.json()["sources"], [])
+        self.assertEqual(health["status"], "ok")
+        self.assertEqual(identity_log.records, [])
+        self.assertEqual(str(registry_source.registry_url), "https://local.registry.test/")
+        self.assertEqual(str(registry_info.registry_url), "https://local.registry.test/")
+        self.assertEqual(admin_read.exception.status_code, 401)
+        self.assertEqual(admin_read.exception.detail, "Invalid registry admin token")
+        self.assertEqual(admin_read_ok.sources, [])
 
-    def test_registry_http_signed_outputs_require_configured_registry_url(self) -> None:
+    def test_registry_signed_outputs_require_configured_registry_url(self) -> None:
         identity = load_module("p4p_identity.py")
         registry_app = load_module(
             "registry/registry_app.py",
@@ -6836,35 +7369,42 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            registry_source = client.get(
-                "/registry-source",
-                headers={"Host": "spoofed.example"},
-            )
-            trust_claim_issue = client.post(
-                "/trust-claims",
-                headers={
-                    "Authorization": self.registry_admin_authorization(),
-                    "Host": "spoofed.example",
-                },
-                json={
-                    "node_id": "dk-test-001",
-                    "claims": ["reviewed"],
-                },
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "https",
+                "server": ("spoofed.example", 443),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/",
+                "query_string": b"",
+                "headers": [(b"host", b"spoofed.example")],
+            }
+        )
+        with self.assertRaises(HTTPException) as registry_source:
+            registry_app.registry_source(request)
+        with self.assertRaises(HTTPException) as trust_claim_issue:
+            registry_app.trust_claim_issue(
+                registry_app.TrustClaimIssueRequest(
+                    node_id="dk-test-001",
+                    claims=["reviewed"],
+                ),
+                request,
+                authorization=self.registry_admin_authorization(),
             )
 
-        self.assertEqual(registry_source.status_code, 503)
+        self.assertEqual(registry_source.exception.status_code, 503)
         self.assertEqual(
-            registry_source.json()["detail"],
+            registry_source.exception.detail,
             "Signed registry source export requires P4P_REGISTRY_URL",
         )
-        self.assertEqual(trust_claim_issue.status_code, 503)
+        self.assertEqual(trust_claim_issue.exception.status_code, 503)
         self.assertEqual(
-            trust_claim_issue.json()["detail"],
+            trust_claim_issue.exception.detail,
             "Signed trust claim issuance requires P4P_REGISTRY_URL",
         )
 
-    def test_registry_http_unsigned_registry_source_export_rejects_public_host_fallback(self) -> None:
+    def test_registry_unsigned_registry_source_export_rejects_public_host_fallback(self) -> None:
         registry_app = load_module(
             "registry/registry_app.py",
             {
@@ -6875,19 +7415,28 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            registry_source = client.get(
-                "/registry-source",
-                headers={"Host": "spoofed.example"},
-            )
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "https",
+                "server": ("spoofed.example", 443),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/registry-source",
+                "query_string": b"",
+                "headers": [(b"host", b"spoofed.example")],
+            }
+        )
+        with self.assertRaises(HTTPException) as registry_source:
+            registry_app.registry_source(request)
 
-        self.assertEqual(registry_source.status_code, 503)
+        self.assertEqual(registry_source.exception.status_code, 503)
         self.assertEqual(
-            registry_source.json()["detail"],
+            registry_source.exception.detail,
             "Unsigned registry source export without P4P_REGISTRY_URL requires a loopback request base",
         )
 
-    def test_registry_http_loopback_self_import_is_rejected_without_canonical_url(self) -> None:
+    def test_registry_loopback_self_import_is_rejected_without_canonical_url(self) -> None:
         registry_app = load_module(
             "registry/registry_app.py",
             {
@@ -6902,24 +7451,30 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            registry_source = client.get(
-                "/registry-source",
-                headers={"Host": "127.0.0.1:8001"},
-            )
-            self_import = client.post(
-                "/registry-source/import",
-                headers={
-                    "Authorization": self.registry_admin_authorization(),
-                    "Host": "127.0.0.1:8001",
-                },
-                json=registry_source.json(),
+        request = Request(
+            {
+                "type": "http",
+                "scheme": "http",
+                "server": ("127.0.0.1", 8001),
+                "client": ("127.0.0.1", 50000),
+                "root_path": "",
+                "path": "/registry-source",
+                "query_string": b"",
+                "headers": [(b"host", b"127.0.0.1:8001")],
+            }
+        )
+        registry_source = registry_app.registry_source(request)
+
+        with self.assertRaises(HTTPException) as self_import:
+            registry_app.registry_source_import(
+                registry_source,
+                request=request,
+                authorization=self.registry_admin_authorization(),
             )
 
-        self.assertEqual(registry_source.status_code, 200)
-        self.assertEqual(self_import.status_code, 409)
+        self.assertEqual(self_import.exception.status_code, 409)
         self.assertEqual(
-            self_import.json()["detail"],
+            self_import.exception.detail,
             "Registry cannot import its own source snapshot",
         )
 
@@ -6944,17 +7499,20 @@ class P4PTruthfulnessTests(unittest.TestCase):
         def fail_async_client(*args, **kwargs):
             raise AssertionError("Mirror sync should not start automatically when interval is 0")
 
-        with patch.object(registry_app.httpx, "AsyncClient", new=fail_async_client):
-            with TestClient(registry_app.app) as client:
-                health = client.get("/health")
-                sync_status = client.get(
-                    "/registry-sync",
-                    headers={"Authorization": self.registry_admin_authorization()},
+        async def exercise_lifespan():
+            async with registry_app.app.router.lifespan_context(registry_app.app):
+                return (
+                    registry_app.health(),
+                    registry_app.registry_sync_status(
+                        authorization=self.registry_admin_authorization(),
+                    ),
                 )
 
-        self.assertEqual(health.status_code, 200)
-        self.assertEqual(sync_status.status_code, 200)
-        self.assertEqual(sync_status.json()["last_results"], [])
+        with patch.object(registry_app.httpx, "AsyncClient", new=fail_async_client):
+            health, sync_status = asyncio.run(exercise_lifespan())
+
+        self.assertEqual(health["status"], "ok")
+        self.assertEqual(sync_status.last_results, [])
 
     def test_registry_http_admin_token_headers_work_for_write_and_read_routes(self) -> None:
         identity = load_module("p4p_identity.py")
@@ -6979,23 +7537,28 @@ class P4PTruthfulnessTests(unittest.TestCase):
             },
         )
 
-        with TestClient(registry_app.app) as client:
-            blocked_sync = client.post("/registry-sync")
-            sync_via_token_header = client.post(
-                "/registry-sync",
-                headers={"X-P4P-Registry-Token": "registry-admin-secret"},
+        blocked_sync, sync_via_token_header = asyncio.run(
+            asgi_responses(
+                registry_app.app,
+                [
+                    {"method": "POST", "url": "/registry-sync"},
+                    {
+                        "method": "POST",
+                        "url": "/registry-sync",
+                        "headers": {"X-P4P-Registry-Token": "registry-admin-secret"},
+                    },
+                ],
             )
-            sync_status_via_bearer = client.get(
-                "/registry-sync",
-                headers={"Authorization": self.registry_admin_authorization()},
-            )
+        )
+        sync_status_via_bearer = registry_app.registry_sync_status(
+            authorization=self.registry_admin_authorization(),
+        )
 
         self.assertEqual(blocked_sync.status_code, 401)
         self.assertEqual(blocked_sync.json()["detail"], "Invalid registry admin token")
         self.assertEqual(sync_via_token_header.status_code, 200)
         self.assertEqual(sync_via_token_header.json()["upstreams"], [])
-        self.assertEqual(sync_status_via_bearer.status_code, 200)
-        self.assertEqual(sync_status_via_bearer.json()["last_results"], [])
+        self.assertEqual(sync_status_via_bearer.last_results, [])
 
     def test_scope_and_capability_gating_blocks_onboard_relay_and_reexport(self) -> None:
         identity = load_module("p4p_identity.py")
@@ -10513,6 +11076,474 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertIsNotNone(reloaded_setup["setup"]["last_reviewed_at"])
             reloaded.store.close()
 
+    def test_hosted_pilot_node_cannot_boot_directly_in_live_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaisesRegex(ValueError, "operator live-activation gate"):
+                load_module(
+                    "pilot-node/pilot_node.py",
+                    {
+                        "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                        "P4P_NODE_KEY_FILE": str(Path(tmpdir) / "node.key"),
+                        "P4P_NODE_BASE_URL": "https://node.example-restaurant.dk",
+                        "P4P_NODE_ORDER_MODE": "live",
+                        "P4P_NODE_MODULES": "p4p.payment.cash",
+                        "P4P_OPERATOR_TOKEN": "correct-horse-battery-staple-restaurant-2026",
+                    },
+                )
+
+    def test_pilot_node_blocks_live_activation_when_readiness_is_unsafe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "https://node.example-restaurant.dk",
+                    "P4P_NODE_ORDER_MODE": "menu_only",
+                    "P4P_NODE_MODULES": "p4p.payment.cash",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+
+            with self.assertRaises(HTTPException) as blocked:
+                asyncio.run(
+                    pilot.operator_update_state(
+                        SimpleNamespace(open=None, order_mode="live"),
+                        authorization="Bearer operator-secret",
+                    )
+                )
+
+            self.assertEqual(blocked.exception.status_code, 409)
+            self.assertEqual(blocked.exception.detail["code"], "live_activation_blocked")
+            self.assertIn("persistent_node_identity_required", blocked.exception.detail["blockers"])
+            self.assertIn("strong_operator_token_required", blocked.exception.detail["blockers"])
+            self.assertIn("operational_setup_incomplete", blocked.exception.detail["blockers"])
+            self.assertEqual(pilot.operator_state(authorization="Bearer operator-secret")["node"]["order_mode"], "menu_only")
+            pilot.store.close()
+
+    def test_pilot_node_live_activation_requires_and_retains_a_valid_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token = "correct-horse-battery-staple-restaurant-2026"
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                "P4P_NODE_KEY_FILE": str(Path(tmpdir) / "node.key"),
+                "P4P_NODE_BASE_URL": "https://node.example-restaurant.dk",
+                "P4P_NODE_ORDER_MODE": "menu_only",
+                "P4P_NODE_MODULES": (
+                    "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,"
+                    "p4p.kitchen.screen,p4p.payment.cash"
+                ),
+                "P4P_OPERATOR_TOKEN": token,
+            }
+            pilot = load_module("pilot-node/pilot_node.py", env)
+            setup = pilot.operator_update_setup(
+                pilot.OperatorSetupUpdate(
+                    hardware_base_profile="counter_box",
+                    hardware_enabled_addons=[],
+                    catalog_ready=True,
+                    local_tests_run=True,
+                ),
+                authorization=f"Bearer {token}",
+            )
+            self.assertTrue(setup["summary"]["live_activation_ready"])
+            self.assertEqual(setup["summary"]["live_activation_blockers"], [])
+
+            with patch.object(pilot._app.httpx, "AsyncClient", new=lambda *args, **kwargs: FailingAsyncClient()):
+                activated = asyncio.run(
+                    pilot.operator_update_state(
+                        SimpleNamespace(open=None, order_mode="live"),
+                        authorization=f"Bearer {token}",
+                    )
+                )
+            self.assertEqual(activated["node"]["order_mode"], "live")
+            self.assertTrue(activated["accepts_orders"])
+            pilot.store.close()
+
+            reloaded = load_module("pilot-node/pilot_node.py", env)
+            self.assertEqual(reloaded.operator_state(authorization=f"Bearer {token}")["node"]["order_mode"], "live")
+            self.assertTrue(reloaded.public_info()["accepts_orders"])
+            reloaded.store.close()
+
+            unsafe_env = dict(env)
+            unsafe_env["P4P_OPERATOR_TOKEN"] = "operator-secret"
+            unsafe = load_module("pilot-node/pilot_node.py", unsafe_env)
+            self.assertEqual(
+                unsafe.operator_state(authorization="Bearer operator-secret")["node"]["order_mode"],
+                "menu_only",
+            )
+            self.assertFalse(unsafe.public_info()["accepts_orders"])
+            unsafe.store.close()
+
+    def test_hosted_pilot_node_waits_for_operator_acceptance_before_side_effects(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token = "correct-horse-battery-staple-restaurant-2026"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_KEY_FILE": str(Path(tmpdir) / "node.key"),
+                    "P4P_NODE_BASE_URL": "https://node.example-restaurant.dk",
+                    "P4P_NODE_ORDER_MODE": "menu_only",
+                    "P4P_NODE_MODULES": (
+                        "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,"
+                        "p4p.kitchen.screen,p4p.payment.cash,p4p.order.print"
+                    ),
+                    "P4P_OPERATOR_TOKEN": token,
+                },
+            )
+            pilot.operator_update_setup(
+                pilot.OperatorSetupUpdate(
+                    hardware_base_profile="counter_box",
+                    hardware_enabled_addons=[],
+                    catalog_ready=True,
+                    local_tests_run=True,
+                ),
+                authorization=f"Bearer {token}",
+            )
+            with patch.object(pilot._app.httpx, "AsyncClient", new=lambda *args, **kwargs: FailingAsyncClient()):
+                asyncio.run(
+                    pilot.operator_update_state(
+                        SimpleNamespace(open=None, order_mode="live"),
+                        authorization=f"Bearer {token}",
+                    )
+                )
+
+            received = pilot.public_order(self.make_pilot_order_request(pilot))
+            pending = pilot.operator_orders(authorization=f"Bearer {token}")[0]
+            self.assertTrue(received.accepted)
+            self.assertEqual(pending.status, "new")
+            self.assertEqual(pending.status_message, None)
+            self.assertEqual(
+                pilot.operator_order_events(received.order_id, authorization=f"Bearer {token}"),
+                [],
+            )
+
+            accepted = pilot.operator_update_order(
+                received.order_id,
+                pilot.OrderStatusUpdate(status="accepted", status_message="Accepted by restaurant."),
+                authorization=f"Bearer {token}",
+            )
+            events = pilot.operator_order_events(received.order_id, authorization=f"Bearer {token}")
+            self.assertEqual(accepted.status, "accepted")
+            self.assertEqual(events[0].event, "ORDER_ACCEPTED")
+            self.assertIn("PAYMENT_REQUIRED", [event.event for event in events])
+            self.assertIn("PRINT_SUCCESS_CONFIRMED", [event.event for event in events])
+            self.assertEqual(events[-1].event, "ORDER_STATUS_UPDATED")
+            self.assertEqual(events[-1].metadata["previous_status"], "new")
+            pilot.store.close()
+
+    def test_hosted_pilot_node_enforces_atomic_order_admission_limits(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token = "correct-horse-battery-staple-restaurant-2026"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_KEY_FILE": str(Path(tmpdir) / "node.key"),
+                    "P4P_NODE_BASE_URL": "https://node.example-restaurant.dk",
+                    "P4P_NODE_ORDER_MODE": "menu_only",
+                    "P4P_NODE_MODULES": (
+                        "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,"
+                        "p4p.kitchen.screen,p4p.payment.cash"
+                    ),
+                    "P4P_OPERATOR_TOKEN": token,
+                    "P4P_ORDER_MAX_LINES": "1",
+                    "P4P_ORDER_MAX_UNITS": "2",
+                    "P4P_ORDER_MAX_VALUE_MINOR": "10000",
+                    "P4P_ORDER_MAX_ACTIVE": "10",
+                    "P4P_ORDER_MAX_PENDING": "2",
+                    "P4P_ORDER_MAX_PENDING_PER_CONTACT": "1",
+                    "P4P_ORDER_RATE_LIMIT_REQUESTS": "7",
+                    "P4P_ORDER_RATE_LIMIT_WINDOW_SECONDS": "90",
+                    "P4P_TRUSTED_PROXY_CIDRS": "127.0.0.1/32,::1/128",
+                },
+            )
+            pilot.operator_update_setup(
+                pilot.OperatorSetupUpdate(
+                    hardware_base_profile="counter_box",
+                    hardware_enabled_addons=[],
+                    catalog_ready=True,
+                    local_tests_run=True,
+                ),
+                authorization=f"Bearer {token}",
+            )
+            with patch.object(pilot._app.httpx, "AsyncClient", new=lambda *args, **kwargs: FailingAsyncClient()):
+                asyncio.run(
+                    pilot.operator_update_state(
+                        SimpleNamespace(open=None, order_mode="live"),
+                        authorization=f"Bearer {token}",
+                    )
+                )
+
+            base = self.make_pilot_order_request(pilot)
+            too_many_lines = pilot.public_order(
+                base.model_copy(
+                    update={
+                        "client_request_id": f"test-{uuid4().hex}",
+                        "items": [
+                            pilot.OrderItem(id="kebab-pita", quantity=1),
+                            pilot.OrderItem(id="durum-kebab", quantity=1),
+                        ],
+                    }
+                )
+            )
+            too_many_units = pilot.public_order(
+                base.model_copy(
+                    update={
+                        "client_request_id": f"test-{uuid4().hex}",
+                        "items": [pilot.OrderItem(id="kebab-pita", quantity=3)],
+                    }
+                )
+            )
+            too_much_value = pilot.public_order(
+                base.model_copy(
+                    update={
+                        "client_request_id": f"test-{uuid4().hex}",
+                        "items": [pilot.OrderItem(id="kebab-pita", quantity=2)],
+                    }
+                )
+            )
+            first = pilot.public_order(base)
+            same_contact = pilot.public_order(
+                base.model_copy(update={"client_request_id": f"test-{uuid4().hex}"})
+            )
+            second = pilot.public_order(
+                base.model_copy(
+                    update={
+                        "client_request_id": f"test-{uuid4().hex}",
+                        "customer_contact": "+4599999999",
+                    }
+                )
+            )
+            queue_full = pilot.public_order(
+                base.model_copy(
+                    update={
+                        "client_request_id": f"test-{uuid4().hex}",
+                        "customer_contact": "+4588888888",
+                    }
+                )
+            )
+            retried_first = pilot.public_order(base)
+            public_limits = pilot.public_info()["order_limits"]
+            operator_limits = pilot.operator_state(
+                authorization=f"Bearer {token}"
+            )["order_admission"]
+
+            self.assertEqual(too_many_lines.reason, "too_many_lines")
+            self.assertEqual(too_many_units.reason, "too_many_units")
+            self.assertEqual(too_much_value.reason, "order_value_too_high")
+            self.assertTrue(first.accepted)
+            self.assertEqual(same_contact.reason, "contact_pending_limit")
+            self.assertTrue(second.accepted)
+            self.assertEqual(queue_full.reason, "pending_queue_full")
+            self.assertEqual(retried_first.order_id, first.order_id)
+            self.assertEqual(len(pilot.operator_orders(authorization=f"Bearer {token}")), 2)
+            self.assertEqual(public_limits["max_units"], 2)
+            self.assertEqual(public_limits["max_value_minor"], 10000)
+            self.assertEqual(operator_limits["max_pending"], 2)
+            self.assertEqual(operator_limits["max_pending_per_contact"], 1)
+            self.assertEqual(operator_limits["rate_limit_requests"], 7)
+            self.assertEqual(operator_limits["rate_limit_window_seconds"], 90)
+            self.assertEqual(operator_limits["trusted_proxy_cidrs"], ["127.0.0.1/32", "::1/128"])
+            pilot.store.close()
+
+    def test_hosted_pilot_node_snapshots_price_before_menu_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token = "correct-horse-battery-staple-restaurant-2026"
+            spool_dir = Path(tmpdir) / "spool"
+            env = {
+                "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                "P4P_NODE_KEY_FILE": str(Path(tmpdir) / "node.key"),
+                "P4P_NODE_BASE_URL": "https://node.example-restaurant.dk",
+                "P4P_NODE_ORDER_MODE": "menu_only",
+                "P4P_NODE_MODULES": (
+                    "p4p.catalog.editor,p4p.menu.list,p4p.customer.status,"
+                    "p4p.kitchen.screen,p4p.payment.cash,p4p.payment.godpay-mock,"
+                    "p4p.order.print"
+                ),
+                "P4P_PAYMENT_MODULE_ID": "p4p.payment.godpay-mock",
+                "P4P_GODPAY_FORCE_ROLL": "1",
+                "P4P_PRINT_MODULE_TARGET": "printer",
+                "P4P_PRINT_MODULE_DRIVER": "file_spool",
+                "P4P_PRINT_SPOOL_DIR": str(spool_dir),
+                "P4P_OPERATOR_TOKEN": token,
+            }
+            pilot = load_module("pilot-node/pilot_node.py", env)
+            pilot.operator_update_setup(
+                pilot.OperatorSetupUpdate(
+                    hardware_base_profile="counter_box",
+                    hardware_enabled_addons=[],
+                    catalog_ready=True,
+                    local_tests_run=True,
+                ),
+                authorization=f"Bearer {token}",
+            )
+            with patch.object(pilot._app.httpx, "AsyncClient", new=lambda *args, **kwargs: FailingAsyncClient()):
+                asyncio.run(
+                    pilot.operator_update_state(
+                        SimpleNamespace(open=None, order_mode="live"),
+                        authorization=f"Bearer {token}",
+                    )
+                )
+
+            received = pilot.public_order(self.make_pilot_order_request(pilot))
+            pending = pilot.operator_orders(authorization=f"Bearer {token}")[0]
+            self.assertEqual(pending.pricing_snapshot.currency, "DKK")
+            self.assertEqual(pending.pricing_snapshot.total_minor, 6500)
+            self.assertEqual(pending.pricing_snapshot.lines[0].name, "Kebab pita")
+            self.assertEqual(pending.pricing_snapshot.lines[0].unit_price, 6500)
+
+            pilot.operator_replace_menu(
+                pilot.MenuUpdate(
+                    items=[
+                        pilot.MenuItem(
+                            id="kebab-pita",
+                            name="Renamed expensive pita",
+                            description="Changed after the order arrived",
+                            price=9900,
+                            category="kebab",
+                            active=True,
+                        )
+                    ]
+                ),
+                authorization=f"Bearer {token}",
+            )
+            accepted = pilot.operator_update_order(
+                received.order_id,
+                pilot.OrderStatusUpdate(status="accepted"),
+                authorization=f"Bearer {token}",
+            )
+            events = pilot.operator_order_events(received.order_id, authorization=f"Bearer {token}")
+            payment_event = next(event for event in events if event.event == "PAYMENT_REQUIRED")
+            print_event = next(event for event in events if event.event == "PRINT_SUCCESS_CONFIRMED")
+            ticket_text = Path(print_event.metadata["spool_path"]).read_text(encoding="utf-8")
+
+            self.assertEqual(accepted.pricing_snapshot.total_minor, 6500)
+            self.assertEqual(payment_event.metadata["amount"], 6500)
+            self.assertIn("Kebab pita", ticket_text)
+            self.assertIn("65.00 DKK", ticket_text)
+            self.assertNotIn("Renamed expensive pita", ticket_text)
+            pilot.store.close()
+
+            reloaded = load_module("pilot-node/pilot_node.py", env)
+            persisted = reloaded.operator_orders(authorization=f"Bearer {token}")[0]
+            self.assertEqual(persisted.pricing_snapshot.total_minor, 6500)
+            self.assertEqual(persisted.pricing_snapshot.lines[0].name, "Kebab pita")
+            reloaded.store.close()
+
+    def test_pilot_node_outbox_resumes_completed_lanes_and_requires_unknown_reconciliation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            token = "operator-secret"
+            db_path = str(Path(tmpdir) / "pilot.sqlite3")
+            spool_dir = Path(tmpdir) / "spool"
+            base_env = {
+                "P4P_PILOT_NODE_DB_PATH": db_path,
+                "P4P_NODE_KEY_FILE": str(Path(tmpdir) / "node.key"),
+                "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                "P4P_NODE_ORDER_MODE": "test",
+                "P4P_NODE_MODULES": "p4p.payment.cash",
+                "P4P_PAYMENT_MODULE_ID": "p4p.payment.cash",
+                "P4P_OPERATOR_TOKEN": token,
+            }
+            first_runtime = load_module("pilot-node/pilot_node.py", base_env)
+            received = first_runtime.public_order(self.make_pilot_order_request(first_runtime))
+            first_actions = first_runtime.operator_order_actions(
+                received.order_id,
+                authorization=f"Bearer {token}",
+            )
+            first_events = first_runtime.operator_order_events(
+                received.order_id,
+                authorization=f"Bearer {token}",
+            )
+
+            self.assertEqual(first_actions[0]["lane"], "payment")
+            self.assertEqual(first_actions[0]["status"], "succeeded")
+            self.assertEqual(first_actions[0]["attempts"], 1)
+            self.assertEqual([event.event for event in first_events].count("ORDER_ACCEPTED"), 1)
+            self.assertEqual([event.event for event in first_events].count("PAYMENT_REQUIRED"), 1)
+            first_runtime.store.close()
+
+            print_env = {
+                **base_env,
+                "P4P_NODE_MODULES": "p4p.payment.cash,p4p.order.print",
+                "P4P_PRINT_MODULE_TARGET": "printer",
+                "P4P_PRINT_MODULE_DRIVER": "file_spool",
+                "P4P_PRINT_SPOOL_DIR": str(spool_dir),
+            }
+            interrupted_runtime = load_module("pilot-node/pilot_node.py", print_env)
+            print_action_id = f"outbox:{received.order_id}:print:primary"
+            first_claim = interrupted_runtime.store.claim_order_action(
+                order_id=received.order_id,
+                action_id=print_action_id,
+                lane="print",
+            )
+            competing_claim = interrupted_runtime.store.claim_order_action(
+                order_id=received.order_id,
+                action_id=print_action_id,
+                lane="print",
+            )
+            self.assertTrue(first_claim["claimed"])
+            self.assertFalse(competing_claim["claimed"])
+            interrupted_runtime.store.close()
+
+            resumed_runtime = load_module("pilot-node/pilot_node.py", print_env)
+            unknown_action = next(
+                action
+                for action in resumed_runtime.operator_order_actions(
+                    received.order_id,
+                    authorization=f"Bearer {token}",
+                )
+                if action["action_id"] == print_action_id
+            )
+            self.assertEqual(unknown_action["status"], "unknown")
+            self.assertEqual(unknown_action["last_error"], "runtime_restarted_before_completion")
+
+            blocked = resumed_runtime.operator_resume_order(
+                received.order_id,
+                authorization=f"Bearer {token}",
+            )
+            self.assertIn("needs human reconciliation", blocked.status_message)
+            self.assertEqual(list(spool_dir.glob("*.txt")), [])
+
+            resolved = resumed_runtime.operator_resolve_order_action(
+                received.order_id,
+                print_action_id,
+                resumed_runtime.OperatorOrderActionResolution(
+                    status="failed",
+                    note="Confirmed that no ticket left the printer.",
+                ),
+                authorization=f"Bearer {token}",
+            )
+            self.assertEqual(resolved["status"], "failed")
+
+            completed = resumed_runtime.operator_resume_order(
+                received.order_id,
+                authorization=f"Bearer {token}",
+            )
+            completed_events = resumed_runtime.operator_order_events(
+                received.order_id,
+                authorization=f"Bearer {token}",
+            )
+            completed_actions = resumed_runtime.operator_order_actions(
+                received.order_id,
+                authorization=f"Bearer {token}",
+            )
+            self.assertIn("Print confirmed", completed.status_message)
+            self.assertEqual([event.event for event in completed_events].count("ORDER_ACCEPTED"), 1)
+            self.assertEqual([event.event for event in completed_events].count("PAYMENT_REQUIRED"), 1)
+            self.assertEqual([event.event for event in completed_events].count("PRINT_REQUESTED"), 1)
+            self.assertEqual(len(list(spool_dir.glob("*.txt"))), 1)
+            self.assertEqual(
+                {action["lane"]: action["status"] for action in completed_actions},
+                {"payment": "succeeded", "print": "succeeded"},
+            )
+
+            resumed_runtime.operator_resume_order(
+                received.order_id,
+                authorization=f"Bearer {token}",
+            )
+            self.assertEqual(len(list(spool_dir.glob("*.txt"))), 1)
+            resumed_runtime.store.close()
+
     def test_pilot_node_operator_discover_and_node_rooms_share_public_catalog_truth(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = str(Path(tmpdir) / "pilot.sqlite3")
@@ -11251,6 +12282,8 @@ class P4PTruthfulnessTests(unittest.TestCase):
             ticket_text = ticket_path.read_text(encoding="utf-8")
             self.assertIn(accepted.order_id, ticket_text)
             self.assertIn("kebab-pita", ticket_text)
+            self.assertEqual(ticket_path.parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(ticket_path.stat().st_mode & 0o777, 0o600)
             pilot.store.close()
 
     def test_pilot_node_print_module_can_write_to_device_path(self) -> None:
@@ -11316,6 +12349,38 @@ class P4PTruthfulnessTests(unittest.TestCase):
             self.assertTrue(ticket_bytes.endswith(b"\x1dV\x01"))
             self.assertIn(accepted.order_id.encode("ascii"), ticket_bytes)
             self.assertIn(b"kebab-pita", ticket_bytes)
+            pilot.store.close()
+
+    def test_pilot_node_print_output_strips_customer_control_characters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            device_path = Path(tmpdir) / "fake-escpos-device.bin"
+            pilot = load_module(
+                "pilot-node/pilot_node.py",
+                {
+                    "P4P_PILOT_NODE_DB_PATH": str(Path(tmpdir) / "pilot.sqlite3"),
+                    "P4P_NODE_BASE_URL": "http://127.0.0.1:8201",
+                    "P4P_NODE_OPEN": "true",
+                    "P4P_NODE_ORDER_MODE": "live",
+                    "P4P_NODE_MODULES": "p4p.order.print",
+                    "P4P_PRINT_MODULE_TARGET": "printer",
+                    "P4P_PRINT_MODULE_DRIVER": "escpos_raw",
+                    "P4P_PRINT_DEVICE_PATH": str(device_path),
+                    "P4P_PRINT_ESCPOS_CUT_MODE": "partial",
+                    "P4P_PRINT_MODULE_MODE": "confirmed",
+                    "P4P_OPERATOR_TOKEN": "operator-secret",
+                },
+            )
+            request = self.make_pilot_order_request(pilot)
+            request.customer_name = "Mallory\nstatus: completed"
+            request.customer_contact = "+4512345678\x1bp\x00\x19\x19"
+            request.note = "Pickup\r\nPRINTED: yes"
+
+            pilot.public_order(request)
+            ticket_bytes = device_path.read_bytes()
+
+            self.assertNotIn(b"\x1bp\x00\x19\x19", ticket_bytes)
+            self.assertIn(b"customer_name: Mallory status: completed\n", ticket_bytes)
+            self.assertIn(b"note: Pickup PRINTED: yes\n", ticket_bytes)
             pilot.store.close()
 
     def test_pilot_node_print_precheck_can_block_before_device_write(self) -> None:
@@ -11869,6 +12934,103 @@ class P4PTruthfulnessTests(unittest.TestCase):
             False,
         )
         self.assertFalse([result for result in rejected if result.level == "FAIL"])
+
+    def test_pilot_readiness_checker_accepts_complete_menu_only_node(self) -> None:
+        checker = load_module("scripts/check-pilot-readiness.py")
+        baseline_modules = sorted(checker.BASELINE_MODULES)
+
+        def fake_fetch(url: str, *, token=None, timeout: float = 8.0):
+            if url.endswith("/health"):
+                return 200, {
+                    "status": "ready",
+                    "configured_registries": ["http://registry-a.test", "http://registry-b.test"],
+                    "registered_registries": ["http://registry-a.test", "http://registry-b.test"],
+                    "failed_registries": {},
+                }
+            if url.endswith("/p4p/info"):
+                return 200, {
+                    "order_mode": "menu_only",
+                    "fulfillment": ["pickup"],
+                    "payment_methods": ["pay_at_pickup"],
+                }
+            if url.endswith("/p4p/menu"):
+                return 200, {"items": [{"id": "pizza-1", "price": 9500}]}
+            if url.endswith("/operator/state") and token is None:
+                return 401, {"detail": "Invalid operator token"}
+            if url.endswith("/operator/state"):
+                return 200, {
+                    "node": {"order_mode": "menu_only"},
+                    "accepts_orders": False,
+                    "enabled_modules": baseline_modules,
+                    "active_by_lane": {"payment": "p4p.payment.cash"},
+                }
+            if url.endswith("/operator/setup"):
+                return 200, {
+                    "summary": {"ready_for_menu_only": True, "ready_for_live": False},
+                    "modules": {"restart_required": False},
+                }
+            if url.endswith("/operator/orders"):
+                return 200, []
+            raise AssertionError(f"unexpected URL {url}")
+
+        with patch.object(checker, "fetch_json", side_effect=fake_fetch):
+            results = checker.run_checks(
+                "http://127.0.0.1:8201",
+                operator_token="operator-secret",
+            )
+
+        self.assertFalse([entry for entry in results if entry.level == "FAIL"])
+
+    def test_pilot_readiness_checker_fails_closed_on_live_or_incomplete_state(self) -> None:
+        checker = load_module("scripts/check-pilot-readiness.py")
+
+        def fake_fetch(url: str, *, token=None, timeout: float = 8.0):
+            if url.endswith("/health"):
+                return 200, {
+                    "status": "ready",
+                    "configured_registries": ["http://registry-a.test"],
+                    "registered_registries": ["http://registry-a.test"],
+                    "failed_registries": {},
+                }
+            if url.endswith("/p4p/info"):
+                return 200, {
+                    "order_mode": "live",
+                    "fulfillment": ["pickup"],
+                    "payment_methods": ["pay_at_pickup"],
+                }
+            if url.endswith("/p4p/menu"):
+                return 200, {"items": [{"id": "pizza-1", "price": 9500}]}
+            if url.endswith("/operator/state") and token is None:
+                return 200, {"node": {"order_mode": "live"}}
+            if url.endswith("/operator/state"):
+                return 200, {
+                    "node": {"order_mode": "live"},
+                    "accepts_orders": True,
+                    "enabled_modules": ["p4p.payment.cash"],
+                    "active_by_lane": {"payment": "p4p.payment.cash"},
+                }
+            if url.endswith("/operator/setup"):
+                return 200, {
+                    "summary": {"ready_for_menu_only": False, "ready_for_live": False},
+                    "modules": {"restart_required": True},
+                }
+            if url.endswith("/operator/orders"):
+                return 200, []
+            raise AssertionError(f"unexpected URL {url}")
+
+        with patch.object(checker, "fetch_json", side_effect=fake_fetch):
+            results = checker.run_checks(
+                "http://127.0.0.1:8201",
+                operator_token="operator-secret",
+            )
+
+        failures = {entry.name for entry in results if entry.level == "FAIL"}
+        self.assertIn("health.dual_registry_config", failures)
+        self.assertIn("public.order_mode", failures)
+        self.assertIn("operator.auth_boundary", failures)
+        self.assertIn("operator.baseline_modules", failures)
+        self.assertIn("setup.ready_for_menu_only", failures)
+        self.assertIn("setup.restart_required", failures)
 
     def test_node_checker_refuses_live_order_without_explicit_flag(self) -> None:
         checker = load_module("scripts/check-node.py")

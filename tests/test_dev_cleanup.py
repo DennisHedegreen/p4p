@@ -14,9 +14,9 @@ from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.testclient import TestClient
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = REPO_ROOT.parent
@@ -301,33 +301,50 @@ class P4PDevCleanupTests(unittest.TestCase):
         )
 
         @app.get("/health")
-        def health() -> dict[str, str]:
+        async def health() -> dict[str, str]:
             return {"status": "ok"}
 
         @app.post("/body-limited")
-        def body_limited() -> dict[str, str]:
+        async def body_limited() -> dict[str, str]:
             return {"status": "ok"}
 
         @app.post("/rate-limited")
-        def rate_limited() -> dict[str, str]:
+        async def rate_limited() -> dict[str, str]:
             return {"status": "ok"}
 
         @app.get("/status/{status_token}")
-        def status_lookup(status_token: str) -> dict[str, str]:
+        async def status_lookup(status_token: str) -> dict[str, str]:
             return {"status_token": status_token}
 
-        with TestClient(app) as client:
-            healthy = client.get("/health")
-            oversized = client.post(
-                "/body-limited",
-                content=b"x" * 17,
-                headers={"Origin": "https://client.example"},
-            )
-            first = client.post("/rate-limited")
-            second = client.post("/rate-limited")
-            rejected = client.post("/rate-limited")
-            first_status = client.get("/status/first")
-            rotated_status = client.get("/status/second")
+        async def exercise_hardening():
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=transport,
+                base_url="http://testserver",
+            ) as client:
+                return (
+                    await client.get("/health"),
+                    await client.post(
+                        "/body-limited",
+                        content=b"x" * 17,
+                        headers={"Origin": "https://client.example"},
+                    ),
+                    await client.post("/rate-limited"),
+                    await client.post("/rate-limited"),
+                    await client.post("/rate-limited"),
+                    await client.get("/status/first"),
+                    await client.get("/status/second"),
+                )
+
+        (
+            healthy,
+            oversized,
+            first,
+            second,
+            rejected,
+            first_status,
+            rotated_status,
+        ) = asyncio.run(exercise_hardening())
 
         self.assertEqual(healthy.headers["x-content-type-options"], "nosniff")
         self.assertEqual(healthy.headers["x-frame-options"], "DENY")
@@ -344,6 +361,90 @@ class P4PDevCleanupTests(unittest.TestCase):
         self.assertIn("retry-after", rejected.headers)
         self.assertEqual(first_status.status_code, 200)
         self.assertEqual(rotated_status.status_code, 429)
+
+    def test_rate_limit_only_trusts_forwarded_clients_from_configured_proxies(self) -> None:
+        direct_app = FastAPI()
+        configure_http_hardening(
+            direct_app,
+            default_max_body_bytes=16,
+            rate_limit_rules=(RateLimitRule("POST", "/order", 1),),
+        )
+
+        @direct_app.post("/order")
+        async def direct_order() -> dict[str, str]:
+            return {"status": "ok"}
+
+        async def exercise_direct_client():
+            transport = httpx.ASGITransport(
+                app=direct_app,
+                client=("198.51.100.20", 50000),
+            )
+            async with httpx.AsyncClient(
+                transport=transport,
+                base_url="http://testserver",
+            ) as client:
+                return (
+                    await client.post(
+                        "/order", headers={"X-Forwarded-For": "203.0.113.1"}
+                    ),
+                    await client.post(
+                        "/order", headers={"X-Forwarded-For": "203.0.113.2"}
+                    ),
+                )
+
+        first_direct, spoofed_direct = asyncio.run(exercise_direct_client())
+
+        self.assertEqual(first_direct.status_code, 200)
+        self.assertEqual(spoofed_direct.status_code, 429)
+
+        proxy_app = FastAPI()
+        configure_http_hardening(
+            proxy_app,
+            default_max_body_bytes=16,
+            rate_limit_rules=(RateLimitRule("POST", "/order", 1),),
+            trusted_proxy_cidrs=("10.0.0.0/24",),
+        )
+
+        @proxy_app.post("/order")
+        async def proxied_order() -> dict[str, str]:
+            return {"status": "ok"}
+
+        async def exercise_proxy_client():
+            transport = httpx.ASGITransport(
+                app=proxy_app,
+                client=("10.0.0.5", 50000),
+            )
+            async with httpx.AsyncClient(
+                transport=transport,
+                base_url="http://testserver",
+            ) as client:
+                return (
+                    await client.post(
+                        "/order", headers={"X-Forwarded-For": "198.51.100.30"}
+                    ),
+                    await client.post(
+                        "/order", headers={"X-Forwarded-For": "198.51.100.31"}
+                    ),
+                    await client.post(
+                        "/order", headers={"X-Forwarded-For": "198.51.100.30"}
+                    ),
+                    await client.post(
+                        "/order",
+                        headers={"X-Forwarded-For": "203.0.113.99, 198.51.100.31"},
+                    ),
+                )
+
+        (
+            first_client,
+            second_client,
+            repeated_client,
+            spoofed_left_edge,
+        ) = asyncio.run(exercise_proxy_client())
+
+        self.assertEqual(first_client.status_code, 200)
+        self.assertEqual(second_client.status_code, 200)
+        self.assertEqual(repeated_client.status_code, 429)
+        self.assertEqual(spoofed_left_edge.status_code, 429)
 
     def test_registry_uses_shared_protocol_models(self) -> None:
         registry = load_module("registry/main.py")

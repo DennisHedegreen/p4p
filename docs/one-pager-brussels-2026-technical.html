@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pizza4People / P4P - Brussels 2026 Technical One-Pager</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    :root {
+      --paper: #f4f6f4;
+      --ink: #171b1a;
+      --muted: #5f6865;
+      --line: #bcc7c2;
+      --accent: #0d7c66;
+      --accent-soft: #e5f5ef;
+      --dark: #111614;
+      --signal: #ef5a32;
+      --signal-soft: #fff0e9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #d7ddda;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+    }
+
+    .sheet {
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      padding: 10mm;
+      background:
+        linear-gradient(180deg, rgba(13, 124, 102, 0.025), rgba(13, 124, 102, 0)),
+        radial-gradient(circle at 84% 10%, rgba(13, 124, 102, 0.08) 0 13mm, transparent 13.2mm),
+        radial-gradient(circle at 15% 92%, rgba(239, 90, 50, 0.07) 0 12mm, transparent 12.2mm),
+        var(--paper);
+      overflow: hidden;
+    }
+
+    .frame {
+      height: 100%;
+      padding: 8mm;
+      border: 0.45mm solid rgba(188, 199, 194, 0.95);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 4mm;
+    }
+
+    .eyebrow {
+      margin: 0 0 2.5mm;
+      font-size: 2.8mm;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1,
+    h2,
+    p,
+    ul,
+    ol,
+    pre {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 9.2mm;
+      line-height: 0.98;
+      margin-bottom: 2mm;
+    }
+
+    .lead {
+      font-size: 4mm;
+      line-height: 1.18;
+      max-width: 150mm;
+    }
+
+    .hero {
+      padding: 3.3mm 3.8mm;
+      border-radius: 2.8mm;
+      background: var(--dark);
+      color: #f8fcfb;
+      font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 3.05mm;
+      line-height: 1.34;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4mm;
+      align-content: start;
+    }
+
+    .col {
+      display: grid;
+      gap: 4mm;
+      align-content: start;
+    }
+
+    .card {
+      padding: 3.6mm 4mm;
+      border: 0.35mm solid rgba(188, 199, 194, 0.98);
+      border-radius: 2.8mm;
+      background: rgba(251, 253, 252, 0.88);
+    }
+
+    .card.card--accent {
+      background: var(--accent-soft);
+    }
+
+    .card.card--signal {
+      background: var(--signal-soft);
+    }
+
+    h2 {
+      margin-bottom: 1.8mm;
+      font-size: 3.6mm;
+      line-height: 1.08;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    p,
+    li {
+      font-size: 3.02mm;
+      line-height: 1.24;
+    }
+
+    ul,
+    ol {
+      padding-left: 4.4mm;
+      display: grid;
+      gap: 1.05mm;
+    }
+
+    .trace {
+      padding: 3.3mm 3.8mm;
+      border-radius: 2.8mm;
+      background: var(--signal-soft);
+      border: 0.35mm solid rgba(239, 90, 50, 0.28);
+      font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 2.95mm;
+      line-height: 1.28;
+      font-weight: 700;
+      color: #532316;
+      white-space: pre-wrap;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 6mm;
+      padding-top: 1.5mm;
+      border-top: 0.35mm solid rgba(188, 199, 194, 0.95);
+      color: var(--muted);
+      font-size: 2.45mm;
+    }
+
+    .footer strong {
+      color: var(--ink);
+    }
+
+    @media print {
+      body {
+        background: none;
+      }
+
+      .sheet {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <section class="frame">
+      <header>
+        <p class="eyebrow">Brussels 2026 Hackathon / Pizza4People / Technical</p>
+        <h1>DISCOVERY WITHOUT<br>PLATFORM RELAY.</h1>
+        <p class="lead">Use this when the group needs the deeper technical version: discovery can use a registry, but menu and order traffic still go directly from client to node. The registry must not become the order path.</p>
+      </header>
+
+      <div class="hero">announce -&gt; heartbeat -&gt; discover -&gt; menu -&gt; order
+client -&gt; registry for discovery
+client -&gt; node for menu and order
+backup registry only for failover</div>
+
+      <section class="grid">
+        <div class="col">
+          <article class="card">
+            <h2>Technical Claim The Group Can Stand Behind</h2>
+            <p>P4P proves that a local takeaway shop can stay directly reachable without a marketplace middleman owning first contact, while keeping discovery and ordering as separate layers.</p>
+          </article>
+
+          <article class="card">
+            <h2>Core Wire Loop</h2>
+            <ol>
+              <li>node announces itself to one or more registries</li>
+              <li>node heartbeats keep stale entries out of discovery</li>
+              <li>client queries registry for nearby nodes</li>
+              <li>client fetches menu from the node endpoint</li>
+              <li>client submits order to the node endpoint</li>
+              <li>client can fail over to a backup registry</li>
+            </ol>
+          </article>
+
+          <article class="trace">discover: client -&gt; registry
+menu:     client -&gt; node
+order:    client -&gt; node
+mode:     order_mode = test | live
+backup:   client -&gt; backup registry</article>
+
+          <article class="card card--accent">
+            <h2>Why It Is Technically Interesting</h2>
+            <ul>
+              <li>registry out of order path</li>
+              <li>node-owned endpoint and menu truth</li>
+              <li>explicit order consent via <code>order_mode</code></li>
+              <li>failover at discovery layer</li>
+              <li>modules outside minimum interoperable core</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="col">
+          <article class="card card--signal">
+            <h2>Anti-Capture Boundary</h2>
+            <p>This is not just another ordering backend. The point is to keep the minimum interoperable core small enough that a shop can remain directly reachable and a registry can help discovery without owning the customer relationship.</p>
+          </article>
+
+          <article class="card">
+            <h2>Technical Version The Group Can Show</h2>
+            <ul>
+              <li>one small registry</li>
+              <li>one small shop node</li>
+              <li>one browser client</li>
+              <li>one operator screen</li>
+              <li>request trace that proves menu/order hit node, not registry</li>
+              <li>optional backup registry if time allows</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>Hard Non-Goals</h2>
+            <ul>
+              <li>production security story</li>
+              <li>online payment rail</li>
+              <li>delivery logistics</li>
+              <li>restaurant rollout</li>
+              <li>mature federation</li>
+              <li>trust/certification ecosystem</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h2>Technical Material Already There</h2>
+            <ul>
+              <li><strong>public concept:</strong> pizza4people.com</li>
+              <li><strong>repo:</strong> github.com/DennisHedegreen/p4p</li>
+              <li><strong>proof boundary:</strong> `PROOF.md`</li>
+              <li><strong>wire contract:</strong> `SPEC.md`</li>
+              <li><strong>wider explainer:</strong> `docs/WHITEPAPER-v0.1.md`</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span><strong>Pizza4People / P4P</strong><br>Protocol proof, not marketplace rebuild.</span>
+        <span>Hedegreen Research<br>Brussels hackathon prep · 2026 · technical</span>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

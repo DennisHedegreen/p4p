@@ -66,7 +66,7 @@ python3 -m venv .venv
 P4P_REGISTRY_URL=http://127.0.0.1:8000 \
 P4P_BACKUP_REGISTRIES='[{"tier":0,"url":"http://127.0.0.1:8000"},{"tier":1,"url":"http://127.0.0.1:8002"}]' \
 P4P_REGISTRY_DB_PATH=/tmp/p4p-registry.sqlite3 \
-P4P_MIRROR_UPSTREAMS=http://127.0.0.1:8002 \
+P4P_MIRROR_UPSTREAMS='[{"url":"http://127.0.0.1:8002","public_key":"ed25519:replace-with-registry-public-key"}]' \
 P4P_MIRROR_TRUSTED_UPSTREAMS=http://127.0.0.1:8002 \
 P4P_MIRROR_DISCOVERY_POLICY=trusted_only \
 P4P_REGISTRY_SOURCE_REEXPORT_POLICY=local_plus_trusted_mirrors \
@@ -130,8 +130,8 @@ Then open:
 - mirrored nodes become discoverable, but local node state still wins on `node_id` collisions
 - discover results now carry provenance fields so clients can distinguish `local` vs `mirrored` nodes and see whether a mirrored result is visible via `trusted_upstream` or the looser `all_active_policy`
 - mirrored discovery may also report `trusted_relayed_upstream` when the original upstream snapshot arrived through a trusted umbrella or country relay
-- `P4P_MIRROR_UPSTREAMS` configures which upstream registries are polled for `GET /registry-source`
-- `P4P_MIRROR_TRUSTED_UPSTREAMS` can pin which mirrored sources are allowed into ordinary discovery
+- `P4P_MIRROR_UPSTREAMS` configures which upstream registries are polled for `GET /registry-source`; JSON object entries may include `public_key`, which makes automatic sync reject a snapshot signed by any other registry key; an unpinned public upstream may still be cached as raw evidence but is not trusted
+- public entries in `P4P_MIRROR_TRUSTED_UPSTREAMS` must use JSON objects with both `url` and `public_key`; URL-only trust is allowed only for loopback development, and relay trust is checked against the relay's signed key before nested sources become discoverable
 - if `P4P_MIRROR_DISCOVERY_POLICY` is unset, the runtime defaults to `trusted_only` when upstream config exists and falls back to `all_active` only when no trust list or upstream set exists
 - `P4P_CURATED_INDEX_PROMOTION_POLICY` decides whether trusted mirrored evidence stays raw-only (`manual_only`) or may be promoted into the curated active index (`trusted_mirrors`)
 - `P4P_REGISTRY_METADATA` declares runtime scope and capability metadata such as `local`, `country`, `vertical`, or `umbrella`
@@ -153,10 +153,11 @@ Then open:
 - `GET /directory` is a separate moderated public directory layered on top of `GET /discover`
 - `GET /directory-claims` requires the registry admin token and shows persisted directory-level claims such as `reviewed`, `verified`, `hidden`, `spam`, or `local_only`
 - `POST /directory-claims` requires the registry admin token plus `can_moderate_directory` and may annotate or hide discoverable nodes without rewriting source truth
-- `GET /trust-claims` requires the registry admin token and shows signed trust claims currently stored by the registry
+- `GET /trust-claims` requires the registry admin token and shows signed trust claims currently stored by the registry plus separate `valid_signature` and `trusted_issuer` evaluations
 - `POST /trust-claims` requires the registry admin token, `can_issue_trust_claims`, and a configured registry signing key
 - signed trust-claim issuance also requires a canonical `P4P_REGISTRY_URL`, so the issuer URL comes from registry config rather than request-host fallback
-- `POST /trust-claims/import` requires the registry admin token plus `can_moderate_directory` and only imports signed trust claims for moderated-directory projection
+- `POST /trust-claims/import` requires the registry admin token plus `can_moderate_directory`; a valid signature is required for storage, but only claims whose issuer URL and public key match `P4P_TRUSTED_CLAIM_ISSUERS` are projected into the public directory
+- `P4P_TRUSTED_CLAIM_ISSUERS` is a JSON list of `{url, public_key}` pins; a URL match alone is never enough, while claims issued by this registry's own configured URL and signing key are trusted locally
 - `can_curate_active_index`, `can_moderate_directory`, and `can_issue_trust_claims` are intentionally separate powers in the runtime metadata
 - mirrored source cache expires from discovery after `P4P_MIRROR_SOURCE_TTL_SECONDS`
 - imported mirror records always land in raw mirror cache first
@@ -164,7 +165,7 @@ Then open:
 - curated promotion records persist the decision path between raw mirrored evidence and the curated active index
 - curated overrides sit above automatic promotion records but cannot revive stale, revoked, or invalid upstream evidence
 - moderated directory claims sit above `GET /discover` and do not change raw evidence, curated promotion, or curated override history
-- signed trust claims sit above the moderated directory as transportable positive annotations and do not change node identity or `GET /discover`
+- signed trust claims sit above the moderated directory as transportable positive annotations and do not change node identity or `GET /discover`; valid but unpinned claims remain admin-visible evidence and contribute no public trust label
 - stale or revoked upstream evidence is de-promoted out of the curated active index during sync/import and guarded again at read time
 - a mirrored source only counts as having visible/promotable nodes when those nodes are also fresh enough for ordinary discovery; mirror-status and curated promotion now use the same heartbeat freshness boundary as `discover()`
 - a mirrored source only counts as `discovery_eligible` when it is fresh/trusted under the current policy and still has at least one manifest-valid visible node; trusted raw source snapshots with `no_visible_nodes` stay cached for proof and downstream sync, but do not count as discoverable
